@@ -8,6 +8,7 @@ from agent_cost_tracker import BudgetExceeded
 from anthropic import Anthropic
 from dotenv import find_dotenv, load_dotenv
 
+from .cast_aliases import KAMERA_JADDI, CastNames
 from .extract import DEFAULT_MODEL, ExtractionError, extract_scene
 from .schema import SceneBreakdown
 from .split import Scene, cast_list, heading_time, split_script
@@ -23,11 +24,12 @@ def make_client() -> Anthropic:
 
 def breakdown_script(script: str, client, *, model: str = DEFAULT_MODEL, effort: str | None = None,
                      run_id: str | None = None, workers: int = 4,
-                     use_cast_list: bool = True) -> tuple[list[SceneBreakdown], list[str]]:
+                     use_cast_list: bool = True,
+                     names: CastNames = KAMERA_JADDI) -> tuple[list[SceneBreakdown], list[str]]:
     """Break down every scene. Returns (breakdowns, errors). A failed scene is reported, not fatal.
 
     use_cast_list=False sends an empty cast list. It exists only for the "cast list removed"
-    experiment in the README.
+    experiment in the README. names is the alias map of this script's cast.
     """
     preamble, scenes = split_script(script)
     cast = cast_list(preamble) if use_cast_list else ""
@@ -36,7 +38,7 @@ def breakdown_script(script: str, client, *, model: str = DEFAULT_MODEL, effort:
     def extract_one(i: int):
         try:
             return extract_scene(client, scenes[i], previous[i], cast,
-                                 model=model, effort=effort, run_id=run_id)
+                                 model=model, effort=effort, run_id=run_id, names=names)
         # ValueError covers bad JSON from pydantic. APIError covers rate limits and network
         # errors after the SDK's own retries. BudgetExceeded means the cost tracker refused
         # the call (no money spent), so the remaining scenes fail fast the same way.

@@ -11,7 +11,7 @@ import json
 import anthropic
 from agent_cost_tracker import tracked_call
 
-from .cast_aliases import canonical_character
+from .cast_aliases import KAMERA_JADDI, CastNames
 from .schema import SceneBreakdown, SceneFields
 from .split import Scene
 
@@ -67,7 +67,7 @@ def build_messages(scene: Scene, previous_heading: str | None) -> list[dict]:
 
 def extract_scene(client, scene: Scene, previous_heading: str | None, cast: str, *,
                   model: str = DEFAULT_MODEL, effort: str | None = None,
-                  run_id: str | None = None) -> SceneBreakdown:
+                  run_id: str | None = None, names: CastNames = KAMERA_JADDI) -> SceneBreakdown:
     output_config: dict = {"format": {"type": "json_schema", "schema": SCHEMA}}
     if effort:
         output_config["effort"] = effort
@@ -92,12 +92,16 @@ def extract_scene(client, scene: Scene, previous_heading: str | None, cast: str,
     fields = SceneFields.model_validate_json(text)
     # Safety net: map any nickname the model still used to the cast-list name,
     # and keep a note of what we changed so we can see how often it was needed.
-    fixes = [f"{c} -> {canonical_character(c)}" for c in fields.characters if canonical_character(c) != c]
-    fields.characters = list(dict.fromkeys(canonical_character(c) for c in fields.characters))
+    fixes = [f"{c} -> {names.canonical(c)}" for c in fields.characters if names.canonical(c) != c]
+    # A name the map cannot place (not in the cast, or a first name two people share) is kept,
+    # but flagged: a person decides who it is before anyone is booked for that day.
+    flags = [note for c in fields.characters if (note := names.review_note(c))]
+    fields.characters = list(dict.fromkeys(names.canonical(c) for c in fields.characters))
     return SceneBreakdown(
         **fields.model_dump(),
         scene_number=scene.number,
         heading=scene.heading,
         length_eighths=scene.length_eighths,
         alias_fixes=fixes,
+        review_flags=flags,
     )
