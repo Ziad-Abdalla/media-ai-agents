@@ -31,16 +31,18 @@ def _strip_punctuation(text: str) -> str:
     return "".join(" " if unicodedata.category(ch).startswith("P") else ch for ch in text)
 
 
-def normalize(text: str, arabic: bool = True) -> str:
+def normalize(text: str, arabic: bool = True, merge_ya: bool = True) -> str:
     """Light normalization always: no punctuation, lower case, single spaces.
-    Arabic normalization (default on): also drop diacritics/tatweel and unify letter variants."""
+    Arabic normalization (default on): also drop diacritics/tatweel and unify letter variants.
+    merge_ya=False keeps ى and ي apart: right for search, where «على» and «علي» are different words."""
     text = text.replace(RLM, "").replace(LRM, "")
     if arabic:
         text = _TASHKEEL.sub("", text)
         text = text.replace(_TATWEEL, "")
         text = re.sub("[أإآٱ]", "ا", text)  # alef forms -> bare alef
         text = text.replace("ة", "ه")  # ta marbuta -> ha
-        text = text.replace("ى", "ي")  # alef maqsura -> ya
+        if merge_ya:
+            text = text.replace("ى", "ي")  # alef maqsura -> ya
         text = text.translate(_ARABIC_DIGITS)
     text = _strip_punctuation(text).lower()
     return " ".join(text.split())
