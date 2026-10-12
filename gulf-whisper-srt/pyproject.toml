@@ -5,6 +5,7 @@ description = "Arabic (incl. Gulf dialect) audio/video to clean Arabic SRT subti
 requires-python = ">=3.10"
 dependencies = [
     "faster-whisper>=1.1",
+    "av<16",  # faster-whisper 1.2.1 passes an argument PyAV 16+ removed
 ]
 
 [project.optional-dependencies]
