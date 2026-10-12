@@ -41,6 +41,7 @@ class Rules:
     pause_split: float = 0.6  # a silence this long (seconds) starts a new cue
     tiny_cue_chars: int = 8  # cues shorter than this get merged into a neighbour
     merge_max_gap: float = 1.0  # only merge cues that are this close in time
+    min_cut_pause: float = 0.2  # a gap shorter than this isn't a real pause to cut at
 
 
 def wrap_lines(text: str, max_chars: int = 42) -> list[str] | None:
@@ -105,18 +106,18 @@ def _break_reason(current: list[Word], next_word: Word, rules: Rules) -> str | N
     return None
 
 
-def _best_cut(current: list[Word]) -> int:
-    """When a limit forces a cut, look back over the second half of the cue for a
-    better spot (after punctuation, or at the longest short pause), so we don't
-    cut in the middle of a phrase. Returns how many words stay in this cue."""
-    best_index, best_score = len(current), 0.0
+def _best_cut(current: list[Word], rules: Rules) -> int:
+    """When a limit forces a cut, look back over the second half of the cue: cut after
+    punctuation if there is some, otherwise at the biggest pause, otherwise right here.
+    Returns how many words stay in this cue."""
+    best_index, best_quality = len(current), 0.0
     for i in range(max(len(current) // 2, 1), len(current)):
-        score = current[i].start - current[i - 1].end  # the pause before word i
+        quality = current[i].start - current[i - 1].end  # the pause before word i
         if current[i - 1].text.endswith(SENTENCE_END + SOFT_BREAK):
-            score += 1.0  # punctuation is a better place than any pause
-        if score > best_score:
-            best_index, best_score = i, score
-    return best_index if best_score >= 0.2 else len(current)
+            quality += 1.0  # pauses inside a cue are under 0.6 s, so punctuation always wins
+        if quality > best_quality:
+            best_index, best_quality = i, quality
+    return best_index if best_quality >= rules.min_cut_pause else len(current)
 
 
 def _group_words(words: list[Word], rules: Rules) -> list[list[Word]]:
@@ -128,9 +129,11 @@ def _group_words(words: list[Word], rules: Rules) -> list[list[Word]]:
             groups.append(current)
             current = []
         elif reason == "limit":
-            cut = _best_cut(current)
+            cut = _best_cut(current, rules)
             groups.append(current[:cut])
             current = current[cut:]  # the words after the cut move to the next cue
+            # The leftover words plus this word still break a limit (e.g. too long on
+            # screen), so close the leftovers as their own cue.
             if current and _break_reason(current, word, rules) == "limit":
                 groups.append(current)
                 current = []
