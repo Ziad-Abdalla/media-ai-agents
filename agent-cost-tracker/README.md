@@ -26,12 +26,12 @@ Then:
 python -m agent_cost_tracker report
 ```
 
+Real output from the odoo-request-agent demo (6 emails, one Haiku 5.5 call each), lines for that operation only:
+
 ```
 By operation:
-  extract_purchase_request           calls=   6  $  0.00412
-...
-Cost per run: 6 runs, mean $0.00069, max $0.00093
-Total: $0.00412 of $15.00 budget (0.03% used)
+  extract_purchase_request           calls=   6  $  0.00168
+Cost per run: 6 runs, mean $0.00028, max $0.00032
 ```
 
 ## Why per operation, not per call
