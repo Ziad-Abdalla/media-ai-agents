@@ -19,7 +19,7 @@ from pathlib import Path
 
 from .extract import DEFAULT_MODEL, PROMPT_VERSION
 from .report import write_jsonl
-from .score import ALL_FIELDS, regression_check, scene_errors, score_run
+from .score import ALL_FIELDS, SCORER_VERSION, regression_check, scene_errors, score_run
 
 ROOT = Path(__file__).resolve().parent.parent
 EVAL_DIR = ROOT / "eval"
@@ -30,8 +30,8 @@ RUNS = EVAL_DIR / "runs"
 SCRIPT = ROOT / "data" / "kamera_jaddi.txt"
 DEFAULT_THRESHOLD = 0.05  # a field may not drop more than 5 points vs the accepted baseline
 
-HISTORY_COLUMNS = ["date", "commit", "model", "effort", "prompt_version", *ALL_FIELDS,
-                   "overall", "cost_usd", "failed_scenes", "run_id"]
+HISTORY_COLUMNS = ["date", "commit", "model", "effort", "prompt_version", "scorer_version", "source",
+                   *ALL_FIELDS, "overall", "cost_usd", "failed_scenes", "run_id"]
 
 
 def load_jsonl(path: Path) -> list[dict]:
@@ -100,8 +100,12 @@ def main(argv: list[str] | None = None) -> int:
     golds = load_jsonl(GOLD)
 
     if args.from_run:
+        # Re-score a saved run: no API call, no cost. Used after changing the scorer or the gold labels.
         preds = {p["scene_number"]: p for p in load_jsonl(args.from_run)}
-        run_id, cost, failed = args.from_run.stem, None, 0
+        run_id = args.from_run.stem
+        meta_path = args.from_run.with_suffix(".meta.json")
+        meta = json.loads(meta_path.read_text(encoding="utf-8")) if meta_path.exists() else {}
+        source = "rescored"
     else:
         from .pipeline import breakdown_script, make_client
         client = make_client()
@@ -111,22 +115,29 @@ def main(argv: list[str] | None = None) -> int:
         RUNS.mkdir(exist_ok=True)
         write_jsonl(scenes, RUNS / f"{run_id}.jsonl")
         preds = {s.scene_number: s.model_dump() for s in scenes}
-        cost, failed = run_cost(run_id), len(errors)
+        meta = {"model": args.model, "effort": args.effort or "default", "prompt_version": PROMPT_VERSION,
+                "commit": git_commit(), "date": datetime.now().isoformat(timespec="minutes"),
+                "cost_usd": run_cost(run_id), "failed_scenes": len(errors)}
+        (RUNS / f"{run_id}.meta.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
+        source = "live"
         for e in errors:
             print("FAILED", e)
 
     result = score_run(preds, golds)
-    print(f"Run {run_id}  model={args.model}  effort={args.effort or 'default'}  prompt={PROMPT_VERSION}")
+    model, effort = meta.get("model", "?"), meta.get("effort", "?")
+    print(f"Run {run_id}  model={model}  effort={effort}  prompt={meta.get('prompt_version', '?')}"
+          f"  scorer={SCORER_VERSION}")
     print_report(result, preds, golds)
+    cost = meta.get("cost_usd")
     if cost is not None:
         print(f"Cost of this run: ${cost:.4f}")
-        append_history({
-            "date": datetime.now().isoformat(timespec="minutes"), "commit": git_commit(),
-            "model": args.model, "effort": args.effort or "default", "prompt_version": PROMPT_VERSION,
-            **{f: f"{v:.3f}" for f, v in result["fields"].items()},
-            "overall": f"{result['overall']:.3f}", "cost_usd": f"{cost:.4f}",
-            "failed_scenes": failed, "run_id": run_id,
-        })
+    append_history({
+        "date": meta.get("date", ""), "commit": meta.get("commit", ""), "model": model, "effort": effort,
+        "prompt_version": meta.get("prompt_version", ""), "scorer_version": SCORER_VERSION, "source": source,
+        **{f: f"{v:.3f}" for f, v in result["fields"].items()},
+        "overall": f"{result['overall']:.3f}", "cost_usd": "" if cost is None else f"{cost:.4f}",
+        "failed_scenes": meta.get("failed_scenes", ""), "run_id": run_id,
+    })
 
     status = 0
     if args.baseline:
@@ -146,8 +157,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.accept and status == 0:
         BASELINE.write_text(json.dumps({
-            "run_id": run_id, "model": args.model, "effort": args.effort or "default",
-            "prompt_version": PROMPT_VERSION, "fields": result["fields"], "overall": result["overall"],
+            "run_id": run_id, "model": model, "effort": effort, "prompt_version": meta.get("prompt_version"),
+            "scorer_version": SCORER_VERSION, "fields": result["fields"], "overall": result["overall"],
         }, ensure_ascii=False, indent=2), encoding="utf-8")
         print(f"Saved as the new baseline: {BASELINE.name}")
     return status
