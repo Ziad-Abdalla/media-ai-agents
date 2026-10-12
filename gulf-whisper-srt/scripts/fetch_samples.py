@@ -27,11 +27,14 @@ SAMPLE_RATE = 16000
 
 # google/fleurs, config ar_eg, split test (CC-BY-4.0). Modern Standard Arabic, read speech.
 FLEURS_ROWS = [7, 66, 184, 263]
+FLEURS_REVISION = "70bb2e84b976b7e960aa89f1c648e09c59f894dd"  # dataset commit the clips were made from
 
-# SADA (Saudi Audio Dataset for Arabic), via the non-gated Hugging Face copy
-# muaadh019/najdi-female-tts-small (CC BY-NC-SA 4.0). One episode of the Saudi
-# comedy series "الديرة نت". Each clip is a list of annotated segments (row numbers).
+# SADA (Saudi Audio Dataset for Arabic), via an unofficial, non-gated Hugging Face mirror
+# (CC BY-NC-SA 4.0, see data/sources.md). Despite its name, rows 0-52 are one episode of
+# the Saudi series "الديرة نت", labelled Khaliji (Gulf) by SADA, mostly male speakers.
+# Each clip is a list of annotated segments (row numbers).
 SADA_DATASET = "muaadh019/najdi-female-tts-small"
+SADA_REVISION = "d6b1d1438c3385a8d449d367bf9b327cb005ddbc"
 SADA_CLIPS = {
     "sada_scene_a": list(range(37, 46)),  # two speakers talking about getting up early
     "sada_scene_b": [3, 4, 5, 10, 11, 12, 13, 15, 18],  # one speaker making tea at the office
@@ -51,7 +54,6 @@ def get(url: str, tries: int = 4) -> bytes:
                 raise
             print(f"  retrying after error: {error}")
             time.sleep(3 * (attempt + 1))
-    raise RuntimeError("unreachable")
 
 
 def get_rows(dataset: str, config: str, split: str, offset: int, length: int) -> list[dict]:
@@ -59,6 +61,13 @@ def get_rows(dataset: str, config: str, split: str, offset: int, length: int) ->
         {"dataset": dataset, "config": config, "split": split, "offset": offset, "length": length}
     )
     return json.loads(get(f"{ROWS_API}?{query}"))["rows"]
+
+
+def check_revision(dataset: str, expected: str) -> None:
+    """The rows API always serves the latest version, so warn if the dataset changed."""
+    sha = json.loads(get(f"https://huggingface.co/api/datasets/{dataset}"))["sha"]
+    if sha != expected:
+        print(f"  warning: {dataset} changed since the committed results (now {sha[:8]}); clips may differ")
 
 
 def save_wav(path: Path, audio: np.ndarray) -> None:
@@ -71,6 +80,7 @@ def save_wav(path: Path, audio: np.ndarray) -> None:
 
 
 def fetch_fleurs(manifest: list[dict]) -> None:
+    check_revision("google/fleurs", FLEURS_REVISION)
     for row_index in FLEURS_ROWS:
         clip_id = f"fleurs_ar_{row_index:03d}"
         print(f"{clip_id}: FLEURS ar_eg test row {row_index}")
@@ -85,6 +95,7 @@ def fetch_fleurs(manifest: list[dict]) -> None:
 
 
 def fetch_sada(manifest: list[dict]) -> None:
+    check_revision(SADA_DATASET, SADA_REVISION)
     rows = {r["row_idx"]: r["row"] for r in get_rows(SADA_DATASET, "default", "train", 0, 60)}
     # Every row links to the whole episode recording; rows 0-52 are the same episode.
     episode_url = rows[37]["audio"][0]["src"]
