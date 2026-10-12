@@ -1,12 +1,14 @@
 """Run the agent on the test script, score it against the gold labels, and gate releases.
 
     python -m breakdown.eval --model claude-haiku-5-5 --effort low
-    python -m breakdown.eval --model claude-haiku-5-5 --effort low --baseline   # the release gate
-    python -m breakdown.eval --from-run eval/runs/<run>.jsonl                  # re-score, no API cost
-    python -m breakdown.eval ... --accept                                      # make this run the new baseline
+    python -m breakdown.eval --model claude-haiku-5-5 --effort low --gate   # the release gate
+    python -m breakdown.eval --from-run eval/runs/<run>.jsonl              # re-score, no API cost
+    python -m breakdown.eval ... --accept                                  # make this run the new baseline
+    python -m breakdown.eval ... --no-cast-list                            # the README experiment
 
-Every live run appends one row to eval/history.csv, so you can see the score of every
-model / prompt version over time, next to what it cost.
+Every run (live, or a re-score with a new scorer version) appends one row to eval/history.csv,
+so you can see the score of every model / prompt version over time, next to what it cost.
+Re-scoring the same run with the same scorer again does not add a duplicate row.
 """
 
 import argparse
@@ -17,7 +19,10 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+from agent_cost_tracker import ledger
+
 from .extract import DEFAULT_MODEL, PROMPT_VERSION
+from .pipeline import breakdown_script, make_client
 from .report import write_jsonl
 from .score import ALL_FIELDS, SCORER_VERSION, regression_check, scene_errors, score_run
 
@@ -51,7 +56,6 @@ def git_commit() -> str:
 
 def run_cost(run_id: str) -> float:
     """Ask the shared cost ledger what this run cost."""
-    from agent_cost_tracker import ledger
     conn = ledger.connect()
     try:
         return ledger.run_spend(conn, run_id)
@@ -79,6 +83,11 @@ def print_report(result: dict, preds: dict, golds: list[dict]) -> None:
 
 def append_history(row: dict) -> None:
     new = not HISTORY.exists()
+    if not new:
+        with open(HISTORY, encoding="utf-8", newline="") as f:
+            for old in csv.DictReader(f):
+                if (old["run_id"], old["scorer_version"]) == (row["run_id"], row["scorer_version"]):
+                    return  # this run was already scored with this scorer
     with open(HISTORY, "a", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=HISTORY_COLUMNS)
         if new:
@@ -92,9 +101,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--model", default=DEFAULT_MODEL)
     parser.add_argument("--effort", choices=["low", "medium", "high"], default=None)
     parser.add_argument("--from-run", type=Path, help="score a saved run instead of calling the API")
-    parser.add_argument("--baseline", action="store_true", help="fail if any field drops vs the baseline")
+    parser.add_argument("--gate", action="store_true",
+                        help="fail if any field drops vs the baseline, or if any scene failed")
     parser.add_argument("--threshold", type=float, default=DEFAULT_THRESHOLD)
     parser.add_argument("--accept", action="store_true", help="save this run as the new baseline")
+    parser.add_argument("--no-cast-list", action="store_true",
+                        help="experiment: send an empty cast list to the model")
     args = parser.parse_args(argv)
 
     golds = load_jsonl(GOLD)
@@ -107,15 +119,16 @@ def main(argv: list[str] | None = None) -> int:
         meta = json.loads(meta_path.read_text(encoding="utf-8")) if meta_path.exists() else {}
         source = "rescored"
     else:
-        from .pipeline import breakdown_script, make_client
         client = make_client()
         run_id = f"{args.model}-{args.effort or 'default'}-{datetime.now():%Y%m%d-%H%M%S}"
+        prompt_version = PROMPT_VERSION + ("-no-cast-list" if args.no_cast_list else "")
         scenes, errors = breakdown_script(SCRIPT.read_text(encoding="utf-8"), client,
-                                          model=args.model, effort=args.effort, run_id=run_id)
+                                          model=args.model, effort=args.effort, run_id=run_id,
+                                          use_cast_list=not args.no_cast_list)
         RUNS.mkdir(exist_ok=True)
         write_jsonl(scenes, RUNS / f"{run_id}.jsonl")
         preds = {s.scene_number: s.model_dump() for s in scenes}
-        meta = {"model": args.model, "effort": args.effort or "default", "prompt_version": PROMPT_VERSION,
+        meta = {"model": args.model, "effort": args.effort or "default", "prompt_version": prompt_version,
                 "commit": git_commit(), "date": datetime.now().isoformat(timespec="minutes"),
                 "cost_usd": run_cost(run_id), "failed_scenes": len(errors)}
         (RUNS / f"{run_id}.meta.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
@@ -140,13 +153,20 @@ def main(argv: list[str] | None = None) -> int:
     })
 
     status = 0
-    if args.baseline:
+    if args.gate:
         if not BASELINE.exists():
             print("No baseline yet. Run once with --accept to create one.")
             status = 1
         else:
             base = json.loads(BASELINE.read_text(encoding="utf-8"))
             failures = regression_check(result["fields"], base["fields"], args.threshold)
+            # A missing scene costs only about 0.04 on 26 scenes, under the threshold,
+            # so the average alone would let it through. Any failed or missing scene fails the gate.
+            missing = [g["scene_number"] for g in golds if g["scene_number"] not in preds]
+            if missing:
+                failures.append(f"scenes with no answer: {missing}")
+            if meta.get("failed_scenes"):
+                failures.append(f"{meta['failed_scenes']} scene(s) failed during the run")
             if failures:
                 print(f"GATE FAILED vs baseline {base['run_id']} (threshold {args.threshold}):")
                 for f in failures:
