@@ -3,14 +3,16 @@
 import pytest
 
 from odoo_agent.pipeline import resolve_needs_human
-from odoo_agent.resolve import resolve_production, resolve_products
+from odoo_agent.resolve import match_production, production_numbers, resolve_production, resolve_products
 
 from .conftest import NORMAL_REQUEST, FakeAnthropic, approve
 from .test_pipeline import run
 
 
 @pytest.mark.parametrize("written", ["Rimal Al-Khobar", "rimal al khobar", "رمال الخبر", "RML-S1",
-                                     "the Rimal Al-Khobar series", "مسلسل رمال الخبر"])
+                                     "the Rimal Al-Khobar series", "مسلسل رمال الخبر",
+                                     "لمسلسل رمال الخبر", "Rimal Al-Khobar season 1",
+                                     "رمال الخبر الموسم الأول"])
 def test_production_is_found_in_english_arabic_or_by_code(odoo, written):
     result = resolve_production(odoo, written)
     assert result["status"] == "matched"
@@ -20,6 +22,41 @@ def test_production_is_found_in_english_arabic_or_by_code(odoo, written):
 def test_arabic_spelling_variants_still_match(odoo):
     # ة written as ه, the way many people type it
     assert resolve_production(odoo, "سهره الخميس")["code"] == "SHK-S3"
+
+
+@pytest.mark.parametrize("written", ["للبرنامج سهرة الخميس", "لبرنامج سهرة الخميس", "وبرنامج سهرة الخميس"])
+def test_arabic_prefixes_on_series_and_programme_are_ignored(odoo, written):
+    assert resolve_production(odoo, written)["code"] == "SHK-S3"
+
+
+@pytest.mark.parametrize("written", ["Rimal Al-Khobar season 2", "Sahrat Al-Khamis S4", "رمال الخبر 2",
+                                     "رمال الخبر الموسم ٢", "Bayt Al-Jadd 2", "Rimal Al-Khobar season two"])
+def test_a_different_season_is_never_charged_to_the_one_on_record(odoo, written):
+    # The names look 90%+ alike, but season 2 is a different budget from season 1.
+    result = resolve_production(odoo, written)
+    assert result["status"] == "needs_human" and result["analytic_id"] is None
+    assert "season or year" in result["reason"]
+
+
+TWO_SEASONS = [{"id": 1, "name": "Rimal Al-Khobar (رمال الخبر)", "code": "RML-S1"},
+               {"id": 4, "name": "Rimal Al-Khobar S2 (رمال الخبر ٢)", "code": "RML-S2"}]
+
+
+@pytest.mark.parametrize("written, code", [("Rimal Al-Khobar season 2", "RML-S2"),
+                                           ("رمال الخبر الموسم الثاني", "RML-S2"),
+                                           ("Rimal Al-Khobar S1", "RML-S1"),
+                                           ("Rimal Al-Khobar", None)])  # no season said: ask
+def test_two_seasons_open_at_once(written, code):
+    result = match_production(written, TWO_SEASONS)
+    assert result.get("code") == code
+    assert result["status"] == ("matched" if code else "needs_human")
+
+
+def test_season_numbers_are_read_from_digits_words_codes_and_years():
+    assert production_numbers("RML-S1") == {1}
+    assert production_numbers("الموسم ٣") == {3}
+    assert production_numbers("season two") == {2}
+    assert production_numbers("Ramadan 2027") == production_numbers("BYT-R27") == {27}
 
 
 def test_unsure_production_goes_to_a_human_with_every_production_listed(odoo):
