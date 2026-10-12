@@ -11,10 +11,12 @@ from .models import Email, PurchaseRequest
 
 
 def sender_allowed(email: Email) -> bool:
-    """Only internal senders. We trust the real From address, never what the body claims.
-    (In production you'd also check the mail server's SPF/DKIM result.)"""
+    """Only internal senders, by the From header (never by what the body claims).
+    The From header can be forged, so this stops casual outside mail, not a determined
+    attacker. Production would also require Gmail's Authentication-Results header to say
+    dmarc=pass. The human approval is the backstop either way."""
     domain = email.sender.rsplit("@", 1)[-1]
-    return domain in config.ALLOWED_SENDER_DOMAINS
+    return domain in config.COMPANY_DOMAINS
 
 
 def validate(request: PurchaseRequest, email: Email) -> list[str]:

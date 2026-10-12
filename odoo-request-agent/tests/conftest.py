@@ -119,7 +119,7 @@ def isolated(tmp_path, monkeypatch):
     monkeypatch.setenv("COST_BUDGET_USD", "15")
     monkeypatch.setenv("AGENT_WRITES_ENABLED", "true")
     monkeypatch.setattr(config, "KILL_SWITCH_FILE", str(tmp_path / "agent.kill"))
-    monkeypatch.setattr(config, "ALLOWED_SENDER_DOMAINS", ["sadaf.example"])
+    monkeypatch.setattr(config, "COMPANY_DOMAINS", ["sadaf.example"])
     monkeypatch.setattr(config, "ALLOWED_CURRENCIES", ["SAR", "USD"])
 
 

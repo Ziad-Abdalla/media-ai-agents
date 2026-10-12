@@ -1,6 +1,7 @@
 """Step 8: what the agent is allowed to do, enforced in code (not just in the prompt).
 
-Every write and every email goes through execute(). It looks the action up in
+Every write and every email goes through execute(). (Reads go straight to Odoo, because
+they can't change anything; rollback is a human tool and also sits outside this gate.) It looks the action up in
 ALLOWED_ACTIONS and:
   - "auto":     runs it.
   - "approval": runs it only if a human approved, and only if the kill switch is off.
@@ -8,14 +9,14 @@ ALLOWED_ACTIONS and:
 """
 
 from . import actions, config
+from .actions import ForbiddenAction
 
 AUTO = "auto"
 APPROVAL = "approval"
 FORBIDDEN = "forbidden"
 
 ALLOWED_ACTIONS = {
-    # reading Odoo and drafting a reply cannot change anything
-    "search_records": AUTO,
+    # drafting a reply only saves text in our own database
     "draft_reply": AUTO,
     # changes to Odoo, and sending email, need a named human
     "create_vendor": APPROVAL,
@@ -27,10 +28,6 @@ ALLOWED_ACTIONS = {
     "cancel_purchase_order": FORBIDDEN,
     "delete_record": FORBIDDEN,
 }
-
-
-class ForbiddenAction(Exception):
-    pass
 
 
 class ApprovalRequired(Exception):
@@ -59,6 +56,6 @@ def execute(action: str, *, odoo, store, run_id: str, approved_by: str | None = 
     handler = getattr(actions, action)
     try:
         return handler(odoo=odoo, store=store, run_id=run_id, actor=actor, **params)
-    except actions.NotAllowed as e:  # a handler found a rule broken (e.g. outside email)
+    except ForbiddenAction as e:  # the action found its own rule broken (e.g. outside email)
         store.audit(run_id, actor, f"blocked:{action}", after={**params, "reason": str(e)})
-        raise ForbiddenAction(str(e)) from e
+        raise

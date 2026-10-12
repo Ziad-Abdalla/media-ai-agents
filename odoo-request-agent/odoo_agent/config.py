@@ -23,7 +23,8 @@ SMTP_HOST = os.environ.get("SMTP_HOST", "localhost")
 SMTP_PORT = int(os.environ.get("SMTP_PORT", "1025"))
 AGENT_EMAIL = os.environ.get("AGENT_EMAIL", "procurement-agent@sadaf.example")
 
-ALLOWED_SENDER_DOMAINS = _list("ALLOWED_SENDER_DOMAINS", "sadaf.example")
+# Used both to accept senders and to limit who the agent may email.
+COMPANY_DOMAINS = _list("COMPANY_DOMAINS", "sadaf.example")
 ALLOWED_CURRENCIES = [c.upper() for c in _list("ALLOWED_CURRENCIES", "SAR,USD")]
 
 AGENT_DB_PATH = os.environ.get("AGENT_DB_PATH", "./agent.sqlite")
@@ -32,7 +33,9 @@ GMAIL_LABEL = os.environ.get("GMAIL_LABEL", "purchase-requests")
 
 
 def writes_enabled() -> bool:
-    """The kill switch. Read fresh every time, so flipping it works without a restart."""
+    """The kill switch, checked before every write. The agent.kill file works instantly.
+    AGENT_WRITES_ENABLED comes from the environment (.env is read once at start-up), so
+    changing that one needs a restart."""
     if os.environ.get("AGENT_WRITES_ENABLED", "true").lower() == "false":
         return False
     return not os.path.exists(KILL_SWITCH_FILE)

@@ -11,12 +11,8 @@ from . import config
 ORIGIN_PREFIX = "email-agent:"
 
 
-class NotAllowed(Exception):
-    """Raised by an action when its own safety rule is broken."""
-
-
-def search_records(*, odoo, model, domain, fields, **_):
-    return odoo.search_read(model, domain, fields)
+class ForbiddenAction(Exception):
+    """The action isn't allowed, or (raised inside an action) its own safety rule is broken."""
 
 
 def draft_reply(*, store, run_id, text, **_):
@@ -25,9 +21,12 @@ def draft_reply(*, store, run_id, text, **_):
 
 
 def create_vendor(*, odoo, store, run_id, actor, values):
-    # Don't create the same vendor twice if this step is retried.
-    existing = odoo.search_read("res.partner", [("name", "=", values["name"])], ["id"])
+    """Idempotent like the PO: values["ref"] holds the run's key, and is searched first.
+    The same key lets rollback find the vendor even if the create answer was lost."""
+    existing = odoo.search_read("res.partner", [("ref", "=", values["ref"])], ["id", "name"])
     if existing:
+        store.audit(run_id, actor, "found_existing", "res.partner", existing[0]["id"],
+                    after=existing[0])
         return existing[0]["id"]
     partner_id = odoo.create("res.partner", values)
     store.audit(run_id, actor, "create", "res.partner", partner_id, before=None, after=values)
@@ -48,10 +47,13 @@ def create_purchase_order(*, odoo, store, run_id, actor, values):
     return po_id
 
 
+# Not used by build_plan today: no plan edits an existing PO. It's here so the
+# "only draft POs can be changed" rule and the rollback restore are real and tested,
+# ready for a later "amend this order" email.
 def update_purchase_order(*, odoo, store, run_id, actor, po_id, values):
     current = odoo.search_read("purchase.order", [("id", "=", po_id)], ["state", *values])[0]
     if current["state"] != "draft":
-        raise NotAllowed(f"PO {po_id} is '{current['state']}', only draft POs can be changed")
+        raise ForbiddenAction(f"PO {po_id} is '{current['state']}', only draft POs can be changed")
     before = {field: current[field] for field in values}
     odoo.write("purchase.order", po_id, values)
     store.audit(run_id, actor, "write", "purchase.order", po_id, before=before, after=values)
@@ -61,10 +63,10 @@ def update_purchase_order(*, odoo, store, run_id, actor, po_id, values):
 def send_email(*, store, run_id, actor, to, subject, body, attachments=None, **_):
     """The only way the agent can send email: internal addresses only, never attachments."""
     if attachments:
-        raise NotAllowed("emails with attachments are never sent by the agent")
+        raise ForbiddenAction("emails with attachments are never sent by the agent")
     domain = to.rsplit("@", 1)[-1].lower()
-    if domain not in config.ALLOWED_SENDER_DOMAINS:
-        raise NotAllowed(f"'{to}' is outside the company; the agent only emails internal addresses")
+    if domain not in config.COMPANY_DOMAINS:
+        raise ForbiddenAction(f"'{to}' is outside the company; the agent only emails internal addresses")
 
     msg = EmailMessage()
     msg["From"], msg["To"], msg["Subject"] = config.AGENT_EMAIL, to, subject

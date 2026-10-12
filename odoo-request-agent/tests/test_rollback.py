@@ -62,3 +62,18 @@ def test_rollback_works_even_with_the_kill_switch_on(store, odoo, monkeypatch):
     monkeypatch.setenv("AGENT_WRITES_ENABLED", "false")
     rollback(store, odoo, run_id)
     assert odoo.pos() == []
+
+
+def test_rollback_archives_a_vendor_whose_create_answer_was_lost(store, odoo):
+    new_vendor = {**NORMAL_REQUEST, "vendor_name": "Najd Catering House"}
+    run_id = process_email(make_email(), client=FakeAnthropic(new_vendor), odoo=odoo, store=store)
+    odoo.lose_next_create_answer = True  # the vendor is saved, but we never hear back
+    with pytest.raises(ConnectionResetError):
+        approve_run(store, odoo, run_id, "Ziad")
+    approve_run(store, odoo, run_id, "Ziad")  # retry finds the vendor by its key: no second vendor
+    vendors = [p for p in odoo.records["res.partner"].values() if p["name"] == "Najd Catering House"]
+    assert len(vendors) == 1
+
+    rollback(store, odoo, run_id)
+    assert vendors[0]["active"] is False
+    assert odoo.pos() == []

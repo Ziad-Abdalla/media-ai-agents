@@ -37,7 +37,8 @@ def build_plan(request: PurchaseRequest, vendor: dict, products: list[dict],
     steps = []
     if vendor["status"] == "new":
         steps.append({"action": "create_vendor", "model": "res.partner",
-                      "values": {"name": request.vendor_name, "is_company": True, "supplier_rank": 1}})
+                      "values": {"name": request.vendor_name, "is_company": True, "supplier_rank": 1,
+                                 "ref": ORIGIN_PREFIX + key}})  # the key, so it can be found again
 
     date_planned = f"{request.needed_by} 09:00:00"
     lines = []
