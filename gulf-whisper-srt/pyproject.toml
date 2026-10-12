@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gulf-whisper-srt"
-version = "0.3.0"
+version = "0.3.1"
 description = "Arabic (incl. Gulf dialect) audio/video to Arabic subtitles, a searchable dialogue index and a QC report, run locally with faster-whisper."
 requires-python = ">=3.10"
 dependencies = [
