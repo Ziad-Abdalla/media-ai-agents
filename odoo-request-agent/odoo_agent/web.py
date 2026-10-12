@@ -29,8 +29,8 @@ def create_app(store, get_odoo) -> FastAPI:
     app = FastAPI(title="Purchase request approvals")
 
     @app.get("/", response_class=HTMLResponse)
-    def index(request: Request, message: str = ""):
-        runs = store.list_runs()
+    def index(request: Request, message: str = "", run: str = ""):
+        runs = [r for r in [store.get_run(run)] if r] if run else store.list_runs()  # ?run=<id>: one run
         runs.sort(key=lambda r: STATUS_ORDER.index(r["status"]) if r["status"] in STATUS_ORDER else 99)
         conn = ledger.connect()
         for run in runs:
