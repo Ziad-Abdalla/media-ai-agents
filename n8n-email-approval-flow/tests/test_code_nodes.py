@@ -120,6 +120,8 @@ class ApprovalEmail(unittest.TestCase):
         self.assertIn('dir="rtl"', mail["html"])
         self.assertIn("موافقة", mail["html"])
         self.assertIn("طلب حجز", mail["subject"])
+        # ISO dates stay left-to-right inside Arabic text, or "2026-10-21" shows as "21-10-2026".
+        self.assertIn('<span dir="ltr">2026-10-20</span>', mail["html"])
 
     def test_english_request_gets_a_left_to_right_email(self):
         mail, _ = approval_email({})
