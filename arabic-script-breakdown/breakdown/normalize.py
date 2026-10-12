@@ -12,7 +12,7 @@ import re
 _DIGITS = str.maketrans("٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹", "01234567890123456789")
 
 # Harakat (fatha, damma, kasra, tanween), shadda, sukun, superscript alef and Quranic marks.
-_TASHKEEL = re.compile(r"[ؐ-ًؚ-ٰٟۖ-ۭ]")
+_TASHKEEL = re.compile(r"[\u0610-\u061a\u064b-\u065f\u0670\u06d6-\u06ed]")
 _TATWEEL = "ـ"  # the stretching character: "كـــاميرا"
 _PUNCT = re.compile(r"[^\w\s]")  # anything that is not a letter, digit or space
 
