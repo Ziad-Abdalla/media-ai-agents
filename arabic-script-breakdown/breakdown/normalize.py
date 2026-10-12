@@ -11,7 +11,8 @@ import re
 # Arabic-Indic (٠-٩) and Persian (۰-۹) digits -> Western digits.
 _DIGITS = str.maketrans("٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹", "01234567890123456789")
 
-_TASHKEEL = re.compile(r"[ؐ-ًؚ-ٰٟۖ-ۭ]")  # harakat, shadda, sukun...
+# Harakat (fatha, damma, kasra, tanween), shadda, sukun, superscript alef and Quranic marks.
+_TASHKEEL = re.compile(r"[ؐ-ًؚ-ٰٟۖ-ۭ]")
 _TATWEEL = "ـ"  # the stretching character: "كـــاميرا"
 _PUNCT = re.compile(r"[^\w\s]")  # anything that is not a letter, digit or space
 

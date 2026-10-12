@@ -6,15 +6,23 @@ and sometimes not at all:
     داخلي - نهار - بيت أبو فهد - الصالة
 This file finds every heading, normalizes the digits, and gives each scene a
 number. If a heading has no number, it takes the previous number + 1.
+A number that repeats or goes backwards (a writer's typo) gives a warning.
+Limit: a heading without داخلي or خارجي is not found, so its text joins the scene before it.
 """
 
 import math
 import re
+import warnings
 from dataclasses import dataclass
 
 from .normalize import normalize_digits
 
-# "مشهد 3", "م/3", "م.3", "م 3", "مشهد (3)", or just "3 -" at the start of a line
+# A numbered heading, read left to right:
+#   ^\s*                          spaces at the start of the line
+#   (?:مشهد|م\s*[/.]|م(?=\s*\d))?  an optional prefix: "مشهد", "م/" or "م.", or "م" followed by a digit
+#   \s*\(?\s*(\d+)\s*\)?          the number, maybe in brackets: "3" or "(3)"
+#   \s*[-–:.]                     then a dash, colon or dot
+# Examples: "مشهد 3 -", "م/3 -", "م.3 -", "م 3 -", "مشهد (3) -", "3 -", "مشهد 7:"
 _NUMBERED = re.compile(r"^\s*(?:مشهد|م\s*[/.]|م(?=\s*\d))?\s*\(?\s*(\d+)\s*\)?\s*[-–:.]")
 _INT_EXT = re.compile(r"(?<![\w])(داخلي|خارجي)(?![\w])")
 _DIALOGUE = re.compile(r"^[^:\-–]{1,30}:")  # "فهد: ..." is dialogue, not a heading
@@ -82,7 +90,10 @@ def split_script(script: str) -> tuple[str, list[Scene]]:
         if is_heading(line):
             close()
             parsed = heading_number(line)
-            number = parsed if parsed is not None else number + 1
+            new_number = parsed if parsed is not None else number + 1
+            if current is not None and new_number <= number:
+                warnings.warn(f"scene number {new_number} comes after {number}: check the heading {line.strip()!r}")
+            number = new_number
             heading = line.strip()
             current = [line.strip()]
         elif current is None:

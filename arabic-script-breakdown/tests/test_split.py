@@ -56,3 +56,9 @@ def test_cast_list_comes_from_preamble():
     cast = cast_list(preamble)
     assert "الجدة لطيفة" in cast
     assert "----" not in cast
+
+
+def test_repeated_scene_number_warns():
+    script = "مشهد 4 - داخلي - نهار - مكان\nنص\nمشهد 4 - خارجي - ليل - مكان آخر\nنص"
+    with pytest.warns(UserWarning, match="scene number 4 comes after 4"):
+        split_script(script)
