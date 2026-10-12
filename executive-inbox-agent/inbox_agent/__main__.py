@@ -146,6 +146,7 @@ def cmd_rollback(args):
 
 
 def main(argv=None):
+    sys.stdout.reconfigure(encoding="utf-8")  # Arabic in a Windows console
     p = argparse.ArgumentParser(prog="inbox_agent")
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("seed").set_defaults(fn=cmd_seed)

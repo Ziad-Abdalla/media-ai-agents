@@ -7,8 +7,13 @@ from inbox_agent.permissions import (ALLOWED_ACTIONS, ApprovalRequired, DLPBlock
                                      WritesDisabled, execute)
 
 
+@pytest.fixture(autouse=True)
+def triaged_email(ctx):
+    ctx.store.add_email(id="E0", message_id="<e0@x>", status="triaged", from_addr="tariq@mbc-group.example")
+
+
 def reply_plan(**over):
-    plan = {"email_id": None, "to": ["tariq@mbc-group.example"], "subject": "Re: promo",
+    plan = {"email_id": "E0", "to": ["tariq@mbc-group.example"], "subject": "Re: promo",
             "body": "شكرًا، سيتواصل معكم الفريق المختص.", "conversation": ["tariq@mbc-group.example"]}
     plan.update(over)
     return plan

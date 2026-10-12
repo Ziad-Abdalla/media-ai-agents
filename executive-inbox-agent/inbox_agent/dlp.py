@@ -78,6 +78,9 @@ def check_outbound(kind: str, *, to: list[str], body: str, directory, cc: list[s
         if SAUDI_ID.search(normalize_ar(body)):
             r.reasons.append("national ID / iqama number in an external message")
         addrs = [m.group(0).lower() for m in EMAIL_ADDR.finditer(body or "")]
+        foreign = sorted({a for a in addrs if not directory.is_allowed_recipient(a)})
+        if foreign:
+            r.reasons.append(f"mentions an address outside allowed domains: {', '.join(foreign)}")
         internal_addrs = [a for a in addrs if directory.is_internal(a)]
         if len(internal_addrs) >= 3:
             r.reasons.append("list of staff email addresses in an external message")

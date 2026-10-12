@@ -7,6 +7,8 @@ Also the two "outside world" adapters:
   OdooBoard   the same three methods on a real Odoo (project.task over XML-RPC).
 """
 
+import contextvars
+import functools
 import smtplib
 import xmlrpc.client
 from email.message import EmailMessage
@@ -98,9 +100,29 @@ def _message(ctx, to, subject, body, in_reply_to=None, references=None) -> Email
     return msg
 
 
+# ---------------------------------------------------------------- the gate token
+# permissions.execute() sets this to the action's name just before it calls the handler.
+# A handler called any other way (a shortcut in new code, a test, a script) finds no token,
+# refuses, and writes a "blocked:ungated" row in the audit log. One door in, no side doors.
+GATE = contextvars.ContextVar("inbox_agent_gate", default=None)
+
+
+def gated(fn):
+    @functools.wraps(fn)
+    def wrapper(ctx, plan):
+        if GATE.get() != fn.__name__:
+            ctx.store.audit("agent", f"blocked:ungated:{fn.__name__}", outcome="blocked",
+                            email_id=plan.get("email_id"), task_id=plan.get("task_id"),
+                            detail={"why": "handler called without going through permissions.execute"})
+            raise ForbiddenAction(f"'{fn.__name__}' must go through permissions.execute()")
+        return fn(ctx, plan)
+    return wrapper
+
+
 # ---------------------------------------------------------------- handlers
 # Each handler gets the context and the plan, and returns a small dict for the audit log.
 
+@gated
 def apply_label(ctx, plan):
     email = ctx.store.get_email(plan["email_id"])
     labels = sorted(set((email.get("labels_json") or []) + plan["labels"]))
@@ -113,28 +135,33 @@ def apply_label(ctx, plan):
     return {"labels": labels}
 
 
+@gated
 def draft_reply(ctx, plan):
     # A draft only lives in our database. Sending it is a separate action that needs approval.
     return {"saved": True, "chars": len(plan["body"])}
 
 
+@gated
 def send_reply(ctx, plan):
     msg = _message(ctx, plan["to"], plan["subject"], plan["body"],
                    plan.get("in_reply_to"), plan.get("references"))
     return {"message_id": ctx.mailer.send(msg), "to": plan["to"]}
 
 
+@gated
 def forward_internal(ctx, plan):
     msg = _message(ctx, plan["to"], plan["subject"], plan["body"])
     return {"message_id": ctx.mailer.send(msg), "to": plan["to"]}
 
 
+@gated
 def send_briefing(ctx, plan):
     msg = _message(ctx, plan["to"], plan["subject"], plan["text"])
     msg.add_alternative(plan["html"], subtype="html")
     return {"message_id": ctx.mailer.send(msg), "to": plan["to"]}
 
 
+@gated
 def create_task(ctx, plan):
     owner = ctx.directory.get(plan["owner"])
     board_id = ctx.board.create({"name": plan["name"], "description": plan["description"],
@@ -144,6 +171,7 @@ def create_task(ctx, plan):
     return {"board_task_id": board_id, "owner": owner.id}
 
 
+@gated
 def reassign_task(ctx, plan):
     owner = ctx.directory.get(plan["new_owner"])
     before = ctx.board.read(plan["board_task_id"])
@@ -152,10 +180,25 @@ def reassign_task(ctx, plan):
             "after": owner.id}
 
 
+@gated
 def release_quarantine(ctx, plan):
     ctx.store.update_email(plan["email_id"], status="released")
     return {"released": plan["email_id"]}
 
 
+@gated
+def rollback_action(ctx, plan):
+    """Undo an executed create_task (archive it) or reassign_task (restore the old owner)."""
+    if plan["kind"] == "create_task":
+        ctx.board.write(plan["board_task_id"], {"active": 0})
+        return {"archived_board_task": plan["board_task_id"]}
+    if plan["kind"] == "reassign_task":
+        old = ctx.directory.get(plan["old_owner"])
+        ctx.board.write(plan["board_task_id"], {"user_id": old.id, "user_email": old.email})
+        return {"owner_restored": old.id}
+    raise ForbiddenAction(f"{plan['kind']} can't be rolled back automatically (email already sent)")
+
+
 HANDLERS = {f.__name__: f for f in (apply_label, draft_reply, send_reply, forward_internal,
-                                    send_briefing, create_task, reassign_task, release_quarantine)}
+                                    send_briefing, create_task, reassign_task, release_quarantine,
+                                    rollback_action)}
