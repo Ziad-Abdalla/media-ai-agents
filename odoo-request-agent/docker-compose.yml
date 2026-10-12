@@ -1,0 +1,36 @@
+# Local test stack: Odoo 17 + its Postgres database + Mailpit (a fake mail server).
+# Start everything with:  docker compose up -d
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: odoo
+      POSTGRES_PASSWORD: odoo
+      POSTGRES_DB: postgres
+    ports:
+      - "5433:5432"   # 5433 on the host so it doesn't clash with a local Postgres
+    volumes:
+      - odoo-db:/var/lib/postgresql/data
+
+  odoo:
+    image: odoo:17
+    depends_on:
+      - db
+    environment:
+      HOST: db
+      USER: odoo
+      PASSWORD: odoo
+    ports:
+      - "8069:8069"
+    volumes:
+      - odoo-data:/var/lib/odoo
+
+  mailpit:
+    image: axllent/mailpit
+    ports:
+      - "1025:1025"   # SMTP: scripts/send_samples.py sends test emails here
+      - "8025:8025"   # web UI + HTTP API: the agent reads emails from here
+
+volumes:
+  odoo-db:
+  odoo-data:
