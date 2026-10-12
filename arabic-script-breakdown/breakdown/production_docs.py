@@ -49,7 +49,7 @@ def idle_text(summary: BudgetSummary, fmt=date.isoformat) -> str:
     text = f"من {fmt(summary.first_date)} إلى {fmt(summary.last_date)}"
     if not summary.idle_dates:
         return text + "، بلا أيام عمل فارغة بينها."
-    return (text + f"، وفيها {len(summary.idle_dates)} أيام عمل بلا تصوير ("
+    return (text + "، وفيها أيام عمل بلا تصوير ("
             + "، ".join(fmt(d) for d in summary.idle_dates)
             + "): الطاقم والممثلون بعقد أسبوعي يُدفع لهم عنها. جرّب نقل يوم إليها يدوياً.")
 LEGEND = ('<p class="legend"><span style="background:#fff">داخلي نهار</span>'
