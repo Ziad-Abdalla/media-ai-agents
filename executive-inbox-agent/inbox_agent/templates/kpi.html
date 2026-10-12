@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% set active = 'kpi' %}
+{% block style %}
+.kgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.k{background:var(--shell);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.k .v{font:600 26px/1.2 var(--body)}
+.k .l{color:var(--muted);font-size:13px}
+.k .n{font-size:12px;color:var(--muted);margin-top:4px}
+.bar{height:8px;background:#E3E8E7;border-radius:4px;overflow:hidden;margin-top:6px}
+.bar span{display:block;height:100%;background:var(--sea)}
+{% endblock %}
+{% block content %}
+<h1>مؤشرات الأداء</h1>
+<p class="sub">كل الأرقام من قاعدة بيانات الوكيل وسجل التكلفة، لا يكتبها النموذج.</p>
+<div class="kgrid">
+  <div class="k"><div class="v">{{ k.emails_processed }}</div><div class="l">رسالة عولجت</div></div>
+  <div class="k"><div class="v">{{ k.auto_handled_share|pct }}</div><div class="l">عولجت آليًا بالكامل (للعلم، دعائية)</div><div class="bar"><span style="width:{{ k.auto_handled_share*100 }}%"></span></div></div>
+  <div class="k"><div class="v">{{ k.human_confirmed_share|pct }}</div><div class="l">رسائل اعتمد فيها شخص قرارًا</div></div>
+  <div class="k"><div class="v">{{ k.quarantined }}</div><div class="l">رسائل محجوزة (محاولات حقن أو انتحال)</div></div>
+  <div class="k"><div class="v">{{ k.blocked_attempts }}</div><div class="l">محاولات إجراء مُنعت ومسجّلة</div></div>
+  <div class="k"><div class="v">{{ k.tasks_extracted }}</div><div class="l">مهمة مستخرجة</div><div class="n">{{ k.tasks_flagged_for_confirmation }} منها تحتاج تأكيدًا</div></div>
+  <div class="k"><div class="v">{{ k.assignment_accuracy_live|pct if k.assignments_decided else '—' }}</div><div class="l">دقة الإسناد حسب قرارات الفريق</div><div class="n">{{ k.assignments_decided }} قرار، {{ k.corrections }} تصحيح</div></div>
+  {% if k.eval %}<div class="k"><div class="v">{{ k.eval.owner_accuracy|pct }}</div><div class="l">دقة الإسناد مقابل الإجابات المرجعية</div><div class="n">التصنيف {{ k.eval.category_accuracy|pct }}</div></div>{% endif %}
+  <div class="k"><div class="v">{{ k.task_success_rate|pct if k.approved_actions else '—' }}</div><div class="l">نجاح الإجراءات المعتمدة</div><div class="n">{{ k.approved_actions }} إجراء</div></div>
+  <div class="k"><div class="v">{{ k.minutes_saved_estimate }} د</div><div class="l">وقت موفّر (تقديري)</div><div class="n">افتراض: {{ k.manual_minutes_assumption }} دقائق يدويًا لكل رسالة</div></div>
+  <div class="k"><div class="v ltr">${{ '%.4f'|format(k.cost_per_email_usd) }}</div><div class="l">تكلفة الرسالة الواحدة</div><div class="n ltr">total ${{ '%.4f'|format(k.total_cost_usd) }}</div></div>
+</div>
+<h2>دقة الإسناد مع الوقت</h2>
+<table><tr><th>اليوم</th><th>أُبقي كما اقترح</th><th>غُيّر</th><th>الدقة</th></tr>
+{% for d in timeline %}<tr><td>{{ d.day }}</td><td>{{ d.kept }}</td><td>{{ d.changed }}</td><td>{{ d.accuracy|pct }}</td></tr>
+{% else %}<tr><td colspan="4" class="muted">لا قرارات بعد.</td></tr>{% endfor %}</table>
+<h2>آخر التصحيحات (تُعطى للنموذج كأمثلة، بحد أقصى محدود)</h2>
+<table><tr><th>المهمة</th><th>من</th><th>إلى</th><th>السبب</th><th>بواسطة</th></tr>
+{% for c in corrections %}<tr><td>{{ c.task_text }}</td><td>{{ c.from_owner }}</td><td>{{ c.to_owner }}</td><td>{{ c.reason }}</td><td>{{ c.corrected_by }}</td></tr>
+{% else %}<tr><td colspan="5" class="muted">لا تصحيحات بعد.</td></tr>{% endfor %}</table>
+{% endblock %}

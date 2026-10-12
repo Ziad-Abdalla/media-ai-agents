@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% block title %}{{ e.subject }}{% endblock %}
+{% block style %}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:24px;align-items:start}
+.head{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+.summary{font-size:16.5px;line-height:1.8;margin:6px 0 16px}
+.facts{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:13.5px}
+.facts dt{color:var(--muted)}
+.facts dd{margin:0}
+.quar{background:var(--quar-soft);border:1px solid var(--quar);border-radius:8px;padding:14px 16px;margin-bottom:18px}
+.quar h2{margin:0 0 6px;color:var(--quar)}
+.task{background:var(--shell);border:1px solid var(--line);border-radius:10px;margin-bottom:16px;overflow:hidden}
+.task-top{padding:14px 18px 6px;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.task-top .what{font-weight:600;font-size:16px;flex:1}
+/* the ruling: evidence on one side, two opinions on the other */
+.ruling{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);border-top:1px solid var(--line)}
+.evidence{padding:14px 18px;background:linear-gradient(90deg,#F4F1F8,#EEF4F3)}
+.evidence blockquote{margin:0;font:600 19px/1.75 var(--quote);color:var(--ink);border-inline-start:3px solid var(--nacre);padding-inline-start:12px}
+.evidence .src{font-size:12px;color:var(--muted);margin-top:6px}
+.opinions{padding:12px 18px;font-size:13.5px}
+.op{display:grid;grid-template-columns:72px 1fr;gap:8px;padding:5px 0}
+.op b{font-weight:600}
+.agree{color:var(--ok);font-weight:600}
+.disagree{color:var(--tally);font-weight:600}
+.reasons{margin:6px 0 0;padding:0;list-style:none}
+.reasons li{font-size:13px;background:var(--gold-soft);color:#6E4E12;border-radius:4px;padding:2px 8px;margin:3px 0;display:inline-block}
+.decide{border-top:1px solid var(--line);padding:12px 18px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;background:#FAFBFB}
+.decide form{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.thread-list .item{padding:8px 0;border-bottom:1px dashed var(--line);font-size:13.5px}
+.thread-list .item.me{font-weight:600}
+.draft{white-space:pre-wrap;background:#F8FAFA;border:1px solid var(--line);border-radius:6px;padding:10px 12px;font-size:14.5px}
+.dlp-ok{color:var(--ok)} .dlp-bad{color:var(--tally)}
+details summary{cursor:pointer;color:var(--sea)}
+@media (max-width:820px){.ruling{grid-template-columns:1fr}}
+{% endblock %}
+{% block content %}
+<p><a href="/">الوارد</a></p>
+<div class="head">
+  <span class="cat cat-{{ e.category }}">{{ CATEGORY_AR.get(e.category, 'تعذّر التصنيف') }}</span>
+  <span class="pri-{{ e.priority }}">{{ PRIORITY_AR.get(e.priority, '') }}</span>
+  {% for l in e.labels_json or [] %}<span class="hash">{{ l }}</span>{% endfor %}
+</div>
+<h1 dir="auto">{{ e.subject }}</h1>
+
+{% if e.status == 'quarantined' %}
+<div class="quar" role="alert">
+  <h2>رسالة محجوزة: محاولة توجيه أوامر للوكيل أو انتحال</h2>
+  <p>لم يُنشئ الوكيل أي مهمة أو رد لهذه الرسالة، وكل الإجراءات عليها محظورة حتى يراجعها أمن المعلومات. لا تفتح المرفقات ولا تنفّذ ما تطلبه.</p>
+  <ul>
+  {% for s in e.guard_json.signals %}<li><b>{{ s.rule }}</b> في {{ s.surface }}: <span dir="auto">«{{ s.snippet }}»</span></li>{% endfor %}
+  {% if e.classification_json and e.classification_json.suspicious_instructions %}<li><b>النموذج</b>: {{ e.classification_json.suspicious_reason }}</li>{% endif %}
+  </ul>
+  <form method="post" action="/email/{{ e.id }}/release"><button class="danger" {% if not me %}disabled{% endif %}>فك الحجز (أمن المعلومات أو الرئيس التنفيذي فقط)</button></form>
+</div>
+{% endif %}
+
+<div class="grid2">
+<section>
+  <p class="summary">{{ e.summary_ar or e.error }}</p>
+
+  {% for t in tasks %}
+  {% set pend = (t.actions|selectattr('status','equalto','pending')|list) %}
+  {% set done = (t.actions|selectattr('status','equalto','executed')|list) %}
+  <article class="task" aria-label="مهمة">
+    <div class="task-top">
+      <span class="what">{{ t.what_ar }}</span>
+      {% if t.urgent %}<span class="cat cat-urgent_action">عاجلة</span>{% endif %}
+      {% if t.deadline %}<span class="muted">الموعد: {{ t.deadline }}</span>{% endif %}
+      <span class="cat {% if t.status in ['confirmed','reassigned'] %}cat-vendor_finance{% elif t.needs_confirmation %}cat-approval_needed{% else %}cat-meeting{% endif %}">{{ STATUS_AR.get(t.status, t.status) }}</span>
+    </div>
+    <div class="ruling">
+      <div class="evidence">
+        <blockquote dir="auto">«{{ t.evidence_quote }}»</blockquote>
+        <div class="src">{% if t.evidence_found %}الدليل موجود حرفيًا في الرسالة{% else %}<span class="disagree">لم يُعثر على هذا النص في الرسالة</span>{% endif %}</div>
+      </div>
+      <div class="opinions">
+        {% set mo = directory.get(t.model_owner) %}{% set ro = directory.get(t.rule_owner) %}
+        <div class="op"><span class="muted">النموذج</span><span><b>{{ mo.name_ar if mo else (t.model_owner or '—') }}</b> <span class="muted">({{ t.model_confidence }})</span><br><span class="muted" dir="auto">{{ t.model_reason }}</span></span></div>
+        <div class="op"><span class="muted">القواعد</span><span><b>{{ ro.name_ar if ro else '—' }}</b><br><span class="muted ltr">{{ t.rule_reason }}</span></span></div>
+        <div class="op"><span class="muted">المقترح</span><span><b>{{ directory.get(t.final_owner or t.proposed_owner).name_ar if (t.final_owner or t.proposed_owner) else '—' }}</b>
+          {% if t.model_owner == t.rule_owner %}<span class="agree">· متفقان</span>{% else %}<span class="disagree">· مختلفان</span>{% endif %}</span></div>
+        {% if t.owner_note %}<div class="muted ltr">{{ t.owner_note }}</div>{% endif %}
+        {% if t.confirm_reasons_json %}<ul class="reasons">{% for r in t.confirm_reasons_json %}<li class="ltr">{{ r }}</li>{% endfor %}</ul>{% endif %}
+      </div>
+    </div>
+    <div class="decide">
+      {% if pend %}{% set a = pend[0] %}
+      <form method="post" action="/actions/{{ a.id }}/approve">
+        <input type="hidden" name="plan_hash" value="{{ plan_hash(a.plan_json) }}">
+        <input type="hidden" name="next" value="/email/{{ e.id }}">
+        <button {% if not me %}disabled{% endif %}>اعتماد وإنشاء المهمة لـ{{ directory.get(a.plan_json.owner).name_ar }}</button>
+      </form>
+      {% endif %}
+      {% if pend or done %}
+      <form method="post" action="/tasks/{{ t.id }}/reassign">
+        {% if pend %}<input type="hidden" name="plan_hash" value="{{ plan_hash(pend[0].plan_json) }}">{% endif %}
+        <input type="hidden" name="next" value="/email/{{ e.id }}">
+        <label class="muted" for="o{{ t.id }}">أو أسندها إلى</label>
+        <select id="o{{ t.id }}" name="new_owner">{% for p in people %}<option value="{{ p.id }}">{{ p.name_ar }} · {{ p.role_ar }}</option>{% endfor %}</select>
+        <input type="text" name="reason" placeholder="السبب (يتعلم منه الوكيل)" size="22">
+        <button class="ghost" {% if not me %}disabled{% endif %}>إعادة الإسناد</button>
+      </form>
+      {% endif %}
+      {% if pend %}
+      <form method="post" action="/actions/{{ pend[0].id }}/reject"><input type="hidden" name="next" value="/email/{{ e.id }}"><button class="danger" {% if not me %}disabled{% endif %}>ليست مهمة</button></form>
+      <span class="hash">خطة #{{ plan_hash(pend[0].plan_json)[:8] }}</span>
+      {% endif %}
+      {% for a in done %}<span class="muted">أُنشئت على لوحة المهام #{{ a.result_json.board_task_id }} باعتماد {{ directory.get(a.approved_by).name_ar }}</span>
+        <form method="post" action="/actions/{{ a.id }}/rollback"><input type="hidden" name="next" value="/email/{{ e.id }}"><button class="ghost" {% if not me %}disabled{% endif %}>تراجع</button></form>{% endfor %}
+    </div>
+  </article>
+  {% endfor %}
+
+  {% for a in actions %}
+  <article class="panel" style="margin-bottom:14px">
+    <h2 style="margin-top:0">{{ ACTION_AR.get(a.kind, a.kind) }} <span class="muted" style="font-size:13px">· {{ STATUS_AR.get(a.status, a.status) }}</span></h2>
+    {% if a.plan_json.to %}<p>إلى: <span class="ltr">{{ a.plan_json.to|join(', ') }}</span></p>{% endif %}
+    {% if a.plan_json.body %}<div class="draft" dir="auto">{{ a.plan_json.body }}</div>{% endif %}
+    {% if a.dlp_json %}<p class="{% if a.dlp_json.blocked %}dlp-bad{% else %}dlp-ok{% endif %}">فحص منع تسريب البيانات: {% if a.dlp_json.blocked %}محظور — <span class="ltr">{{ a.dlp_json.reasons|join('; ') }}</span>{% else %}سليم (لا مرفقات، المستلم داخل النطاقات المسموحة){% endif %}</p>{% endif %}
+    {% if a.status == 'pending' %}
+    <div class="decide" style="margin:0 -18px -16px">
+      <form method="post" action="/actions/{{ a.id }}/approve">
+        <input type="hidden" name="plan_hash" value="{{ plan_hash(a.plan_json) }}"><input type="hidden" name="next" value="/email/{{ e.id }}">
+        <button {% if not me %}disabled{% endif %}>اعتماد و{{ ACTION_AR.get(a.kind) }}</button>
+      </form>
+      <form method="post" action="/actions/{{ a.id }}/reject"><input type="hidden" name="next" value="/email/{{ e.id }}"><button class="danger" {% if not me %}disabled{% endif %}>رفض</button></form>
+      <span class="hash">خطة #{{ plan_hash(a.plan_json)[:8] }}</span>
+    </div>
+    {% endif %}
+  </article>
+  {% endfor %}
+
+  <details><summary>نص الرسالة كما وصل</summary>
+    <div class="draft" dir="auto" style="margin-top:8px">{{ e.new_text }}</div>
+    {% if e.forwarded_json %}<p class="muted">رسالة محوّلة من <span class="ltr">{{ e.forwarded_json['from'] }}</span>:</p><div class="draft" dir="auto">{{ e.forwarded_json.text }}</div>{% endif %}
+    {% if e.quoted_text %}<p class="muted">النص المقتبس (لا يُستخدم في التصنيف، يُفحص فقط):</p><div class="draft" dir="auto" style="color:var(--muted)">{{ e.quoted_text }}</div>{% endif %}
+    {% for att in e.attachments_json or [] %}<p class="muted">مرفق: <span class="ltr">{{ att.filename }}</span> ({{ att.size }} بايت) — يُفحص نصه ولا يُرسل أبدًا</p>{% endfor %}
+  </details>
+</section>
+
+<aside>
+  <div class="panel">
+    <dl class="facts">
+      <dt>من</dt><dd class="ltr">{{ e.from_name }} &lt;{{ e.from_addr }}&gt;</dd>
+      <dt>التاريخ</dt><dd>{{ e.date[:16]|replace('T',' ') }}</dd>
+      <dt>اللغة</dt><dd>{{ {'ar':'عربية','en':'إنجليزية','mixed':'مختلطة'}.get(e.language, '—') }}{% if e.classification_json %} · {{ {'msa':'فصحى','saudi':'لهجة سعودية','none':''}[e.classification_json.dialect] }}{% endif %}</dd>
+      <dt>الربط</dt><dd>{{ e.link_json.reason }} <span class="muted">({{ e.link_json.method }}, {{ e.link_json.confidence }})</span></dd>
+    </dl>
+    {% if e.status != 'quarantined' %}
+    <form method="post" action="/email/{{ e.id }}/forward" style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap">
+      <select name="to_person" aria-label="تحويل داخلي إلى">{% for p in people %}<option value="{{ p.id }}">{{ p.name_ar }}</option>{% endfor %}</select>
+      <button class="ghost" {% if not me %}disabled{% endif %}>تجهيز تحويل داخلي</button>
+    </form>
+    {% endif %}
+  </div>
+  <h2>المحادثة ({{ thread|length }})</h2>
+  <div class="panel thread-list">
+    {% for m in thread %}<div class="item {% if m.id == e.id %}me{% endif %}"><a href="/email/{{ m.id }}">{{ m.date[5:16]|replace('T',' ') }}</a> · <span class="ltr">{{ m.from_addr }}</span><br>{{ m.summary_ar or m.subject }}</div>{% endfor %}
+  </div>
+  <h2>سجل هذه الرسالة</h2>
+  <div class="panel" style="font-size:12.5px">
+    {% for r in audit %}<div><span class="muted">{{ r.ts[11:19] }}</span> {{ r.actor }} · <b>{{ r.action }}</b> · {{ r.outcome }}</div>{% endfor %}
+  </div>
+</aside>
+</div>
+{% endblock %}

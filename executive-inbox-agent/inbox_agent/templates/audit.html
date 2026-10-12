@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% set active = 'audit' %}
+{% block content %}
+<h1>سجل العمليات</h1>
+<p class="sub">كل ما فعله الوكيل أو الفريق، بما في ذلك المحاولات المحظورة. آخر 300 عملية.</p>
+<table>
+<tr><th>الوقت (UTC)</th><th>من</th><th>العملية</th><th>النتيجة</th><th>الرسالة</th><th>تفاصيل</th></tr>
+{% for r in rows %}
+<tr {% if r.outcome == 'blocked' %}style="background:#FBF1EF"{% endif %}>
+  <td class="ltr">{{ r.ts[:19]|replace('T',' ') }}</td><td class="ltr">{{ r.actor }}</td>
+  <td class="ltr"><b>{{ r.action }}</b></td><td>{{ r.outcome }}</td>
+  <td>{% if r.email_id %}<a href="/email/{{ r.email_id }}">{{ r.email_id }}</a>{% endif %}</td>
+  <td><details><summary>عرض</summary><pre>{{ r.detail_json|pretty }}</pre></details></td>
+</tr>
+{% endfor %}
+</table>
+{% endblock %}

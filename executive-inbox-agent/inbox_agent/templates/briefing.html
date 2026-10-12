@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head><meta charset="utf-8"><title>الموجز التنفيذي الصباحي {{ as_of }}</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600&family=Reem+Kufi:wght@600&display=swap" rel="stylesheet">
+</head>
+<body style="margin:0;background:#ECEFEE;font-family:'IBM Plex Sans Arabic','Segoe UI',Tahoma,sans-serif;color:#1B2A33;line-height:1.7">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ECEFEE"><tr><td align="center" style="padding:24px 12px">
+<table role="presentation" width="680" cellpadding="0" cellspacing="0" style="max-width:680px;width:100%;background:#FFFFFF;border:1px solid #D5DCDB;border-radius:10px;overflow:hidden">
+  <tr><td style="background:#1B2A33;color:#FFFFFF;padding:22px 28px">
+    <div style="font-family:'Reem Kufi','IBM Plex Sans Arabic',sans-serif;font-size:24px;font-weight:600">الموجز التنفيذي الصباحي</div>
+    <div style="color:#AFC4C6;font-size:14px">{{ weekday }} {{ as_of }} · {{ company }}</div>
+  </td></tr>
+  <tr><td style="padding:18px 28px 6px">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+      <td style="padding:6px;text-align:center"><div style="font-size:28px;font-weight:600;color:#B8352A">{{ urgent|length }}</div><div style="font-size:13px;color:#5E6E76">عاجل اليوم</div></td>
+      <td style="padding:6px;text-align:center"><div style="font-size:28px;font-weight:600;color:#94691A">{{ pending|length }}</div><div style="font-size:13px;color:#5E6E76">بانتظار اعتمادكم</div></td>
+      <td style="padding:6px;text-align:center"><div style="font-size:28px;font-weight:600;color:#1F5E66">{{ deadlines|length }}</div><div style="font-size:13px;color:#5E6E76">مواعيد هذا الأسبوع</div></td>
+      <td style="padding:6px;text-align:center"><div style="font-size:28px;font-weight:600;color:#55397F">{{ quarantined|length }}</div><div style="font-size:13px;color:#5E6E76">رسائل محجوزة</div></td>
+    </tr></table>
+  </td></tr>
+
+  <tr><td style="padding:10px 28px">
+    <h2 style="font-size:18px;margin:12px 0 8px;border-bottom:2px solid #B8352A;padding-bottom:4px">عاجل اليوم</h2>
+    {% for u in urgent %}
+    <div style="padding:8px 0;border-bottom:1px solid #E3E8E7">
+      <div style="font-weight:600">{{ u.email.subject }}</div>
+      <div style="font-size:14.5px">{{ u.email.summary_ar }}</div>
+      {% for t in u.tasks %}<div style="font-size:13.5px;color:#5E6E76">← {{ t.what_ar }} — {{ t.owner }}{% if t.deadline %} · قبل {{ t.deadline }}{% endif %}{% if t.needs_confirmation and t.status not in ['confirmed','reassigned'] %} · <span style="color:#94691A">المسؤول بانتظار التأكيد</span>{% endif %}</div>{% endfor %}
+    </div>
+    {% else %}<p style="color:#5E6E76">لا شيء عاجل.</p>{% endfor %}
+  </td></tr>
+
+  <tr><td style="padding:10px 28px">
+    <h2 style="font-size:18px;margin:12px 0 8px;border-bottom:2px solid #94691A;padding-bottom:4px">بانتظار اعتمادكم</h2>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px">
+    {% for p in pending[:12] %}
+      <tr><td style="padding:5px 0;border-bottom:1px solid #EEF1F0;width:92px;color:#94691A">{{ p.kind }}</td>
+          <td style="padding:5px 0;border-bottom:1px solid #EEF1F0">{{ p.detail }}{% if p.owner %} — <b>{{ p.owner }}</b>{% endif %}{% if p.flagged %} <span style="color:#B8352A">(يحتاج تأكيد المسؤول)</span>{% endif %}<br><span style="color:#5E6E76;font-size:12.5px">{{ p.subject }}</span></td></tr>
+    {% else %}<tr><td style="color:#5E6E76">لا توجد قرارات معلقة.</td></tr>{% endfor %}
+    </table>
+    {% if pending|length > 12 %}<p style="color:#5E6E76;font-size:13px">و{{ pending|length - 12 }} قرارات أخرى في صفحة الاعتماد.</p>{% endif %}
+  </td></tr>
+
+  <tr><td style="padding:10px 28px">
+    <h2 style="font-size:18px;margin:12px 0 8px;border-bottom:2px solid #1F5E66;padding-bottom:4px">مواعيد هذا الأسبوع</h2>
+    {% for t in deadlines %}
+      <div style="font-size:14px;padding:4px 0"><b style="color:#1F5E66">{{ t.day }}</b> — {{ t.what_ar }} <span style="color:#5E6E76">({{ t.owner }})</span></div>
+    {% else %}<p style="color:#5E6E76">لا مواعيد نهائية خلال سبعة أيام.</p>{% endfor %}
+  </td></tr>
+
+  {% if quarantined %}
+  <tr><td style="padding:10px 28px">
+    <div style="background:#E9E2F3;border:1px solid #55397F;border-radius:8px;padding:12px 14px">
+      <div style="font-weight:600;color:#55397F">رسائل محجوزة لدى أمن المعلومات ({{ quarantined|length }})</div>
+      <div style="font-size:13.5px">حاولت هذه الرسائل توجيه أوامر للوكيل أو انتحال صفة الإدارة أو طلب ملفات. لم يُنفّذ أي إجراء عليها. لا تفتحوا مرفقاتها.</div>
+      {% for q in quarantined %}<div style="font-size:13px;color:#5E6E76">• {{ q.subject }} — <span dir="ltr">{{ q.from_addr }}</span></div>{% endfor %}
+    </div>
+  </td></tr>
+  {% endif %}
+
+  <tr><td style="padding:14px 28px 22px;color:#5E6E76;font-size:12.5px;border-top:1px solid #E3E8E7">
+    عولجت {{ kpi.emails_processed }} رسالة، {{ (kpi.auto_handled_share*100)|round|int }}٪ منها آليًا بالكامل. الوقت الموفّر تقديريًا {{ kpi.minutes_saved_estimate }} دقيقة (بافتراض {{ kpi.manual_minutes_assumption }} دقائق يدويًا لكل رسالة).
+    هذا الموجز يُرسل فقط إلى عنوان المكتب التنفيذي الداخلي، ولا يحتوي مرفقات.
+  </td></tr>
+</table>
+</td></tr></table>
+</body></html>

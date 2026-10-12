@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% set active = 'inbox' %}
+{% block style %}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:24px;align-items:start}
+@media (max-width:1000px){.layout{grid-template-columns:1fr}}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 16px}
+.chips a{text-decoration:none}
+.chips a.on .cat{outline:2px solid var(--ink)}
+.thread{background:var(--shell);border:1px solid var(--line);border-radius:8px;margin-bottom:10px;overflow:hidden}
+.thread.is-urgent{border-inline-start:5px solid var(--tally)}
+.thread.is-suspicious{border-inline-start:5px solid var(--quar)}
+.thread-head{display:flex;gap:10px;align-items:baseline;padding:10px 14px 4px;flex-wrap:wrap}
+.thread-head .subj{font-weight:600;flex:1;min-width:200px}
+.thread-head .n{font-size:12px;color:var(--muted)}
+.msg{display:grid;grid-template-columns:150px minmax(0,1fr) auto;gap:10px;padding:6px 14px 8px;border-top:1px dashed #E3E8E7;text-decoration:none;color:inherit}
+.msg:hover{background:#F6F8F8}
+.msg .from{font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.msg .sum{font-size:14px}
+.msg .meta{font-size:12px;color:var(--muted);white-space:nowrap;text-align:end}
+.link{font-size:11.5px;color:var(--quar);display:block}
+.side h2{margin-top:0}
+.dec{background:var(--shell);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:8px}
+.dec.flag{border-color:var(--gold);background:#FFFCF5}
+.dec .k{font-size:12px;color:var(--muted)}
+.dec .what{font-weight:500;margin:2px 0}
+.dec .owner{font-size:13px}
+.dec form{display:inline}
+.dec .row{display:flex;gap:6px;margin-top:6px;align-items:center;flex-wrap:wrap}
+{% endblock %}
+{% block content %}
+<h1>الوارد</h1>
+<p class="sub">{{ threads|length }} محادثة. الرسائل مرتبة: المحجوزة أولًا ثم العاجلة ثم الباقي.</p>
+<div class="chips">
+  <a href="/" class="{% if not category %}on{% endif %}"><span class="cat cat-info">الكل</span></a>
+  {% for c in CATEGORY_ORDER %}{% if counts.get(c) %}
+  <a href="/?category={{ c }}" class="{% if category == c %}on{% endif %}"><span class="cat cat-{{ c }}">{{ CATEGORY_AR[c] }} {{ counts[c] }}</span></a>
+  {% endif %}{% endfor %}
+</div>
+<div class="layout">
+<section aria-label="المحادثات">
+{% for t in threads %}
+  <article class="thread {% if t.urgent %}is-urgent{% endif %} {% if t.last.category == 'suspicious' %}is-suspicious{% endif %}">
+    <div class="thread-head">
+      <span class="cat cat-{{ t.last.category }}">{{ CATEGORY_AR.get(t.last.category, 'خطأ') }}</span>
+      <span class="subj">{{ t.thread.subject if t.thread else t.last.subject }}</span>
+      {% if t.open %}<span class="badge-n">{{ t.open }} قرار</span>{% endif %}
+      <span class="n">{{ t.emails|length }} رسالة</span>
+    </div>
+    {% for e in t.emails %}
+    <a class="msg" href="/email/{{ e.id }}">
+      <span class="from ltr" title="{{ e.from_addr }}">{{ e.from_name or e.from_addr }}</span>
+      <span class="sum">{{ e.summary_ar or e.subject }}
+        {% if e.link_json and e.link_json.method != 'new' %}<span class="link">مرتبطة بالمحادثة عبر {{ {'headers':'ترويسات الرد','subject':'الموضوع والمشاركين','embedding':'تشابه المعنى'}[e.link_json.method] }} ({{ '%.0f'|format(e.link_json.confidence*100) }}٪)</span>{% endif %}
+      </span>
+      <span class="meta"><span class="pri-{{ e.priority }}">{{ PRIORITY_AR.get(e.priority, '') }}</span><br>{{ e.date[5:16]|replace('T',' ') }}</span>
+    </a>
+    {% endfor %}
+  </article>
+{% else %}
+  <p class="panel">لا توجد رسائل بعد. شغّل <code>python -m inbox_agent run</code>.</p>
+{% endfor %}
+</section>
+<aside class="side" id="decisions" aria-label="قرارات بانتظارك">
+  <h2>قرارات بانتظارك ({{ decisions|length }})</h2>
+  {% if not me %}<p class="muted">اختر اسمك من الأعلى لتعتمد أو ترفض.</p>{% endif %}
+  {% for x in decisions[:14] %}
+  {% set flagged = x.t and x.t.needs_confirmation %}
+  <div class="dec {% if flagged %}flag{% endif %}">
+    <div class="k">{{ ACTION_AR[x.a.kind] }} · <a href="/email/{{ x.e.id }}">{{ x.e.subject[:48] }}</a></div>
+    {% if x.t %}
+      <div class="what">{{ x.t.what_ar }}</div>
+      <div class="owner">المسؤول المقترح: <strong>{{ directory.get(x.a.plan_json.owner).name_ar }}</strong>
+        {% if flagged %}<span class="cat cat-approval_needed">يحتاج تأكيدًا</span>{% endif %}</div>
+    {% else %}
+      <div class="what">إلى: <span class="ltr">{{ x.a.plan_json.to|join(', ') }}</span></div>
+    {% endif %}
+    <div class="row">
+      <form method="post" action="/actions/{{ x.a.id }}/approve">
+        <input type="hidden" name="plan_hash" value="{{ plan_hash(x.a.plan_json) }}">
+        <input type="hidden" name="next" value="/">
+        <button {% if not me %}disabled{% endif %}>اعتماد</button>
+      </form>
+      <a href="/email/{{ x.e.id }}">التفاصيل والدليل</a>
+      <span class="hash">#{{ plan_hash(x.a.plan_json)[:8] }}</span>
+    </div>
+  </div>
+  {% else %}<p class="muted">لا شيء بانتظارك.</p>{% endfor %}
+  {% if decisions|length > 14 %}<p class="muted">و{{ decisions|length - 14 }} قرارات أخرى داخل الرسائل.</p>{% endif %}
+</aside>
+</div>
+{% endblock %}
