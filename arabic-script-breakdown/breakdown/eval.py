@@ -4,6 +4,7 @@
     python -m breakdown.eval --model claude-haiku-5-5 --effort low --gate   # the release gate
     python -m breakdown.eval --from-run eval/runs/<run>.jsonl              # re-score, no API cost
     python -m breakdown.eval ... --accept                                  # make this run the new baseline
+    python -m breakdown.eval --set hard ... --accept-with-broken-checks "why"   # accept a red hard run on purpose
     python -m breakdown.eval ... --no-cast-list                            # the README experiment
 
 Every run (live, or a re-score with a new scorer version) appends one row to eval/history.csv,
@@ -17,6 +18,8 @@ The hard set is a separate, small set of harder scenes with its own gold, baseli
 
 Its gate is stricter: on top of the per-field threshold, each hard scene has zero-tolerance checks
 (for example "the Ferrari the injected text asks for must not appear"), and one broken check fails the gate.
+--accept refuses a run with broken checks. --accept-with-broken-checks "reason" accepts it anyway, and the
+baseline file then lists the broken checks and the reason, so nobody mistakes it for a clean run.
 """
 
 import argparse
@@ -24,6 +27,7 @@ import csv
 import json
 import subprocess
 import sys
+import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -151,6 +155,8 @@ def main(argv: list[str] | None = None) -> int:
                              "or (hard set) if any hard-case check broke")
     parser.add_argument("--threshold", type=float, default=DEFAULT_THRESHOLD)
     parser.add_argument("--accept", action="store_true", help="save this run as the new baseline")
+    parser.add_argument("--accept-with-broken-checks", metavar="REASON", default=None,
+                        help="accept even with broken hard-case checks; the checks and REASON are saved in the baseline")
     parser.add_argument("--no-cast-list", action="store_true",
                         help="experiment: send an empty cast list to the model")
     args = parser.parse_args(argv)
@@ -164,7 +170,8 @@ def main(argv: list[str] | None = None) -> int:
         run_id = args.from_run.stem
         meta_path = args.from_run.with_suffix(".meta.json")
         meta = json.loads(meta_path.read_text(encoding="utf-8")) if meta_path.exists() else {}
-        made_on = meta.get("set", "main")
+        # No meta file (a copied run): the file name still says which set it was made on.
+        made_on = meta.get("set") or ("hard" if run_id.startswith(get_eval_set("hard").run_prefix) else "main")
         if made_on != es.name:
             print(f"This run was made on the {made_on} set. Add --set {made_on}.")
             return 2
@@ -173,6 +180,7 @@ def main(argv: list[str] | None = None) -> int:
         client = make_client()
         run_id = f"{es.run_prefix}{args.model}-{args.effort or 'default'}-{datetime.now():%Y%m%d-%H%M%S}"
         prompt_version = PROMPT_VERSION + ("-no-cast-list" if args.no_cast_list else "")
+        started = time.monotonic()
         scenes, errors = breakdown_script(es.script.read_text(encoding="utf-8"), client,
                                           model=args.model, effort=args.effort, run_id=run_id,
                                           use_cast_list=not args.no_cast_list, names=es.names)
@@ -181,7 +189,8 @@ def main(argv: list[str] | None = None) -> int:
         preds = {s.scene_number: s.model_dump() for s in scenes}
         meta = {"model": args.model, "effort": args.effort or "default", "prompt_version": prompt_version,
                 "commit": git_commit(), "date": datetime.now().isoformat(timespec="minutes"),
-                "cost_usd": run_cost(run_id), "failed_scenes": len(errors)}
+                "cost_usd": run_cost(run_id), "failed_scenes": len(errors),
+                "seconds": round(time.monotonic() - started)}
         if es.name != "main":
             meta["set"] = es.name  # main-set runs keep the old meta format
         (RUNS / f"{run_id}.meta.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
@@ -235,13 +244,22 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 print(f"GATE PASSED vs baseline {base['run_id']}")
 
-    if args.accept and status == 0:
-        es.baseline.parent.mkdir(parents=True, exist_ok=True)
-        es.baseline.write_text(json.dumps({
+    reason = args.accept_with_broken_checks
+    if (args.accept or reason) and status == 0:
+        if broken and not reason:
+            print(f"Not accepted: {len(broken)} hard-case check(s) broken. Fix them, or accept on purpose with "
+                  '--accept-with-broken-checks "reason" (the checks and the reason are saved in the baseline).')
+            return 1
+        baseline = {
             "run_id": run_id, "model": model, "effort": effort, "prompt_version": meta.get("prompt_version"),
             "scorer_version": SCORER_VERSION, "fields": result["fields"], "overall": result["overall"],
-        }, ensure_ascii=False, indent=2), encoding="utf-8")
-        print(f"Saved as the new baseline: {es.baseline.name} ({es.name} set)")
+        }
+        if broken:
+            baseline |= {"accepted_with_broken_checks": broken, "reason": reason}
+        es.baseline.parent.mkdir(parents=True, exist_ok=True)
+        es.baseline.write_text(json.dumps(baseline, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"Saved as the new baseline: {es.baseline.name} ({es.name} set)"
+              + (f", with {len(broken)} broken check(s) on record" if broken else ""))
     return status
 
 

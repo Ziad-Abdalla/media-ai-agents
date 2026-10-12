@@ -123,6 +123,25 @@ def test_a_hard_run_cannot_be_scored_against_the_main_gold(tmp_path, monkeypatch
     assert main(["--from-run", str(HARD_RUN)]) == 2
 
 
+def test_a_copied_hard_run_without_its_meta_file_is_still_known_by_its_name(tmp_path, monkeypatch):
+    monkeypatch.setattr("breakdown.eval.HISTORY", tmp_path / "history.csv")
+    copy = tmp_path / HARD_RUN.name
+    copy.write_bytes(HARD_RUN.read_bytes())          # no .meta.json next to it
+    assert main(["--from-run", str(copy)]) == 2
+
+
+def test_a_red_hard_run_is_accepted_only_on_purpose_and_on_record(tmp_path, monkeypatch):
+    hard = _hard_dir_copy(tmp_path)
+    monkeypatch.setattr("breakdown.eval.HARD_DIR", hard)
+    base = hard / "baseline.json"
+    before = base.read_text(encoding="utf-8")
+    assert main(["--set", "hard", "--from-run", str(HARD_RUN), "--accept"]) == 1
+    assert base.read_text(encoding="utf-8") == before
+    assert main(["--set", "hard", "--from-run", str(HARD_RUN), "--accept-with-broken-checks", "known misses"]) == 0
+    saved = json.loads(base.read_text(encoding="utf-8"))
+    assert saved["reason"] == "known misses" and len(saved["accepted_with_broken_checks"]) == 2
+
+
 def _hard_dir_copy(tmp_path):
     """Gold and baseline from the repo, history in a temp folder (so tests never write to eval/)."""
     d = tmp_path / "hard"
