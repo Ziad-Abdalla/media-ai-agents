@@ -1,12 +1,17 @@
 """Character aliases, one map per script.
 
-Each map is written by hand for one script's cast. A new script needs its own map,
-built from its cast list. Short keys like "خالد" or "الأب" are only safe in the
-main script because that cast has one Khalid and one father. The hard set has two
+Each map is written by hand for one script's cast. Short keys like "خالد" or "الأب" are only
+safe in the main script because that cast has one Khalid and one father. The hard set has two
 people called سلمان on purpose, so its map never has a bare "سلمان" key.
+
+A new script never borrows another script's map. It gets either its own alias file
+(CastNames.from_csv) or, by default, only the exact names in its own cast list
+(CastNames.from_cast_list): then every nickname is flagged for a person to check, not guessed.
 """
 
+import csv
 from collections import defaultdict
+from pathlib import Path
 
 from .normalize import normalize_arabic
 
@@ -61,6 +66,33 @@ class CastNames:
             first_words[alias.split()[0]].add(canonical)
         self._shared_first_names = {w: sorted(c) for w, c in first_words.items() if len(c) > 1}
 
+    @classmethod
+    def from_cast_list(cls, cast_text: str) -> "CastNames":
+        """Only the names the script's own cast list writes ("name: description" lines). No nicknames.
+
+        "سعد العتيبي (أبو فهد): والد فهد" gives the cast name "سعد العتيبي" and accepts the full
+        "سعد العتيبي (أبو فهد)" as the same person. "أبو فهد" alone is not accepted: it gets flagged.
+        """
+        aliases: dict[str, list[str]] = {}
+        for line in cast_text.splitlines():
+            name, colon, _ = line.partition(":")
+            full = name.strip()
+            if not colon or not full:
+                continue
+            short = full.split("(")[0].strip()
+            aliases.setdefault(short, [])
+            if full != short:
+                aliases[short].append(full)
+        return cls(aliases)
+
+    @classmethod
+    def from_csv(cls, path: Path) -> "CastNames":
+        """An alias file for one script. Columns: cast name, other names separated by ";"."""
+        with open(path, encoding="utf-8-sig", newline="") as f:
+            rows = list(csv.reader(f))[1:]
+        return cls({row[0].strip(): [a.strip() for a in (row[1] if len(row) > 1 else "").split(";") if a.strip()]
+                    for row in rows if row and row[0].strip() and not row[0].startswith("#")})
+
     @property
     def cast(self) -> list[str]:
         return list(self.aliases)
@@ -84,6 +116,7 @@ class CastNames:
 
 KAMERA_JADDI = CastNames(ALIASES)
 HARD_SET = CastNames(HARD_SET_ALIASES)
+BUILT_IN = {"kamera_jaddi": KAMERA_JADDI, "hard": HARD_SET}  # the maps of the two scripts in this repo
 
 
 def canonical_character(name: str) -> str:

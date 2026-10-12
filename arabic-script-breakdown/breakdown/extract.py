@@ -11,7 +11,7 @@ import json
 import anthropic
 from agent_cost_tracker import tracked_call
 
-from .cast_aliases import KAMERA_JADDI, CastNames
+from .cast_aliases import CastNames
 from .schema import SceneBreakdown, SceneFields
 from .split import Scene
 
@@ -67,7 +67,10 @@ def build_messages(scene: Scene, previous_heading: str | None) -> list[dict]:
 
 def extract_scene(client, scene: Scene, previous_heading: str | None, cast: str, *,
                   model: str = DEFAULT_MODEL, effort: str | None = None,
-                  run_id: str | None = None, names: CastNames = KAMERA_JADDI) -> SceneBreakdown:
+                  run_id: str | None = None, names: CastNames | None = None) -> SceneBreakdown:
+    """names: this script's alias map. None = only the exact names in `cast` (anything else is flagged)."""
+    if names is None:
+        names = CastNames.from_cast_list(cast)
     output_config: dict = {"format": {"type": "json_schema", "schema": SCHEMA}}
     if effort:
         output_config["effort"] = effort

@@ -8,7 +8,7 @@ from agent_cost_tracker import BudgetExceeded
 from anthropic import Anthropic
 from dotenv import find_dotenv, load_dotenv
 
-from .cast_aliases import KAMERA_JADDI, CastNames
+from .cast_aliases import CastNames
 from .extract import DEFAULT_MODEL, ExtractionError, extract_scene
 from .schema import SceneBreakdown
 from .split import Scene, cast_list, heading_time, split_script
@@ -25,14 +25,17 @@ def make_client() -> Anthropic:
 def breakdown_script(script: str, client, *, model: str = DEFAULT_MODEL, effort: str | None = None,
                      run_id: str | None = None, workers: int = 4,
                      use_cast_list: bool = True,
-                     names: CastNames = KAMERA_JADDI) -> tuple[list[SceneBreakdown], list[str]]:
+                     names: CastNames | None = None) -> tuple[list[SceneBreakdown], list[str]]:
     """Break down every scene. Returns (breakdowns, errors). A failed scene is reported, not fatal.
 
     use_cast_list=False sends an empty cast list. It exists only for the "cast list removed"
-    experiment in the README. names is the alias map of this script's cast.
+    experiment in the README. names is the alias map of this script's cast; None means only the
+    exact names in the script's own cast list, so every other name is flagged for review.
     """
     preamble, scenes = split_script(script)
     cast = cast_list(preamble) if use_cast_list else ""
+    if names is None:
+        names = CastNames.from_cast_list(cast_list(preamble))
     previous = previous_headings(scenes)
 
     def extract_one(i: int):
