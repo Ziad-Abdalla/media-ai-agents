@@ -1,6 +1,6 @@
 import pytest
 
-from gulf_srt.evaluate import cer, edit_distance, normalize, score, wer
+from gulf_srt.evaluate import cer, edit_distance, matched_hypothesis, normalize, score, wer
 
 
 def test_normalize_removes_tashkeel_and_tatweel():
@@ -44,3 +44,16 @@ def test_normalization_changes_the_score():
     hypothesis = "ذهبت الى المدرسه"
     assert score(reference, hypothesis, arabic=False)["wer"] == pytest.approx(1.0)
     assert score(reference, hypothesis, arabic=True)["wer"] == 0.0
+
+
+def test_matched_hypothesis_marks_substitutions_and_insertions():
+    reference = "انا رايح البيت الحين".split()
+    hypothesis = "انا رايح يا البيوت".split()  # "يا" inserted, "البيوت" substituted, "الحين" missed
+    assert matched_hypothesis(reference, hypothesis) == [True, True, False, False]
+
+
+def test_matched_hypothesis_agrees_with_edit_distance():
+    reference, hypothesis = "a b c d e".split(), "a x c e f".split()
+    matched = matched_hypothesis(reference, hypothesis)
+    assert sum(matched) == 3  # a, c, e
+    assert edit_distance(reference, hypothesis) == 3

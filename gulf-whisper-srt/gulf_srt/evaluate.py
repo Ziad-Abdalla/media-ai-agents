@@ -63,6 +63,38 @@ def edit_distance(reference: list, hypothesis: list) -> int:
     return previous[-1]
 
 
+def matched_hypothesis(reference: list, hypothesis: list) -> list[bool]:
+    """For each hypothesis item, was it matched to an equal reference item?
+    False means it was substituted or inserted, so it is one of the errors. Used to check
+    whether low-confidence words really are the wrong ones.
+
+    Same table as edit_distance, but each cell holds (edits, -matches), so among the
+    alignments with the fewest edits we keep the one that matches the most words."""
+    rows, cols = len(reference) + 1, len(hypothesis) + 1
+    cost = [[(i + j, 0) if i == 0 or j == 0 else None for j in range(cols)] for i in range(rows)]
+    for i in range(1, rows):
+        for j in range(1, cols):
+            same = reference[i - 1] == hypothesis[j - 1]
+            edits, minus_matches = cost[i - 1][j - 1]
+            diagonal = (edits, minus_matches - 1) if same else (edits + 1, minus_matches)
+            deletion = (cost[i - 1][j][0] + 1, cost[i - 1][j][1])
+            insertion = (cost[i][j - 1][0] + 1, cost[i][j - 1][1])
+            cost[i][j] = min(diagonal, deletion, insertion)
+    matched = [False] * len(hypothesis)
+    i, j = len(reference), len(hypothesis)
+    while i > 0 and j > 0:  # walk back along the chosen path
+        same = reference[i - 1] == hypothesis[j - 1]
+        edits, minus_matches = cost[i - 1][j - 1]
+        if cost[i][j] == ((edits, minus_matches - 1) if same else (edits + 1, minus_matches)):
+            matched[j - 1] = same
+            i, j = i - 1, j - 1
+        elif cost[i][j] == (cost[i][j - 1][0] + 1, cost[i][j - 1][1]):
+            j -= 1  # an inserted hypothesis word
+        else:
+            i -= 1  # a reference word that was missed
+    return matched
+
+
 def wer(reference: str, hypothesis: str) -> float:
     ref_words = reference.split()
     return edit_distance(ref_words, hypothesis.split()) / max(len(ref_words), 1)
