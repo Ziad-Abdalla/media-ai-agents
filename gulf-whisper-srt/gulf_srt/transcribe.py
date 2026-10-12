@@ -42,20 +42,20 @@ def load_model(name: str = "large-v3-turbo", device: str = "auto"):
     return WhisperModel(name, device="cpu", compute_type="int8"), "cpu"
 
 
-def fit_hotwords(model, hotwords: str) -> tuple[str, str]:
-    """Return (kept, dropped). faster-whisper silently cuts hotwords to max_length // 2 - 1
-    tokens (223 for Whisper). Arabic names take several tokens each, so a long cast list can go
-    over. We drop whole words from the end instead, so we know exactly what reached the model."""
-    words = hotwords.split()
+def fit_hotwords(model, names: list[str]) -> tuple[str, list[str]]:
+    """Return (the hotwords text to send, the names dropped). faster-whisper silently cuts
+    hotwords to max_length // 2 - 1 tokens (223 for Whisper). Arabic names take several tokens
+    each, so a long cast list can go over. We drop whole names from the end instead, so «أبو حمد»
+    is never cut down to «أبو», and we know exactly what reached the model."""
     limit = model.max_length // 2 - 1
 
     def tokens(text: str) -> int:
         return len(model.hf_tokenizer.encode(" " + text, add_special_tokens=False).ids)
 
-    kept = len(words)
-    while kept and tokens(" ".join(words[:kept])) > limit:
+    kept = len(names)
+    while kept and tokens(" ".join(names[:kept])) > limit:
         kept -= 1
-    return " ".join(words[:kept]), " ".join(words[kept:])
+    return " ".join(names[:kept]), names[kept:]
 
 
 def detect_speech(audio) -> list[list[float]]:
@@ -72,24 +72,25 @@ def detect_speech(audio) -> list[list[float]]:
     return [[round(c["start"] / 16000, 2), round(c["end"] / 16000, 2)] for c in chunks]
 
 
-def transcribe(model, audio, hotwords: str | None = None) -> Transcript:
+def transcribe(model, audio, hotwords: list[str] | str | None = None) -> Transcript:
     """Transcribe Arabic audio (a file path or 16 kHz numpy array).
 
-    hotwords: names and words to favour (cast, characters, places), for example
-    "عبود أبو حمد". faster-whisper adds them to every 30-second window. It is a hint,
-    not a guarantee, so measure it on your own clips before trusting it. A list over
-    Whisper's token limit is cut from the end, with a warning, and the cut is recorded.
+    hotwords: names and words to favour (cast, characters, places), as a list of names like
+    ["عبود", "أبو حمد"] or as one text (then each word counts as a name). faster-whisper adds
+    them to every 30-second window, joined by spaces. It is a hint, not a guarantee, so measure
+    it on your own clips before trusting it. A list over Whisper's token limit is cut by whole
+    names from the end, with a warning, and the cut is recorded.
 
     Returns the words with their timings and confidence, Whisper's per-window
     confidence numbers (used by the QC report), where speech was heard, and the audio
     length in seconds.
     """
-    dropped = ""
-    if hotwords:
-        hotwords, dropped = fit_hotwords(model, hotwords)
-        if dropped:
-            print(f"Hotwords over Whisper's limit of {model.max_length // 2 - 1} tokens; "
-                  f"these were not used: {dropped}", file=sys.stderr)
+    names = hotwords.split() if isinstance(hotwords, str) else list(hotwords or [])
+    hotwords, dropped_names = fit_hotwords(model, names)
+    dropped = "، ".join(dropped_names)
+    if dropped:
+        print(f"Hotwords over Whisper's limit of {model.max_length // 2 - 1} tokens; "
+              f"these names were not used: {dropped}", file=sys.stderr)
     segments, info = model.transcribe(
         audio,
         language="ar",  # don't let Whisper guess; dialect speech can be mis-detected

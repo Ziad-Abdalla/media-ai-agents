@@ -27,5 +27,5 @@ def test_hotwords_file_skips_comments_and_blank_lines(tmp_path):
     file = tmp_path / "cast.txt"
     file.write_text("# cast of episode 1\nعبود\n\n أبو حمد \n", encoding="utf-8")
     assert read_names(file) == ["عبود", "أبو حمد"]
-    assert read_hotwords("الديرة", file) == "عبود أبو حمد الديرة"
-    assert read_hotwords() == ""
+    assert read_hotwords("الديرة نت", file) == ["عبود", "أبو حمد", "الديرة", "نت"]
+    assert read_hotwords() == []

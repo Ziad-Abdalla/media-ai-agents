@@ -56,12 +56,14 @@ def test_no_hotwords_sends_none():
 
 
 def test_a_long_cast_list_is_cut_by_whole_names_and_the_cut_is_recorded(capsys):
-    names = " ".join(f"اسم{n:03d}" for n in range(60))  # 60 names of 6 letters: far over 223 tokens
+    names = [f"أبو اسم{n:03d}" for n in range(40)]  # 40 two-word names: far over 223 tokens
     kept, dropped = fit_hotwords(FakeModel(), names)
-    assert len(" " + kept) <= 223 and kept.split() + dropped.split() == names.split()
+    assert len(" " + kept) <= 223 and dropped
+    assert kept.split() + " ".join(dropped).split() == " ".join(names).split()
+    assert kept.split()[-1].startswith("اسم")  # never ends on half a name like «أبو»
 
     model = FakeModel()
     transcript = transcribe(model, "clip.wav", hotwords=names)
     assert model.settings["hotwords"] == kept
-    assert transcript.hotwords_dropped == dropped
+    assert transcript.hotwords_dropped == "، ".join(dropped)
     assert "were not used" in capsys.readouterr().err

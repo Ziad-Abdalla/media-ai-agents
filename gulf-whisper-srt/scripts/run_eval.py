@@ -39,7 +39,7 @@ def main() -> None:
                         help="one name or phrase per line, passed to Whisper as hotwords (can be repeated)")
     parser.add_argument("--tag", help="added to the results folder name, e.g. 'cast' -> large-v3-turbo-cuda-cast")
     args = parser.parse_args()
-    hotwords = " ".join(read_hotwords(file=f) for f in args.hotwords_file)
+    hotwords = [name for f in args.hotwords_file for name in read_hotwords(file=f)]
 
     manifest = json.loads((SAMPLES / "manifest.json").read_text(encoding="utf-8"))
     model, device = load_model(args.model, args.device)

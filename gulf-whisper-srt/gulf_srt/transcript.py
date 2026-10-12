@@ -84,9 +84,8 @@ def read_names(file: str | Path) -> list[str]:
     return [line for line in lines if line and not line.startswith("#")]
 
 
-def read_hotwords(text: str | None = None, file: str | Path | None = None) -> str:
-    """Hotwords from the command line and/or a file, joined into the single string Whisper takes."""
-    items = read_names(file) if file else []
-    if text:
-        items.append(text.strip())
-    return " ".join(items)
+def read_hotwords(text: str | None = None, file: str | Path | None = None) -> list[str]:
+    """Hotwords as a list of names: each line of the file is one name (so «أبو حمد» stays whole),
+    and text typed on the command line counts word by word."""
+    names = read_names(file) if file else []
+    return names + (text.split() if text else [])
