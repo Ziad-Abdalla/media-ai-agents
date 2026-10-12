@@ -87,7 +87,7 @@ python scripts/odoo_link.py undo 3   # roll back: remove booking 3's activity fr
 python scripts/odoo_link.py off      # switch it off again (the default)
 ```
 
-`setup.py` does what would otherwise be clicks: it reads `.env` (and stops if the API key is missing or still the placeholder), fills `credentials/credentials.template.json` into a temp file, runs `n8n import:credentials` inside the container, deletes the temp file, imports and publishes the three workflows, restarts n8n, waits until the webhook answers, and creates the owner login. The API key and the Odoo password only live in n8n's encrypted credential store. To reset everything: `docker compose down -v`.
+`setup.py` does what would otherwise be clicks: it reads `.env` (and stops if the API key is missing or still the placeholder), fills `credentials/credentials.template.json` into a temp file, runs `n8n import:credentials` inside the container, deletes the temp file, imports and publishes the three workflows, restarts n8n, waits until the webhook answers, and creates the owner login. Inside n8n, the API key and the Odoo password live only in its encrypted credential store (on disk they are only in your git-ignored `.env`). To reset everything: `docker compose down -v`.
 
 ## What's new for production bookings
 
