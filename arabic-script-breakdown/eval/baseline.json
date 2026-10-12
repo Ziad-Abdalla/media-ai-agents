@@ -3,7 +3,7 @@
   "model": "claude-haiku-5-5",
   "effort": "low",
   "prompt_version": "9eb1d255",
-  "scorer_version": "v3",
+  "scorer_version": "v5",
   "fields": {
     "int_ext": 1.0,
     "time_of_day": 1.0,

@@ -12,3 +12,8 @@ date,commit,model,effort,prompt_version,scorer_version,source,int_ext,time_of_da
 2026-10-12T21:30,19f8eaf,claude-sonnet-5-5,default,9eb1d255,v3,rescored,1.000,1.000,1.000,1.000,0.914,0.983,0.2539,0,claude-sonnet-5-5-default-20261012-212947
 2026-10-12T21:32,c3402a0,claude-haiku-5-5,low,9eb1d255,v3,rescored,1.000,1.000,1.000,0.993,0.957,0.990,0.0158,0,claude-haiku-5-5-low-20261012-213204
 2026-10-12T21:33,c3402a0,claude-haiku-5-5,low,9eb1d255-no-cast-list,v3,rescored,1.000,1.000,1.000,0.986,0.965,0.990,0.0152,0,experiment-no-cast-list-haiku-low
+2026-10-12T21:29,19f8eaf,claude-haiku-5-5,low,9eb1d255,v5,rescored,1.000,1.000,1.000,1.000,0.973,0.995,0.0164,0,claude-haiku-5-5-low-20261012-212858
+2026-10-12T21:29,19f8eaf,claude-haiku-5-5,medium,9eb1d255,v5,rescored,1.000,1.000,1.000,1.000,0.973,0.995,0.0180,0,claude-haiku-5-5-medium-20261012-212920
+2026-10-12T21:30,19f8eaf,claude-sonnet-5-5,default,9eb1d255,v5,rescored,1.000,1.000,1.000,1.000,0.914,0.983,0.2539,0,claude-sonnet-5-5-default-20261012-212947
+2026-10-12T21:32,c3402a0,claude-haiku-5-5,low,9eb1d255,v5,rescored,1.000,1.000,1.000,0.993,0.957,0.990,0.0158,0,claude-haiku-5-5-low-20261012-213204
+2026-10-12T21:33,c3402a0,claude-haiku-5-5,low,9eb1d255-no-cast-list,v5,rescored,1.000,1.000,1.000,0.986,0.965,0.990,0.0152,0,experiment-no-cast-list-haiku-low

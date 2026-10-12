@@ -1,3 +1,4 @@
 date,commit,model,effort,prompt_version,scorer_version,source,int_ext,time_of_day,location,characters,props,overall,cost_usd,failed_scenes,run_id,critical_failures
 2026-10-12T22:22,29d6420,claude-haiku-5-5,low,9eb1d255,v3,live,1.000,1.000,1.000,1.000,0.938,0.988,0.0042,0,hard-claude-haiku-5-5-low-20261012-222200,1
 2026-10-12T22:22,29d6420,claude-haiku-5-5,low,9eb1d255,v4,rescored,1.000,1.000,1.000,1.000,0.938,0.988,0.0042,0,hard-claude-haiku-5-5-low-20261012-222200,2
+2026-10-12T22:22,29d6420,claude-haiku-5-5,low,9eb1d255,v5,rescored,1.000,1.000,1.000,1.000,0.938,0.988,0.0042,0,hard-claude-haiku-5-5-low-20261012-222200,2
