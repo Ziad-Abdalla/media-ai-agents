@@ -10,7 +10,8 @@ PO_VALUES = {"partner_id": 1, "origin": "email-agent:test", "order_line": []}
 
 
 @pytest.mark.parametrize("action", ["confirm_purchase_order", "cancel_purchase_order",
-                                    "delete_record", "some_action_nobody_listed"])
+                                    "delete_record", "create_production",
+                                    "some_action_nobody_listed"])
 def test_forbidden_and_unknown_actions_are_refused_and_logged(action, odoo, store):
     with pytest.raises(ForbiddenAction):
         execute(action, odoo=odoo, store=store, run_id="run-1", approved_by="Ziad", po_id=1)

@@ -27,6 +27,8 @@ ALLOWED_ACTIONS = {
     "confirm_purchase_order": FORBIDDEN,
     "cancel_purchase_order": FORBIDDEN,
     "delete_record": FORBIDDEN,
+    # productions (analytic accounts) and budgets belong to finance, never to the agent
+    "create_production": FORBIDDEN,
 }
 
 
