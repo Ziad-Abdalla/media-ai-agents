@@ -6,6 +6,7 @@ import json
 import re
 import subprocess
 import pathlib
+import urllib.parse
 import urllib.request
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -20,7 +21,10 @@ QUERIES = {
         "(SELECT count(*) FROM bookings) AS bookings, "
         "round(sum(cost_usd) / NULLIF((SELECT count(*) FROM bookings), 0), 6) AS usd_per_booking FROM ai_usage"
     ),
-    "Workflow errors": "SELECT workflow_name, execution_id, failed_node, error_message FROM workflow_errors ORDER BY id",
+    "Workflow errors (with the email the failed run was handling, if any)": (
+        "SELECT w.execution_id, w.failed_node, w.error_message, e.message_id, e.status "
+        "FROM workflow_errors w LEFT JOIN email_log e ON e.execution_id = w.execution_id ORDER BY w.id"
+    ),
 }
 
 
@@ -36,14 +40,15 @@ def pending_links():
     msgs = json.loads(urllib.request.urlopen(url).read())["messages"]
     for m in reversed(msgs):
         full = json.loads(urllib.request.urlopen(f"http://localhost:8026/api/v1/message/{m['ID']}").read())
-        links = re.findall(r"(APPROVE|REJECT):\s+(\S+)", full["Text"])
+        # Only read our own part of the email, not the quoted original (it could contain fake links).
+        ours = full["Text"].split("----- Original email")[0]
+        links = re.findall(r"(APPROVE|REJECT):\s+(\S+)", ours)
         print(f"- {m['Subject']}")
         for label, link in links:
             print(f"    {label}: {link}")
 
 
 if __name__ == "__main__":
-    import urllib.parse
     for title, sql in QUERIES.items():
         print(f"== {title}")
         print(psql(sql))

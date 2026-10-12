@@ -4,7 +4,7 @@ Run after `docker compose up -d`:
     python scripts/setup.py
 
 It does four things:
-  1. creates the three credentials (Postgres, Mailpit SMTP, Anthropic key) from
+  1. creates the four credentials (Postgres, Mailpit SMTP, webhook login, Anthropic key) from
      credentials/credentials.template.json, filling in values from .env
   2. imports both workflows from workflows/
   3. publishes (activates) them and restarts n8n so the webhooks go live
@@ -12,6 +12,7 @@ It does four things:
 
 Only the Python standard library is used. The API key is never printed.
 """
+import base64
 import json
 import os
 import pathlib
@@ -28,21 +29,26 @@ N8N = "http://localhost:5678"
 WORKFLOW_IDS = ["BookingErrors001", "BookingIntake001"]  # error workflow first
 
 
+NEEDED = ["ANTHROPIC_API_KEY", "POSTGRES_PASSWORD", "WEBHOOK_PASSWORD", "N8N_OWNER_EMAIL", "N8N_OWNER_PASSWORD"]
+
+
 def load_env():
-    env = {}
+    """Read KEY=value lines from .env (copied from .env.example)."""
     env_file = ROOT / ".env"
-    if env_file.exists():
-        for line in env_file.read_text(encoding="utf8").splitlines():
-            line = line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                k, v = line.split("=", 1)
-                env[k.strip()] = v.strip()
-    env.update({k: v for k, v in os.environ.items() if k in env or k == "ANTHROPIC_API_KEY"})
-    env.setdefault("POSTGRES_PASSWORD", "localdev")
-    env.setdefault("N8N_OWNER_EMAIL", "admin@sadafprod.test")
-    env.setdefault("N8N_OWNER_PASSWORD", "ChangeMe123")
-    if not env.get("ANTHROPIC_API_KEY", "").startswith("sk-"):
-        sys.exit("ANTHROPIC_API_KEY missing from .env")
+    if not env_file.exists():
+        sys.exit("no .env file: copy .env.example to .env and put your API key in it")
+    env = {}
+    for line in env_file.read_text(encoding="utf8").splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            k, v = line.split("=", 1)
+            env[k.strip()] = v.strip()
+    missing = [k for k in NEEDED if not env.get(k)]
+    if missing:
+        sys.exit(f"missing in .env: {', '.join(missing)} (see .env.example)")
+    key = env["ANTHROPIC_API_KEY"]
+    if not key.startswith("sk-") or key.endswith("..."):  # "sk-ant-..." is the placeholder
+        sys.exit("put your real ANTHROPIC_API_KEY in .env")
     return env
 
 
@@ -101,13 +107,13 @@ def import_credentials(env):
     try:
         compose("cp", tmp, "n8n:/tmp/credentials.json")
         compose("exec", "-T", "n8n", "n8n", "import:credentials", "--input=/tmp/credentials.json")
-        print("credentials imported (Postgres, Mailpit SMTP, Anthropic key)")
+        print("credentials imported (Postgres, Mailpit SMTP, webhook login, Anthropic key)")
     finally:
         compose("exec", "-T", "n8n", "rm", "-f", "/tmp/credentials.json", check=False)
         os.remove(tmp)
 
 
-def import_workflows():
+def import_workflows(env):
     compose("exec", "-T", "n8n", "n8n", "import:workflow", "--separate", "--input=/workflows")
     print("workflows imported from workflows/")
     for wid in WORKFLOW_IDS:
@@ -115,17 +121,19 @@ def import_workflows():
     print("workflows published; restarting n8n so the webhooks register")
     compose("restart", "n8n")
     wait_for_n8n()
-    wait_for_webhook()
+    wait_for_webhook(env)
 
 
-def wait_for_webhook():
+def wait_for_webhook(env):
     """The editor answers before the webhooks are registered. Mailpit does not retry,
     so wait until the intake webhook answers. The test call is not addressed to the
-    bookings inbox, so the workflow ignores it."""
+    bookings inbox, so the workflow ignores it. It logs in like Mailpit does."""
     body = json.dumps({"ID": "setup-check", "To": [], "From": {}}).encode()
+    login = base64.b64encode(f"mailpit:{env['WEBHOOK_PASSWORD']}".encode()).decode()
     for _ in range(30):
         req = urllib.request.Request(f"{N8N}/webhook/new-mail", data=body, method="POST",
-                                     headers={"Content-Type": "application/json"})
+                                     headers={"Content-Type": "application/json",
+                                              "Authorization": f"Basic {login}"})
         try:
             urllib.request.urlopen(req, timeout=5)
             print("intake webhook is live")
@@ -139,7 +147,7 @@ if __name__ == "__main__":
     env = load_env()
     wait_for_n8n()
     import_credentials(env)
-    import_workflows()
+    import_workflows(env)
     # Owner login last: on the very first boot n8n can forget an owner created too early.
     create_owner(env)
     print(f"done. Editor: {N8N}  (login {env['N8N_OWNER_EMAIL']})   Inbox: http://localhost:8026")

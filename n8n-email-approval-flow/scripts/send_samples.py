@@ -8,7 +8,9 @@
 Mailpit stores each email and calls the n8n webhook, which starts the workflow.
 Nothing leaves your machine except the Claude call that n8n makes.
 """
+import base64
 import json
+import pathlib
 import smtplib
 import sys
 import urllib.request
@@ -104,11 +106,16 @@ def send(name):
 
 def error_test():
     """Call the n8n webhook directly with an email ID that doesn't exist in Mailpit.
-    The "Fetch full email" step fails, and the error workflow should log it."""
+    The "Fetch full email" step fails, and the error workflow should log it.
+    The webhook needs the same login Mailpit uses (WEBHOOK_PASSWORD in .env)."""
+    env_file = pathlib.Path(__file__).resolve().parent.parent / ".env"
+    password = next(line.split("=", 1)[1].strip() for line in env_file.read_text(encoding="utf8").splitlines()
+                    if line.startswith("WEBHOOK_PASSWORD="))
+    login = base64.b64encode(f"mailpit:{password}".encode()).decode()
     body = json.dumps({"ID": "does-not-exist", "To": [{"Address": INBOX}],
                        "From": {"Address": "test@sadafprod.test"}}).encode()
-    req = urllib.request.Request("http://localhost:5678/webhook/new-mail", data=body,
-                                 headers={"Content-Type": "application/json"}, method="POST")
+    req = urllib.request.Request("http://localhost:5678/webhook/new-mail", data=body, method="POST",
+                                 headers={"Content-Type": "application/json", "Authorization": f"Basic {login}"})
     print(urllib.request.urlopen(req).read().decode())
 
 
@@ -120,8 +127,8 @@ if __name__ == "__main__":
     if args == ["--list"]:
         print("\n".join(SAMPLES))
         sys.exit()
-    names = args or ["normal", "external", "missing_date", "arabic", "to_reject", "injection", "duplicate"]
+    names = args or list(SAMPLES)  # all of them, in the order above, "duplicate" last
     for i, n in enumerate(names):
         if i:
-            time.sleep(3)  # Mailpit sends at most one webhook per second by default
+            time.sleep(3)  # a short gap so each run is easy to follow in n8n's Executions list
         send(n)
