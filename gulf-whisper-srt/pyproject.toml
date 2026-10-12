@@ -1,0 +1,22 @@
+[project]
+name = "gulf-whisper-srt"
+version = "0.1.0"
+description = "Arabic (incl. Gulf dialect) audio/video to clean Arabic SRT subtitles, run locally with faster-whisper."
+requires-python = ">=3.10"
+dependencies = [
+    "faster-whisper>=1.1",
+]
+
+[project.optional-dependencies]
+# CUDA libraries for CTranslate2 on Windows/Linux when they are not installed system-wide.
+cuda = [
+    "nvidia-cublas-cu12",
+    "nvidia-cudnn-cu12>=9,<10",
+]
+dev = ["pytest"]
+
+[tool.setuptools]
+packages = ["gulf_srt"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
