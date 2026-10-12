@@ -1,3 +1,4 @@
+# agent-cost-tracker is a separate repo. Clone it next to this folder first (see the README).
 anthropic>=1.13
 pydantic>=2.14
 python-dotenv>=1.2
