@@ -6,15 +6,15 @@ services:
     ports:
       - "5678:5678"
     environment:
-      - N8N_HOST=localhost
-      - N8N_PORT=5678
-      - N8N_PROTOCOL=http
+      # Base of the approve/reject links in the manager's email.
       - WEBHOOK_URL=http://localhost:5678/
       - GENERIC_TIMEZONE=Asia/Riyadh
       - TZ=Asia/Riyadh
       - N8N_DIAGNOSTICS_ENABLED=false
       - N8N_PERSONALIZATION_ENABLED=false
       - N8N_SECURE_COOKIE=false
+      # Lets the Code node use Node's crypto module (random tokens for the approval links).
+      - NODE_FUNCTION_ALLOW_BUILTIN=crypto
     volumes:
       - n8n_data:/home/node/.n8n
       - ./workflows:/workflows:ro
@@ -40,8 +40,9 @@ services:
       - "1026:1025"   # SMTP
       - "8026:8025"   # web inbox + API
     environment:
-      # Mailpit calls this n8n webhook every time a new email lands.
-      - MP_WEBHOOK_URL=http://n8n:5678/webhook/new-mail
+      # Mailpit calls this n8n webhook every time a new email lands. The webhook needs a
+      # login (user mailpit, password from .env), so nobody else can push emails into the flow.
+      - MP_WEBHOOK_URL=http://mailpit:${WEBHOOK_PASSWORD:-localhook}@n8n:5678/webhook/new-mail
       # Default is 1 webhook per second; extra ones are silently dropped. 0 = no limit.
       - MP_WEBHOOK_LIMIT=0
 

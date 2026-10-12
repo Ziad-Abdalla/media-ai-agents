@@ -1,13 +1,15 @@
 -- Tables the n8n workflow reads and writes. Runs once, when the Postgres volume is first created.
 
 -- One row per incoming email. The primary key on message_id is the duplicate guard:
--- if the same email is delivered twice, the second insert does nothing.
+-- if the same email is delivered twice, the second insert does nothing
+-- (unless the first run failed: then the repeat gets a fresh try).
 CREATE TABLE email_log (
     message_id   TEXT PRIMARY KEY,
     mailpit_id   TEXT,
     from_address TEXT,
     subject      TEXT,
-    status       TEXT NOT NULL DEFAULT 'received',  -- received | approved | rejected | expired | needs_info | ignored
+    status       TEXT NOT NULL DEFAULT 'received',  -- received | approved | rejected | expired | invalid_click | needs_info | ignored | failed
+    execution_id TEXT,                               -- the n8n run handling it, so the error workflow can mark it failed
     received_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -37,7 +39,8 @@ CREATE TABLE reply_drafts (
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- One row per Claude call: tokens and cost, so we know what each booking costs.
+-- One row per successful Claude call: tokens and cost, so we know what each booking costs.
+-- A call that fails (Claude stopped early, bad JSON) goes to workflow_errors instead.
 CREATE TABLE ai_usage (
     id            SERIAL PRIMARY KEY,
     message_id    TEXT,
@@ -45,7 +48,6 @@ CREATE TABLE ai_usage (
     input_tokens  INTEGER NOT NULL,
     output_tokens INTEGER NOT NULL,
     cost_usd      NUMERIC(12, 8) NOT NULL,
-    stop_reason   TEXT,
     route         TEXT,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );

@@ -17,7 +17,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO workflow_errors (workflow_name, execution_id, failed_node, error_message)\nVALUES ($1, $2, $3, $4);",
+        "query": "-- 1. Record what failed.\nINSERT INTO workflow_errors (workflow_name, execution_id, failed_node, error_message)\nVALUES ($1, $2, $3, $4);\n-- 2. If the run had claimed an email and not finished it, mark that email failed,\n-- so delivering it again gets a fresh try (see Claim Message-ID).\nUPDATE email_log SET status = 'failed', updated_at = now()\nWHERE execution_id = $2 AND status = 'received';",
         "options": {
           "queryReplacement": "={{ [ $json.workflow.name, $json.execution.id, $json.execution.lastNodeExecuted ?? '', $json.execution.error?.message ?? 'unknown error' ] }}"
         }
