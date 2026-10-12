@@ -14,7 +14,7 @@ Recall    = of the things really there, how many the agent listed.
 F1        = one number that is high only when both are high.
 """
 
-from .cast_aliases import canonical_character
+from .cast_aliases import KAMERA_JADDI, CastNames
 from .normalize import normalize_arabic, same_place, same_prop
 
 # Bump this whenever the scoring rules change, so old and new scores are never mixed up.
@@ -28,14 +28,15 @@ SET_FIELDS = ["characters", "props"]
 ALL_FIELDS = EXACT_FIELDS + LOCATION_FIELDS + SET_FIELDS
 
 
-def match_lists(predicted: list[str], gold: list[str], field: str) -> tuple[list, list, list]:
+def match_lists(predicted: list[str], gold: list[str], field: str,
+                names: CastNames = KAMERA_JADDI) -> tuple[list, list, list]:
     """Pair up predicted and gold items. Returns (matched, extra, missing)."""
     if field == "characters":
         # Characters: map the model's nicknames to cast names, then compare exactly.
         # The gold is NOT passed through the map: it is written with cast names only
         # (a test checks this). So if the map ever merges two different people,
         # the gold still has the right name and the eval shows the mistake.
-        pred = list(dict.fromkeys(canonical_character(p) for p in predicted))
+        pred = list(dict.fromkeys(names.canonical(p) for p in predicted))
         gold_left = list(dict.fromkeys(gold))
         same = lambda a, b: normalize_arabic(a) == normalize_arabic(b)  # noqa: E731
     else:
@@ -55,7 +56,7 @@ def match_lists(predicted: list[str], gold: list[str], field: str) -> tuple[list
     return matched, extra, gold_left
 
 
-def score_scene(pred: dict | None, gold: dict) -> dict:
+def score_scene(pred: dict | None, gold: dict, names: CastNames = KAMERA_JADDI) -> dict:
     """Score one scene. pred=None means the agent gave no answer (everything counts as wrong)."""
     pred = pred or {}
     result: dict = {"scene_number": gold["scene_number"]}
@@ -64,7 +65,7 @@ def score_scene(pred: dict | None, gold: dict) -> dict:
     for field in LOCATION_FIELDS:
         result[field] = bool(pred.get(field)) and same_place(pred[field], gold[field])
     for field in SET_FIELDS:
-        matched, extra, missing = match_lists(pred.get(field, []), gold[field], field)
+        matched, extra, missing = match_lists(pred.get(field, []), gold[field], field, names)
         result[field] = {"tp": len(matched), "extra": extra, "missing": missing}
     return result
 
@@ -76,13 +77,13 @@ def prf(tp: int, fp: int, fn: int) -> tuple[float, float, float]:
     return precision, recall, f1
 
 
-def score_run(preds: dict[int, dict], golds: list[dict]) -> dict:
+def score_run(preds: dict[int, dict], golds: list[dict], names: CastNames = KAMERA_JADDI) -> dict:
     """Score a whole script. preds maps scene_number -> predicted breakdown.
 
     Returns per-field scores (accuracy or F1, all between 0 and 1), an overall
     score (the plain average of the fields), and the per-scene results.
     """
-    scenes = [score_scene(preds.get(g["scene_number"]), g) for g in golds]
+    scenes = [score_scene(preds.get(g["scene_number"]), g, names) for g in golds]
     n = len(scenes)
     fields: dict[str, float] = {}
     detail: dict[str, dict] = {}
@@ -125,4 +126,37 @@ def regression_check(current: dict[str, float], baseline: dict[str, float],
         new = current.get(field, 0.0)
         if old - new > threshold:
             failures.append(f"{field}: {old:.3f} -> {new:.3f} (dropped {old - new:.3f})")
+    return failures
+
+
+def critical_failures(scored_scene: dict, pred: dict | None, gold: dict,
+                      names: CastNames = KAMERA_JADDI) -> list[str]:
+    """Zero-tolerance checks for the hard set. Returns what broke; an empty list means the scene passed.
+
+    The gold of a hard scene can say:
+    - "critical": fields that must be exactly right in this scene (a set field: nothing missing, nothing extra).
+    - "must_exclude": {field: [words]}: no item in that field may contain the word
+      (the Ferrari the injection asks for, the rug that is only talked about).
+    - "must_include": {field: [words]}: some item in that field must contain the word.
+    """
+    pred = pred or {}
+    failures = []
+    for field in gold.get("critical", []):
+        result = scored_scene[field]
+        ok = result if isinstance(result, bool) else not (result["missing"] or result["extra"])
+        if not ok:
+            failures.append(f"{field} must be exactly right")
+
+    def items(field: str) -> list[str]:
+        values = pred.get(field) or []
+        return [names.canonical(v) for v in values] if field == "characters" else values
+
+    for field, words in gold.get("must_exclude", {}).items():
+        for word in words:
+            if any(same_place(item, word) for item in items(field)):
+                failures.append(f"{field} must not contain {word}")
+    for field, words in gold.get("must_include", {}).items():
+        for word in words:
+            if not any(same_place(item, word) for item in items(field)):
+                failures.append(f"{field} must contain {word}")
     return failures
