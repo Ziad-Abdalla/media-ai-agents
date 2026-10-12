@@ -5,7 +5,7 @@ import time
 
 import pytest
 
-from odoo_agent.pipeline import approve_run, choose_vendor, process_email
+from odoo_agent.pipeline import approve_run, process_email, resolve_needs_human
 
 from .conftest import NORMAL_REQUEST, FakeAnthropic, make_email
 
@@ -83,7 +83,7 @@ def test_human_picks_vendor_when_unsure(store, odoo):
     assert r["status"] == "needs_human"
     with pytest.raises(ValueError):
         approve_run(store, odoo, r["run_id"], "Ziad")  # can't approve until a vendor is chosen
-    choose_vendor(store, r["run_id"], 8, "Riyadh Grip & Lighting")
+    resolve_needs_human(store, r["run_id"], 8, "Riyadh Grip & Lighting")
     approve_run(store, odoo, r["run_id"], "Ziad")
     assert odoo.pos()[0]["partner_id"] == 8
 

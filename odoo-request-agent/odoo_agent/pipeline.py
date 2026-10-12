@@ -2,6 +2,7 @@
 
 process_email:  email -> extract -> validate -> resolve -> plan -> waits for a human
 approve_run:    human said yes -> execute the plan through the permission gate
+resolve_needs_human / reject_run: the other buttons on the approval page
 """
 
 import re
@@ -97,10 +98,16 @@ def process_email(email: Email, *, client, odoo, store) -> str | None:
     return run_id
 
 
-def choose_vendor(store, run_id: str, partner_id: int | None, partner_name: str = "") -> None:
-    """A human picked the vendor (or chose 'create new'), or confirmed a re-send is wanted.
-    Rebuild the plan with that choice and wait for approval."""
+def resolve_needs_human(store, run_id: str, partner_id: int | None, partner_name: str = "") -> None:
+    """A person answered a 'needs_human' question. Three cases:
+      - picked one of the candidate vendors       -> partner_id is set
+      - chose 'none of these, create a new vendor' -> partner_id is None, vendor wasn't matched
+      - confirmed a re-send really is a new order  -> partner_id is None, vendor already matched
+    Rebuild the plan with that answer and wait for approval."""
     run = store.get_run(run_id)
+    if not run or run["status"] != "needs_human":
+        # Only open questions can be answered. A rejected or rolled-back run stays closed.
+        raise ValueError(f"{run_id} is not waiting for a human choice")
     request = PurchaseRequest.model_validate(run["request_json"])
     res = run["resolution_json"]
     if partner_id:
@@ -152,5 +159,9 @@ def approve_run(store, odoo, run_id: str, approver: str) -> int:
 
 
 def reject_run(store, run_id: str, approver: str) -> None:
+    approver = approver.strip()
+    run = store.get_run(run_id)
+    if not approver or not run or run["status"] not in ("pending_approval", "needs_human", "needs_info"):
+        raise ValueError(f"{run_id} can't be rejected now (or no name was typed)")
     store.update_run(run_id, status="rejected", approved_by=approver)
     store.audit(run_id, f"human:{approver}", "reject")

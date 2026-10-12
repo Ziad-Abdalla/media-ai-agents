@@ -10,7 +10,7 @@
   .meta { color: #666; font-size: .9rem; }
   .status { font-weight: bold; padding: 2px 8px; border-radius: 4px; background: #eee; }
   .pending_approval { background: #fff3c4; } .needs_human { background: #ffd9b3; }
-  .done { background: #c9f2d0; } .needs_info { background: #d6e8ff; }
+  .done, .reply_sent { background: #c9f2d0; } .needs_info { background: #d6e8ff; }
   .failed, .write_failed, .blocked_sender, .rejected { background: #f6c9c9; }
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
   pre { background: #f6f6f6; padding: .6rem; white-space: pre-wrap; font-size: .82rem; margin: .3rem 0; }
@@ -63,12 +63,12 @@
        {% elif v.status == "new" %}<b>No match. Approving will create a NEW vendor.</b> {{ v.reason }}
        {% else %}<b>Not sure which vendor:</b> {{ v.reason }}{% endif %}</p>
     {% if run.status == "needs_human" %}
-      <form method="post" action="/runs/{{ run.run_id }}/choose_vendor">
+      <form method="post" action="/runs/{{ run.run_id }}/resolve">
         {% for c in v.candidates %}
           <label><input type="radio" name="partner" value="{{ c.id }}|{{ c.name }}" required> {{ c.name }} (score {{ c.score }})</label><br>
         {% endfor %}
         {% if v.status == "matched" %}
-          <label><input type="radio" name="partner" value="keep" required> Yes, this is a new order, keep {{ v.name }}</label><br>
+          <label><input type="radio" name="partner" value="confirm_resend" required> Yes, this is a new order, keep {{ v.name }}</label><br>
         {% else %}
           <label><input type="radio" name="partner" value="new" required> None of these: create a new vendor</label><br>
         {% endif %}
