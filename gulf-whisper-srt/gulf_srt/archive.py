@@ -15,6 +15,9 @@ How search matches, and why it differs from the WER score:
 - By default it matches whole words, also when و/ف/ب/ل/ك is attached to the front, because
   speech attaches them to names: «عبود» finds «لعبود» and «وعبود», but not «معبود», and
   «حمد» doesn't find «محمد» or «الحمد». Type ال if the word has it («الديرة»).
+- A one-word search of 3 letters or fewer matches the exact word only, because a short word
+  plus an attached letter is often another word: «ريم» would find «كريم», «مال» «كمال», and
+  «ليد» «وليد». Use --anywhere if you do want those.
 - --word matches the exact word only; --anywhere matches inside words too.
 """
 
@@ -26,6 +29,7 @@ import sys
 from pathlib import Path
 
 from gulf_srt.evaluate import normalize
+from gulf_srt.replace import allows_attached
 from gulf_srt.segment import Cue
 from gulf_srt.srt import format_timestamp, read_srt
 
@@ -94,15 +98,16 @@ def _for_search(text: str) -> str:
 
 
 def search(entries: list[dict], query: str, mode: str = "attached") -> list[dict]:
-    """mode: 'attached' (whole words, with و/ف/ب/ل/ك allowed in front), 'word' (exact whole
-    words) or 'anywhere' (inside words too)."""
+    """mode: 'attached' (whole words, with و/ف/ب/ل/ك allowed in front unless the query is one
+    short word), 'word' (exact whole words) or 'anywhere' (inside words too)."""
     wanted = _for_search(query)
     if not wanted:
         return []
     if mode == "anywhere":
         pattern = re.compile(re.escape(wanted))
     else:
-        front = f"(?:{'|'.join(ATTACHED)})?" if mode == "attached" else ""
+        attached = mode == "attached" and allows_attached(wanted.split())
+        front = f"(?:{'|'.join(ATTACHED)})?" if attached else ""
         pattern = re.compile(f"(?:^| ){front}{re.escape(wanted)}(?= |$)")
     return [entry for entry in entries if pattern.search(_for_search(entry["text"]))]
 

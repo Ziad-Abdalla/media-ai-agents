@@ -60,3 +60,11 @@ def test_same_episode_name_in_two_seasons_and_no_double_hits(tmp_path):
     write_index(build_from_subtitles([tmp_path], index_folder=tmp_path), tmp_path / "archive.json")
     hits = search(load_entries(tmp_path), "أبو حمد")
     assert sorted(h["file"] for h in hits) == ["s1/ep01.srt", "s2/ep01.srt"]
+
+
+def test_a_short_name_matches_the_exact_word_only():
+    entries = entries_from_cues(
+        [Cue(0, 1, ["يا ريم تعالي"]), Cue(2, 3, ["كريم وصل"]), Cue(4, 5, ["كمال ووليد"])], "ep04.srt")
+    assert cues_found(entries, "ريم") == [1]
+    assert cues_found(entries, "مال") == [] and cues_found(entries, "ليد") == []
+    assert cues_found(entries, "ريم", "anywhere") == [1, 2]
