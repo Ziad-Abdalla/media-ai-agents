@@ -11,6 +11,7 @@ planned_at, so the KPI report can tell auto-resolved runs from ones that needed 
 
 import re
 import uuid
+import xmlrpc.client
 
 import anthropic
 import pydantic
@@ -54,9 +55,16 @@ def process_email(email: Email, *, client, odoo, store) -> str | None:
                          error=f"{email.sender} is not an internal sender; ignored")
         return run_id
 
-    # 1. Extract (the only AI step)
+    # Odoo down, or the agent's user can't read analytic accounts: mark the run failed, so the
+    # next poll tries it again. (Left as "received", it would be skipped forever.)
     try:
         productions = [a["name"] for a in resolve.production_accounts(odoo)]
+    except (xmlrpc.client.Error, OSError) as e:
+        store.update_run(run_id, status="failed", error=f"could not read Odoo: {e}")
+        return run_id
+
+    # 1. Extract (the only AI step)
+    try:
         request = extract_request(client, email, run_id, productions=productions)
     except BudgetExceeded:
         store.update_run(run_id, status="failed", error="cost budget reached")
@@ -78,11 +86,15 @@ def process_email(email: Email, *, client, odoo, store) -> str | None:
         return run_id
 
     # 3. Resolve Odoo records (reads only)
-    vendor = resolve.resolve_vendor(odoo, request.vendor_name)
-    production = resolve.resolve_production(odoo, request.production)
-    products = resolve.resolve_products(odoo, [i.name for i in request.items],
-                                        [i.category for i in request.items])
-    currency_id = resolve.resolve_currency(odoo, request.items[0].currency)
+    try:
+        vendor = resolve.resolve_vendor(odoo, request.vendor_name)
+        production = resolve.resolve_production(odoo, request.production)
+        products = resolve.resolve_products(odoo, [i.name for i in request.items],
+                                            [i.category for i in request.items])
+        currency_id = resolve.resolve_currency(odoo, request.items[0].currency)
+    except (xmlrpc.client.Error, OSError) as e:
+        store.update_run(run_id, status="failed", error=f"could not read Odoo: {e}")
+        return run_id
     if currency_id is None:
         store.update_run(run_id, status="failed", first_status="failed",
                          error=f"currency {request.items[0].currency} is not active in Odoo")
@@ -119,12 +131,12 @@ def process_email(email: Email, *, client, odoo, store) -> str | None:
 
 def resolve_needs_human(store, run_id: str, partner_id: int | None = None, partner_name: str = "",
                         *, new_vendor: bool = False, production_id: int | None = None,
-                        chosen_by: str = "human") -> None:
+                        confirm_resend: bool = False, chosen_by: str = "human") -> None:
     """A person answered a 'needs_human' question. For the vendor:
       - picked one of the candidate vendors        -> partner_id is set
       - chose 'none of these, create a new vendor' -> new_vendor=True
-      - confirmed a re-send really is a new order  -> nothing to pass, the vendor is already matched
     For the production: production_id, which must be one of the productions offered.
+    For a likely re-send: confirm_resend=True says "yes, this really is a second order".
     Every open question must be answered. Then the plan is rebuilt and waits for approval."""
     run = store.get_run(run_id)
     if not run or run["status"] != "needs_human":
@@ -143,6 +155,9 @@ def resolve_needs_human(store, run_id: str, partner_id: int | None = None, partn
     elif res["vendor"]["status"] == "needs_human":
         raise ValueError("choose a vendor first")
 
+    if run["duplicate_of"] and not confirm_resend:
+        raise ValueError(f"confirm that this is a new order, not a re-send of {run['duplicate_of']}")
+
     if production.get("status") == "needs_human":
         offered = {c["id"]: c for c in production.get("candidates", [])}
         if production_id not in offered:
@@ -157,7 +172,9 @@ def resolve_needs_human(store, run_id: str, partner_id: int | None = None, partn
     store.update_run(run_id, resolution_json=res, plan_json=plan, status="pending_approval")
     store.audit(run_id, f"human:{chosen_by}", "human_choice",
                 after={"vendor": res["vendor"].get("name") or res["vendor"]["status"],
-                       "production": (res.get("production") or {}).get("name")})
+                       "production": (res.get("production") or {}).get("name"),
+                       "confirmed_resend": bool(run["duplicate_of"]),
+                       "duplicate_of": run["duplicate_of"]})
 
 
 def approve_run(store, odoo, run_id: str, approver: str, shown_plan_hash: str,

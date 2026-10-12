@@ -2,6 +2,7 @@
 
 import threading
 import time
+import xmlrpc.client
 
 import pytest
 
@@ -67,6 +68,17 @@ def test_resent_request_is_flagged_as_duplicate(store, odoo):
     second = run(store, odoo, message_id="<b@sadaf.example>")
     assert second["status"] == "needs_human"
     assert second["duplicate_of"] == first["run_id"]
+
+
+def test_a_resend_needs_an_explicit_yes_and_the_yes_is_audited(store, odoo):
+    first = run(store, odoo, message_id="<a@sadaf.example>")
+    second = run(store, odoo, message_id="<b@sadaf.example>")
+    with pytest.raises(ValueError, match="re-send"):
+        resolve_needs_human(store, second["run_id"], chosen_by="Noura")  # no yes given
+    resolve_needs_human(store, second["run_id"], confirm_resend=True, chosen_by="Noura")
+    row = store.audit_rows(second["run_id"])[-1]
+    assert row["operation"] == "human_choice" and row["actor"] == "human:Noura"
+    assert row["after"]["confirmed_resend"] is True and row["after"]["duplicate_of"] == first["run_id"]
 
 
 def test_unknown_vendor_needs_approval_to_be_created(store, odoo):
@@ -208,3 +220,24 @@ def test_the_agents_own_reply_is_not_read_as_a_request(store, odoo):
     client = FakeAnthropic()
     assert run(store, odoo, client=client, sender="procurement-agent@sadaf.example") is None
     assert client.sent == []
+
+
+@pytest.mark.parametrize("broken_model, error", [
+    ("account.analytic.plan", xmlrpc.client.Fault(4, "Access Denied: Analytic Accounting group")),
+    ("res.partner", ConnectionRefusedError("Odoo is down")),
+])
+def test_odoo_read_failure_marks_the_run_failed_and_the_next_poll_retries(store, odoo, monkeypatch,
+                                                                          broken_model, error):
+    real_search_read = odoo.search_read
+
+    def failing(model, domain, fields):
+        if model == broken_model:
+            raise error
+        return real_search_read(model, domain, fields)
+    monkeypatch.setattr(odoo, "search_read", failing)
+    first = run(store, odoo)
+    assert first["status"] == "failed" and "could not read Odoo" in first["error"]
+
+    monkeypatch.setattr(odoo, "search_read", real_search_read)  # Odoo is back
+    second = run(store, odoo)
+    assert second["run_id"] == first["run_id"] and second["status"] == "pending_approval"

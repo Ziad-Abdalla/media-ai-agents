@@ -93,18 +93,19 @@ def create_app(store, get_odoo) -> FastAPI:
 
     @app.post("/runs/{run_id}/resolve")
     def resolve(run_id: str, approver: str = Form(...), partner: str = Form(""),
-                production: str = Form("")):
+                production: str = Form(""), confirm_resend: str = Form("")):
         # The answer to a needs_human question. partner is empty (no vendor question) or:
         #   "<id>|<name>"     the person picked this vendor
         #   "new"             none of these: create a new vendor
-        #   "confirm_resend"  yes, this re-send really is a second order
         # production is empty (no production question) or the id of the chosen production.
+        # confirm_resend is ticked when the person says a likely re-send really is a second order.
         try:
             if not approver.strip():
                 raise ValueError("type your name")
             choice = {"new_vendor": partner == "new", "chosen_by": approver.strip(),
-                      "production_id": int(production) if production else None}
-            if partner and partner not in ("new", "confirm_resend"):
+                      "production_id": int(production) if production else None,
+                      "confirm_resend": bool(confirm_resend)}
+            if partner and partner != "new":
                 pid, name = partner.split("|", 1)
                 pipeline.resolve_needs_human(store, run_id, int(pid), name, **choice)
             else:

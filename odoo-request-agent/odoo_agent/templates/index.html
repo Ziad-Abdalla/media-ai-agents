@@ -90,13 +90,15 @@
     {% endfor %}</ul>
     {% if run.status == "needs_human" %}
       <form method="post" action="/runs/{{ run.run_id }}/resolve">
-        {% if v.status == "needs_human" or run.duplicate_of %}<h3>Vendor</h3>{% endif %}
-        {% for c in v.candidates %}
-          <label><input type="radio" name="partner" value="{{ c.id }}|{{ c.name }}" required> {{ c.name }} (score {{ c.score }})</label><br>
-        {% endfor %}
-        {% if v.status == "matched" and run.duplicate_of %}
-          <label><input type="radio" name="partner" value="confirm_resend" required> Yes, this is a new order, keep {{ v.name }}</label><br>
-        {% elif v.status == "needs_human" %}
+        {% if run.duplicate_of %}
+          <h3>Possible re-send</h3>
+          <label><input type="checkbox" name="confirm_resend" value="yes" required> Yes, this is a second order, not a re-send of {{ run.duplicate_of }}</label><br>
+        {% endif %}
+        {% if v.status == "needs_human" %}
+          <h3>Vendor</h3>
+          {% for c in v.candidates %}
+            <label><input type="radio" name="partner" value="{{ c.id }}|{{ c.name }}" required> {{ c.name }} (score {{ c.score }})</label><br>
+          {% endfor %}
           <label><input type="radio" name="partner" value="new" required> None of these: create a new vendor</label><br>
         {% endif %}
         {% if prod.status == "needs_human" %}
