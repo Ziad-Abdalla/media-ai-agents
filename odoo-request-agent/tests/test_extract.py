@@ -37,3 +37,13 @@ def test_every_call_is_recorded_in_the_cost_ledger():
 def test_bad_stop_reasons_fail_clearly(stop_reason):
     with pytest.raises(ExtractionFailed):
         extract_request(FakeAnthropic(stop_reason=stop_reason), make_email(), "run-1")
+
+
+def test_the_known_productions_are_given_to_the_model(store, odoo):
+    from odoo_agent.pipeline import process_email
+
+    client = FakeAnthropic()
+    process_email(make_email(), client=client, odoo=odoo, store=store)
+    message = client.sent[0]["messages"][0]["content"]
+    assert "Sahrat Al-Khamis (سهرة الخميس)" in message
+    assert message.index("Productions at this company") < message.index("<email>")  # list, then the data

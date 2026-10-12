@@ -30,11 +30,18 @@ class ExtractionFailed(Exception):
     pass
 
 
-def extract_request(client, email: Email, run_id: str, *, effort: str = "low",
-                    operation: str = "extract_purchase_request") -> PurchaseRequest:
-    """operation is the name the cost ledger files this call under; the eval uses its own."""
+def extract_request(client, email: Email, run_id: str, *, productions: list[str] = (),
+                    effort: str = "low", operation: str = "extract_purchase_request") -> PurchaseRequest:
+    """productions: the names of the company's productions, from Odoo. Some programme names are
+    ordinary words (سهرة الخميس is literally "Thursday evening"), so without this list the
+    model can miss that they are names. The name is still copied as written, and code does
+    the matching. operation is the name the cost ledger files this call under."""
+    known = ""
+    if productions:
+        known = ("Productions at this company, to help you recognise their names (still copy the "
+                 "name as the email writes it):\n" + "\n".join(f"- {p}" for p in productions) + "\n")
     user_message = (
-        f"Email received on {email.received_at}. Use this to work out dates with no year.\n"
+        f"{known}Email received on {email.received_at}. Use this to work out dates with no year.\n"
         f"<email>\nFrom: {email.sender}\nSubject: {email.subject}\n\n{email.body}\n</email>"
     )
     response = tracked_call(

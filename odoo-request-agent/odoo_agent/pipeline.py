@@ -56,7 +56,8 @@ def process_email(email: Email, *, client, odoo, store) -> str | None:
 
     # 1. Extract (the only AI step)
     try:
-        request = extract_request(client, email, run_id)
+        productions = [a["name"] for a in resolve.production_accounts(odoo)]
+        request = extract_request(client, email, run_id, productions=productions)
     except BudgetExceeded:
         store.update_run(run_id, status="failed", error="cost budget reached")
         raise
