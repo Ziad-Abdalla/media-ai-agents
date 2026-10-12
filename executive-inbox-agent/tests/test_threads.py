@@ -59,3 +59,12 @@ def test_similar_text_from_a_stranger_is_not_linked(ctx):
     other = add(ctx, make_email("b", subject="سؤال", body="نقل تصوير الحلقة السابعة الى السبت",
                                 sender=("S", "someone@else.example"), message_id="<b@y>"))
     assert other.method == "new"
+
+
+def test_staff_writing_about_a_similar_topic_is_not_merged_by_meaning(ctx):
+    director = ("Director", "director@studio.example")
+    add(ctx, make_email("a", subject="نقل التصوير", body="نقل تصوير الحلقة السابعة الى السبت",
+                        sender=director, message_id="<a@x>", cc=["majed.shehri@sadaf.example"]))
+    staff = add(ctx, make_email("b", subject="طلب يوم اضافي", body="نقل تصوير الحلقة السابعة الى السبت يحتاج يوم اضافي",
+                                sender=("Majed", "majed.shehri@sadaf.example"), message_id="<b@s>"))
+    assert staff.method == "new"

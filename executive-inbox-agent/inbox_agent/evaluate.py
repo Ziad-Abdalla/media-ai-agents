@@ -54,7 +54,8 @@ def make_context(db_path: str, embedder, batch: str) -> Context:
     store = Store(db_path)
     directory = Directory()
     linker = ThreadLinker(store, embedder, ignore_addresses=[directory.company["office_inbox"],
-                                                             directory.company["agent_address"]])
+                                                             directory.company["agent_address"]],
+                           internal_domains=directory.company_domains)
     return Context(store=store, directory=directory, linker=linker, mailer=RecordingMailer(),
                    board=LocalBoard(store), batch=batch)
 

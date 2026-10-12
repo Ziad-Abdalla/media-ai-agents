@@ -86,12 +86,16 @@ def _days_between(a: str, b: str) -> float:
 class ThreadLinker:
     def __init__(self, store, embedder=None, ignore_addresses: list[str] | None = None,
                  threshold: float = config.THREAD_SIMILARITY_THRESHOLD,
-                 window_days: int = config.THREAD_WINDOW_DAYS):
+                 window_days: int = config.THREAD_WINDOW_DAYS, internal_domains: list[str] | None = None):
         self.store = store
+        self.internal_domains = {d.lower() for d in (internal_domains or ["sadaf.example"])}
         self.embedder = embedder
         self.ignore = {a.lower() for a in ignore_addresses or []}
         self.threshold = threshold
         self.window_days = window_days
+
+    def _internal(self, address: str) -> bool:
+        return address.rsplit("@", 1)[-1] in self.internal_domains
 
     def embed(self, email: Email) -> np.ndarray | None:
         if self.embedder is None:
@@ -121,22 +125,26 @@ class ThreadLinker:
                     return Link(thread["id"], "subject", 0.85,
                                 f"same subject '{thread['subject']}' and shared participant {sorted(common)[0]}")
 
-        # 3. meaning (embeddings)
-        if vector is not None:
+        # 3. meaning (embeddings), only for an OUTSIDE person continuing their own conversation.
+        # The originator is the sender, or the original sender inside a forward. Staff are left
+        # out on purpose: they write about many matters, so "same person + similar topic" would
+        # wrongly merge separate conversations (measured on the dataset: precision fell to 0.52).
+        originator = _addr(email.forwarded.get("from", "")) if email.forwarded else email.from_addr
+        if vector is not None and originator and not self._internal(originator):
             best, best_sim = None, -1.0
             for row in self.store.emails("embedding IS NOT NULL"):
                 if _days_between(row["date"], email.date) > self.window_days:
+                    continue
+                thread = self.store.get_thread(row["thread_id"])
+                if not thread or originator not in (thread["participants_json"] or []):
                     continue
                 sim = float(np.dot(vector, np.frombuffer(row["embedding"], dtype=np.float32)))
                 if sim > best_sim:
                     best, best_sim = row, sim
             if best is not None and best_sim >= self.threshold:
-                thread = self.store.get_thread(best["thread_id"])
-                common = people & set(thread["participants_json"] or [])
-                if common:
-                    return Link(best["thread_id"], "embedding", round(best_sim, 3),
-                                f"similar meaning to {best['id']} ({best_sim:.2f} >= {self.threshold}) "
-                                f"and shared participant {sorted(common)[0]}", best["id"])
+                return Link(best["thread_id"], "embedding", round(best_sim, 3),
+                            f"similar meaning to {best['id']} ({best_sim:.2f} >= {self.threshold}) "
+                            f"from the same outside correspondent {originator}", best["id"])
 
         new_id = "T-" + hashlib.sha256(email.message_id.encode()).hexdigest()[:8]
         return Link(new_id, "new", 1.0, "no earlier message matched")

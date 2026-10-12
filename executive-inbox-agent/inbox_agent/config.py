@@ -22,7 +22,7 @@ GOLD_FILE = os.environ.get("GOLD_FILE", str(ROOT / "data" / "gold.yaml"))
 KILL_SWITCH_FILE = os.environ.get("KILL_SWITCH_FILE", str(ROOT / "agent.kill"))
 
 EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "intfloat/multilingual-e5-base")
-THREAD_SIMILARITY_THRESHOLD = float(os.environ.get("THREAD_SIMILARITY_THRESHOLD", "0.86"))
+THREAD_SIMILARITY_THRESHOLD = float(os.environ.get("THREAD_SIMILARITY_THRESHOLD", "0.88"))
 THREAD_WINDOW_DAYS = int(os.environ.get("THREAD_WINDOW_DAYS", "30"))
 
 MAX_CORRECTION_EXAMPLES = int(os.environ.get("MAX_CORRECTION_EXAMPLES", "6"))

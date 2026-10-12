@@ -40,7 +40,8 @@ def _context(with_embedder=True, source="mailpit"):
         inbox = GmailInbox(build_gmail_service())
     else:
         inbox = DatasetInbox()
-    linker = ThreadLinker(store, E5Embedder() if with_embedder else None, ignore_addresses=ignore)
+    linker = ThreadLinker(store, E5Embedder() if with_embedder else None, ignore_addresses=ignore,
+                           internal_domains=directory.company_domains)
     return Context(store=store, directory=directory, linker=linker, mailer=Mailer(),
                    board=LocalBoard(store), inbox=inbox,
                    batch=datetime.now().strftime("%Y%m%dT%H%M%S"))
