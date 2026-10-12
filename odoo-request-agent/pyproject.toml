@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Turns approved purchase requests sent by email into draft Purchase Orders in Odoo, with a human approving every write."
 requires-python = ">=3.11"
 dependencies = [
-    "agent-cost-tracker",   # pip install -e ../agent-cost-tracker
+    "agent-cost-tracker",   # pip install -e ../agent-cost-tracker (NOT the unrelated PyPI package)
     "anthropic>=1.0",
     "pydantic>=2",
     "fastapi",
