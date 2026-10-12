@@ -7,7 +7,8 @@ One run writes, next to the SRT:
   <name>.index.json       the dialogue index, searchable with python -m gulf_srt.archive
   <name>.qc.md / .qc.json the QC report: where an editor should look first
   <name>.review.html      play the episode with the subtitles and click through the QC flags
-  <name>.words.json       Whisper's raw words, times and confidence (rebuild with --from-json)
+  <name>.words.json       Whisper's raw words, times, confidence and where speech was heard
+                          (rebuild everything with --from-json)
 """
 
 import argparse
@@ -16,27 +17,45 @@ import time
 from pathlib import Path
 
 from gulf_srt import archive, formats, qc, review
+from gulf_srt.replace import apply_replacements, read_replacements
 from gulf_srt.segment import Rules, build_cues
 from gulf_srt.srt import write_srt
-from gulf_srt.transcript import load_transcript, read_hotwords, save_transcript
+from gulf_srt.transcript import Transcript, load_transcript, read_hotwords, save_transcript
+
+WORDS_SUFFIX = ".words.json"
 
 
-def write_outputs(transcript, srt_path: Path, rules: Rules, rtl: bool = True) -> tuple[list, list]:
-    """Every output file from one transcript. Returns the cues and the QC issues."""
-    stem = srt_path.with_suffix("")  # out/episode01.srt -> out/episode01
+def default_output(source: str) -> Path:
+    """Where the SRT goes when -o isn't given: beside the input, with the same name.
+    'Show.S01E03.words.json' -> 'Show.S01E03.srt' (only the known ending is removed, so dots
+    inside episode names are kept and two episodes never write over each other)."""
+    if source.endswith(WORDS_SUFFIX):
+        return Path(source[: -len(WORDS_SUFFIX)] + ".srt")
+    return Path(source).with_suffix(".srt")
+
+
+def write_outputs(transcript: Transcript, srt_path: Path, rules: Rules, rtl: bool = True,
+                  media: str | None = None) -> tuple[list, list, str]:
+    """Every output file from one transcript. Returns the cues, the QC issues, and a sentence
+    saying whether the review page was written (and why not, if it wasn't)."""
+    stem = srt_path.with_name(srt_path.stem)  # out/Show.S01E03.srt -> out/Show.S01E03
     name = srt_path.stem
     cues = build_cues(transcript.words, rules)
     write_srt(cues, srt_path, rtl=rtl)
     formats.write_text(formats.to_vtt(cues, rtl=rtl), f"{stem}.vtt")
     formats.write_text(formats.to_transcript(cues, title=name), f"{stem}.transcript.txt")
     archive.write_index(archive.make_index(archive.entries_from_cues(cues, srt_path.name)), f"{stem}.index.json")
-    issues = qc.check(cues, rules, words=transcript.words, segments=transcript.segments, duration=transcript.duration)
-    formats.write_text(qc.to_markdown(cues, issues, name, has_confidence=True), f"{stem}.qc.md")
-    formats.write_text(qc.to_json(cues, issues), f"{stem}.qc.json")
-    if transcript.source and Path(transcript.source).exists():
-        page = review.review_page(cues, issues, transcript.source, f"{stem}.review.html", name)
+    issues, notes = qc.run(cues, rules, transcript)
+    formats.write_text(qc.to_markdown(cues, issues, name, notes), f"{stem}.qc.md")
+    formats.write_text(qc.to_json(cues, issues, notes), f"{stem}.qc.json")
+    media = media or transcript.source
+    if media and Path(media).exists():
+        page = review.review_page(cues, issues, media, f"{stem}.review.html", name)
         formats.write_text(page, f"{stem}.review.html")
-    return cues, issues
+        status = f"review page -> {stem}.review.html"
+    else:
+        status = f"no review page: the media file {media or '(none recorded)'} was not found; pass --media to point at it"
+    return cues, issues, status
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -48,7 +67,9 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--device", default="auto", choices=["auto", "cuda", "cpu"])
     parser.add_argument("--hotwords", help='names and words to spell right, e.g. "عبود أبو حمد"')
     parser.add_argument("--hotwords-file", help="a file with one name or phrase per line (a show's cast list)")
+    parser.add_argument("--replacements", help="a show's correction list: 'wrong => right' per line, applied before cutting")
     parser.add_argument("--from-json", help="rebuild every output from a saved .words.json, without Whisper")
+    parser.add_argument("--media", help="the audio/video for the review page, if it has moved since transcription")
     parser.add_argument("--max-line-chars", type=int, default=42)
     parser.add_argument("--no-rtl-marks", action="store_true", help="don't add U+200F marks")
     args = parser.parse_args(argv)
@@ -56,7 +77,7 @@ def main(argv: list[str] | None = None) -> None:
         parser.error("give an input file, or --from-json")
 
     source = args.input or args.from_json
-    output = Path(args.output) if args.output else Path(source.removesuffix(".words.json")).with_suffix(".srt")
+    output = Path(args.output) if args.output else default_output(source)
     output.parent.mkdir(parents=True, exist_ok=True)  # before the long transcription, not after
     rules = Rules(max_line_chars=args.max_line_chars)
 
@@ -71,16 +92,20 @@ def main(argv: list[str] | None = None) -> None:
         started = time.perf_counter()
         transcript = transcribe(model, args.input, hotwords=hotwords)
         elapsed = time.perf_counter() - started
-        save_transcript(transcript, output.with_suffix(".words.json"))
+        save_transcript(transcript, output.with_name(output.stem + WORDS_SUFFIX))  # raw, before any replacements
         rtf = elapsed / transcript.duration if transcript.duration else 0.0
         print(f"{transcript.duration:.1f} s of audio in {elapsed:.1f} s on {device} (real-time factor {rtf:.3f})")
-        if hotwords:
-            print(f"hotwords: {hotwords}")
+        if transcript.hotwords:
+            print(f"hotwords: {transcript.hotwords}")
 
-    cues, issues = write_outputs(transcript, output, rules, rtl=not args.no_rtl_marks)
-    s = qc.summary(cues, issues)
+    if args.replacements:
+        transcript.words, count = apply_replacements(transcript.words, read_replacements(args.replacements))
+        print(f"{count} spellings fixed from {args.replacements}")
+
+    cues, issues, review_status = write_outputs(transcript, output, rules, rtl=not args.no_rtl_marks, media=args.media)
     print(f"{len(cues)} cues -> {output} (+ .vtt, .transcript.txt, .index.json, .qc.md)")
-    print(f"QC: {s['cues_flagged']} of {s['cues']} cues flagged, see {output.with_suffix('.qc.md')}")
+    print(review_status)
+    print(f"QC: {qc.headline(qc.summary(cues, issues))} See {output.with_suffix('.qc.md')}")
 
 
 if __name__ == "__main__":
