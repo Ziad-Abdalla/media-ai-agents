@@ -59,6 +59,20 @@ def test_season_numbers_are_read_from_digits_words_codes_and_years():
     assert production_numbers("Ramadan 2027") == production_numbers("BYT-R27") == {27}
 
 
+@pytest.mark.parametrize("written", ["سهرة الخميس الحلقة ١٢", "Sahrat Al-Khamis episode 12",
+                                     "سهرة الخميس، لحلقة 12", "Sahrat Al-Khamis ep12"])
+def test_an_episode_number_is_not_a_season(odoo, written):
+    # A weekly talk show names its episode in almost every email; that must not force a human pick.
+    assert resolve_production(odoo, written)["code"] == "SHK-S3"
+    assert production_numbers(written) == set()
+
+
+def test_the_ramadan_year_must_agree(odoo):
+    assert resolve_production(odoo, "Bayt Al-Jadd Ramadan 2027")["code"] == "BYT-R27"
+    other_year = resolve_production(odoo, "Bayt Al-Jadd Ramadan 2026")  # a different budget
+    assert other_year["status"] == "needs_human" and "season or year" in other_year["reason"]
+
+
 def test_unsure_production_goes_to_a_human_with_every_production_listed(odoo):
     before = dict(odoo.records["account.analytic.account"])
     result = resolve_production(odoo, "رمال")  # too short to be sure

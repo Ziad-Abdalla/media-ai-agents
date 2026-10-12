@@ -36,10 +36,14 @@ CATEGORY_PRODUCTS = {
 COMPANY_WORDS = {"co", "company", "llc", "ltd", "est", "establishment", "inc", "trading", "the"}
 # Words around a production name that don't help tell productions apart. Season numbers are
 # not lost by dropping "season": production_numbers() checks them separately.
-PRODUCTION_WORDS = {"the", "series", "show", "programme", "program", "season", "for"}
+PRODUCTION_WORDS = {"the", "series", "show", "programme", "program", "season", "for", "ramadan", "رمضان"}
 # Arabic glues small words onto the next one: لمسلسل = "for the series", والبرنامج = "and the
 # programme". This catches مسلسل / برنامج / موسم with any of those prefixes in front.
 ARABIC_PRODUCTION_WORD = re.compile(r"^و?[بلك]?(ال|ل)?(مسلسل|برنامج|موسم)$")
+# Episode words: "episode 12", "ep 12", "الحلقة ١٢", "لحلقة ١٢". An episode is part of a production,
+# so its number is dropped, never read as a season. (After normalize(), ة is written ه.)
+EPISODE_WORD = re.compile(r"^(episode|ep|و?[بلك]?(ال|ل)?حلقه)$")
+EPISODE_TOKEN = re.compile(r"^(episode|ep|e)\d+$")  # "ep12", "e12" written as one word
 # Season numbers people write as words. Keys are after normalize() (so الأول is written الاول).
 NUMBER_WORDS = {"one": 1, "first": 1, "two": 2, "second": 2, "three": 3, "third": 3,
                 "four": 4, "fourth": 4, "five": 5, "fifth": 5,
@@ -58,10 +62,24 @@ def similarity(a: str, b: str, drop: set[str] = COMPANY_WORDS) -> float:
     return difflib.SequenceMatcher(None, normalize(a, drop), normalize(b, drop)).ratio()
 
 
+def without_episodes(words: list[str]) -> list[str]:
+    """Drop episode words and the number after them: ["سهره", "الخميس", "الحلقه", "١٢"] ->
+    ["سهره", "الخميس"]."""
+    kept, after_episode_word = [], False
+    for w in words:
+        if after_episode_word and w.isdigit():
+            after_episode_word = False
+            continue
+        after_episode_word = bool(EPISODE_WORD.match(w))
+        if not (after_episode_word or EPISODE_TOKEN.match(w)):
+            kept.append(w)
+    return kept
+
+
 def production_key(name: str) -> str:
     """A production name cleaned up for comparing the name only: "لمسلسل رمال الخبر الموسم ٢"
     -> "رمال الخبر". Loose numbers are dropped here because production_numbers() checks them."""
-    return " ".join(w for w in normalize(name, PRODUCTION_WORDS).split()
+    return " ".join(w for w in without_episodes(normalize(name, PRODUCTION_WORDS).split())
                     if not (ARABIC_PRODUCTION_WORD.match(w) or w.isdigit() or w in NUMBER_WORDS))
 
 
@@ -69,7 +87,7 @@ def production_numbers(text: str) -> set[int]:
     """Season or year numbers in a production name or code: "S4" -> {4}, "الموسم ٢" -> {2},
     "season two" -> {2}, "RML-S1" -> {1}. A year counts by its last two digits, so
     "Ramadan 2027" and the code BYT-R27 agree. Arabic-Indic digits like ٢ count too."""
-    words = normalize(text, set()).replace("_", " ").split()
+    words = without_episodes(normalize(text, set()).replace("_", " ").split())
     numbers = {int(n) for n in re.findall(r"\d+", " ".join(words))}
     numbers |= {NUMBER_WORDS[w] for w in words if w in NUMBER_WORDS}
     return {n % 100 if n >= 2000 else n for n in numbers}
