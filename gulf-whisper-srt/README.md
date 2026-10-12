@@ -106,7 +106,7 @@ out right-to-left. The words themselves are not reordered or changed, and the te
 
 ## Sample output
 
-From `results/large-v3-turbo-cuda/sada_demo_scene.srt` (Saudi dialect TV comedy, SADA, CC BY-NC-SA 4.0).
+From `results/large-v3-turbo-cuda/sada_demo_scene.srt` (Saudi dialect TV show, SADA, CC BY-NC-SA 4.0).
 The Whisper mistakes are left in on purpose. This is what an editor would get as a first draft:
 
 ```srt
@@ -145,16 +145,16 @@ The `.hyp.txt` files next to each `.srt` are the raw Whisper text that was score
 | fleurs_ar_066 | MSA, read | 25.7 | 6.9% | 6.9% | 2.6% | 0.025 | 0.372 |
 | fleurs_ar_184 | MSA, read | 23.8 | 45.8% | 45.8% | 10.2% | 0.024 | 0.511 |
 | fleurs_ar_263 | MSA, read | 21.5 | 8.3% | 0.0% | 0.0% | 0.028 | 0.687 |
-| sada_scene_a | Saudi dialect, TV comedy | 48.9 | 45.7% | 36.2% | 13.8% | 0.037 | 0.583 |
-| sada_scene_b | Saudi dialect, TV comedy | 60.9 | 52.1% | 47.9% | 21.6% | 0.038 | 0.655 |
-| sada_demo_scene | Saudi dialect, TV comedy | 55.0 | no reference | no reference | no reference | 0.040 | 0.774 |
+| sada_scene_a | Saudi dialect, TV show | 48.9 | 45.7% | 36.2% | 13.8% | 0.037 | 0.583 |
+| sada_scene_b | Saudi dialect, TV show | 60.9 | 52.1% | 47.9% | 21.6% | 0.038 | 0.655 |
+| sada_demo_scene | Saudi dialect, TV show | 55.0 | no reference | no reference | no reference | 0.040 | 0.774 |
 
 Pooled (all errors ÷ all reference words), Arabic normalization:
 
 | Variety | Reference words | WER | CER |
 |---|---|---|---|
 | MSA, read (4 clips) | 113 | 13.3% | 3.2% |
-| Saudi dialect, TV comedy (2 clips) | 190 | 42.1% | 17.8% |
+| Saudi dialect, TV show (2 clips) | 190 | 42.1% | 17.8% |
 
 **How to read this.**
 - **"Light" normalization** only removes punctuation. **"Arabic" normalization** also removes

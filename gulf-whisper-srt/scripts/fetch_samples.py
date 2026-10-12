@@ -121,7 +121,7 @@ def fetch_sada(manifest: list[dict]) -> None:
         (SAMPLES / f"{clip_id}.ref.txt").write_text(" ".join(texts), encoding="utf-8")
         print(f"{clip_id}: {len(texts)} segments, {len(audio) / SAMPLE_RATE:.1f} s")
         manifest.append(
-            {"id": clip_id, "variety": "Saudi/Gulf dialect (TV comedy)", "license": "CC BY-NC-SA 4.0",
+            {"id": clip_id, "variety": "Saudi/Gulf dialect (TV show)", "license": "CC BY-NC-SA 4.0",
              "seconds": round(len(audio) / SAMPLE_RATE, 1), "has_reference": True}
         )
 
@@ -130,7 +130,7 @@ def fetch_sada(manifest: list[dict]) -> None:
     save_wav(SAMPLES / f"{clip_id}.wav", audio)
     print(f"{clip_id}: continuous {start:.0f}-{end:.0f} s, no reference (SRT demo only)")
     manifest.append(
-        {"id": clip_id, "variety": "Saudi/Gulf dialect (TV comedy)", "license": "CC BY-NC-SA 4.0",
+        {"id": clip_id, "variety": "Saudi/Gulf dialect (TV show)", "license": "CC BY-NC-SA 4.0",
          "seconds": round(len(audio) / SAMPLE_RATE, 1), "has_reference": False}
     )
 

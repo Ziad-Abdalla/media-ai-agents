@@ -24,7 +24,7 @@ clips and carry the same license and attribution as the clip they come from.
 - **Reference transcript:** the dataset's own `raw_transcription` field (official, punctuated).
 - **Note:** the `ar_eg` config is Modern Standard Arabic read aloud by Egyptian speakers, not Egyptian dialect.
 
-## 2. SADA, Saudi/Gulf dialect (TV comedy, conversational)
+## 2. SADA, Saudi/Gulf dialect (TV show, conversational)
 
 | Clip id | What it is | Length |
 |---|---|---|
