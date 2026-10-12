@@ -22,7 +22,6 @@ from .planning import (
     TimeRules,
     budget_summary,
     call_times,
-    is_light,
 )
 
 
@@ -150,9 +149,8 @@ def schedule_html(schedule: Schedule, title: str) -> str:
     ]
     rows, classes = [], []
     for day in schedule.days:
-        light = " · يوم خفيف" if is_light(day, s) else ""
         rows.append(f"اليوم {day.number} · {date_ar(day.date)} · وردية {day.shift} · {len(day.strips)} مشاهد"
-                    f" · {pages(day.eighths)} من {pages(s.max_eighths)} صفحات{light}"
+                    f' · <span dir="ltr">{pages(day.eighths)}</span> من {pages(s.max_eighths)} صفحات'
                     f" · تنقلات بين المواقع: {day.moves}")
         classes.append("daybreak")
         shown_notes: set[str] = set()  # a place note is shown once per day, not on every strip
