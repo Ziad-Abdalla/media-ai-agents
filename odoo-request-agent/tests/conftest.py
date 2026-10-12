@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from odoo_agent import config
+from odoo_agent import config, kpis
 from odoo_agent.models import Email
 from odoo_agent.pipeline import approve_run
 from odoo_agent.plan import plan_hash
@@ -160,13 +160,14 @@ class FakeAnthropic:
 
 @pytest.fixture(autouse=True)
 def isolated(tmp_path, monkeypatch):
-    """Every test gets its own cost ledger, kill switch file and settings."""
+    """Every test gets its own cost ledger, kill switch file, eval result and settings."""
     monkeypatch.setenv("COST_DB_PATH", str(tmp_path / "costs.sqlite"))
     monkeypatch.setenv("COST_BUDGET_USD", "15")
     monkeypatch.setenv("AGENT_WRITES_ENABLED", "true")
     monkeypatch.setattr(config, "KILL_SWITCH_FILE", str(tmp_path / "agent.kill"))
     monkeypatch.setattr(config, "COMPANY_DOMAINS", ["sadaf.example"])
     monkeypatch.setattr(config, "ALLOWED_CURRENCIES", ["SAR", "USD"])
+    monkeypatch.setattr(kpis, "EVAL_RESULT", tmp_path / "no-eval-yet.json")  # not the repo's real one
 
 
 @pytest.fixture

@@ -42,7 +42,7 @@ def test_run_eval_scores_and_records_cost_under_its_own_name():
     result = run_eval(FakeAnthropic())  # always answers "the crane email"
     s = result["summary"]
     assert s["emails"] == len([x for x in SAMPLES["samples"] if x.get("eval", True)])
-    assert s["emails_all_correct"] >= 1  # the crane email itself
+    assert s["readings_all_correct"] >= 1  # the crane email itself
     assert 0 < s["field_accuracy_pct"] < 100
     assert s["cost_usd"] > 0  # recorded in the ledger as eval_extract_purchase_request
     assert any(m["id"] == "arabic-lights" for m in result["misses"])

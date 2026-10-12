@@ -7,7 +7,7 @@
   python -m odoo_agent rollback <run_id>
   python -m odoo_agent kill | unkill    stop / allow all agent writes
   python -m odoo_agent kpis [--json]    KPI report for management (no AI calls, no writes)
-  python -m odoo_agent eval [--effort low|medium]   extraction accuracy on labelled emails
+  python -m odoo_agent eval [--effort low|medium] [--repeats N]   extraction accuracy on labelled emails
 """
 
 import argparse
@@ -30,7 +30,9 @@ def main() -> None:
     sub.add_parser("kill")
     sub.add_parser("unkill")
     sub.add_parser("kpis").add_argument("--json", action="store_true")
-    sub.add_parser("eval").add_argument("--effort", default="low", choices=["low", "medium", "high"])
+    evaluation = sub.add_parser("eval")
+    evaluation.add_argument("--effort", default="low", choices=["low", "medium", "high"])
+    evaluation.add_argument("--repeats", type=int, default=1)
     args = parser.parse_args()
     sys.stdout.reconfigure(encoding="utf-8")  # so Arabic subjects print on Windows
     store = Store()
@@ -109,7 +111,7 @@ def main() -> None:
 
         from .evaluate import as_text, run_eval, save
 
-        result = run_eval(anthropic.Anthropic(), effort=args.effort)
+        result = run_eval(anthropic.Anthropic(), effort=args.effort, repeats=args.repeats)
         print(as_text(result))
         print(f"\nSaved: {save(result)}")
 

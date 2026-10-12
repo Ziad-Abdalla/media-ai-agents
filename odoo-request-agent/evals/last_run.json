@@ -1,0 +1,453 @@
+{
+  "summary": {
+    "date": "2026-10-12",
+    "model": "claude-haiku-5-5",
+    "effort": "low",
+    "emails": 10,
+    "repeats": 3,
+    "readings": 30,
+    "fields_checked": 243,
+    "field_accuracy_pct": 100.0,
+    "readings_all_correct": 30,
+    "per_field_pct": {
+      "approval_reference": 100.0,
+      "categories": 100.0,
+      "currency": 100.0,
+      "injection_noted": 100.0,
+      "needed_by": 100.0,
+      "production": 100.0,
+      "quantities": 100.0,
+      "unit_prices": 100.0,
+      "vendor": 100.0
+    },
+    "cost_usd": 0.0098,
+    "mean_latency_ms": 2320
+  },
+  "misses": [],
+  "per_email": [
+    {
+      "id": "crane",
+      "repeat": 0,
+      "fields": {
+        "vendor": true,
+        "production": true,
+        "approval_reference": true,
+        "needed_by": true,
+        "currency": true,
+        "quantities": true,
+        "unit_prices": true,
+        "categories": true
+      }
+    },
+    {
+      "id": "lights-incomplete",
+      "repeat": 0,
+      "fields": {
+        "vendor": true,
+        "production": true,
+        "approval_reference": true,
+        "needed_by": true,
+        "currency": true,
+        "quantities": true,
+        "unit_prices": true,
+        "categories": true
+      }
+    },
+    {
+      "id": "sound-injection",
+      "repeat": 0,
+      "fields": {
+        "vendor": true,
+        "production": true,
+        "approval_reference": true,
+        "needed_by": true,
+        "currency": true,
+        "quantities": true,
+        "unit_prices": true,
+        "categories": true,
+        "injection_noted": true
+      }
+    },
+    {
+      "id": "catering-new-vendor",
+      "repeat": 0,
+      "fields": {
+        "vendor": true,
+        "production": true,
+        "approval_reference": true,
+        "needed_by": true,
+        "currency": true,
+        "quantities": true,
+        "unit_prices": true,
+        "categories": true
+      }
+    },
+    {
+      "id": "arabic-lights",
+      "repeat": 0,
+      "fields": {
+        "vendor": true,
+        "production": true,
+        "approval_reference": true,
+        "needed_by": true,
+        "currency": true,
+        "quantities": true,
+        "unit_prices": true,
+        "categories": true
+      }
+    },
+    {
+      "id": "mixed-camera",
+      "repeat": 0,
+      "fields": {
+        "vendor": true,
+        "production": true,
+        "approval_reference": true,
+        "needed_by": true,
+        "currency": true,
+        "quantities": true,
+        "unit_prices": true,
+        "categories": true
+      }
+    },
+    {
+      "id": "crew-freelancer",
+      "repeat": 0,
+      "fields": {
+        "vendor": true,
+        "production": true,
+        "approval_reference": true,
+        "needed_by": true,
+        "currency": true,
+        "quantities": true,
+        "unit_prices": true,
+        "categories": true
+      }
+    },
+    {
+      "id": "location-fee",
+      "repeat": 0,
+      "fields": {
+        "vendor": true,
+        "production": true,
+        "approval_reference": true,
+        "needed_by": true,
+        "currency": true,
+        "quantities": true,
+        "unit_prices": true,
+        "categories": true
+      }
+    },
+    {
+      "id": "led-wall-over-budget",
+      "repeat": 0,
+      "fields": {
+        "vendor": true,
+        "production": true,
+        "approval_reference": true,
+        "needed_by": true,
+        "currency": true,
+        "quantities": true,
+        "unit_prices": true,
+        "categories": true
+      }
+    },
+    {
+      "id": "unclear-production",
+      "repeat": 0,
+      "fields": {
+        "vendor": true,
+        "production": true,
+        "approval_reference": true,
+        "needed_by": true,
+        "currency": true,
+        "quantities": true,
+        "unit_prices": true,
+        "categories": true
+      }
+    },
+    {
+      "id": "crane",
+      "repeat": 1,
+      "fields": {
+        "vendor": true,
+        "production": true,
+        "approval_reference": true,
+        "needed_by": true,
+        "currency": true,
+        "quantities": true,
+        "unit_prices": true,
+        "categories": true
+      }
+    },
+    {
+      "id": "lights-incomplete",
+      "repeat": 1,
+      "fields": {
+        "vendor": true,
+        "production": true,
+        "approval_reference": true,
+        "needed_by": true,
+        "currency": true,
+        "quantities": true,
+        "unit_prices": true,
+        "categories": true
+      }
+    },
+    {
+      "id": "sound-injection",
+      "repeat": 1,
+      "fields": {
+        "vendor": true,
+        "production": true,
+        "approval_reference": true,
+        "needed_by": true,
+        "currency": true,
+        "quantities": true,
+        "unit_prices": true,
+        "categories": true,
+        "injection_noted": true
+      }
+    },
+    {
+      "id": "catering-new-vendor",
+      "repeat": 1,
+      "fields": {
+        "vendor": true,
+        "production": true,
+        "approval_reference": true,
+        "needed_by": true,
+        "currency": true,
+        "quantities": true,
+        "unit_prices": true,
+        "categories": true
+      }
+    },
+    {
+      "id": "arabic-lights",
+      "repeat": 1,
+      "fields": {
+        "vendor": true,
+        "production": true,
+        "approval_reference": true,
+        "needed_by": true,
+        "currency": true,
+        "quantities": true,
+        "unit_prices": true,
+        "categories": true
+      }
+    },
+    {
+      "id": "mixed-camera",
+      "repeat": 1,
+      "fields": {
+        "vendor": true,
+        "production": true,
+        "approval_reference": true,
+        "needed_by": true,
+        "currency": true,
+        "quantities": true,
+        "unit_prices": true,
+        "categories": true
+      }
+    },
+    {
+      "id": "crew-freelancer",
+      "repeat": 1,
+      "fields": {
+        "vendor": true,
+        "production": true,
+        "approval_reference": true,
+        "needed_by": true,
+        "currency": true,
+        "quantities": true,
+        "unit_prices": true,
+        "categories": true
+      }
+    },
+    {
+      "id": "location-fee",
+      "repeat": 1,
+      "fields": {
+        "vendor": true,
+        "production": true,
+        "approval_reference": true,
+        "needed_by": true,
+        "currency": true,
+        "quantities": true,
+        "unit_prices": true,
+        "categories": true
+      }
+    },
+    {
+      "id": "led-wall-over-budget",
+      "repeat": 1,
+      "fields": {
+        "vendor": true,
+        "production": true,
+        "approval_reference": true,
+        "needed_by": true,
+        "currency": true,
+        "quantities": true,
+        "unit_prices": true,
+        "categories": true
+      }
+    },
+    {
+      "id": "unclear-production",
+      "repeat": 1,
+      "fields": {
+        "vendor": true,
+        "production": true,
+        "approval_reference": true,
+        "needed_by": true,
+        "currency": true,
+        "quantities": true,
+        "unit_prices": true,
+        "categories": true
+      }
+    },
+    {
+      "id": "crane",
+      "repeat": 2,
+      "fields": {
+        "vendor": true,
+        "production": true,
+        "approval_reference": true,
+        "needed_by": true,
+        "currency": true,
+        "quantities": true,
+        "unit_prices": true,
+        "categories": true
+      }
+    },
+    {
+      "id": "lights-incomplete",
+      "repeat": 2,
+      "fields": {
+        "vendor": true,
+        "production": true,
+        "approval_reference": true,
+        "needed_by": true,
+        "currency": true,
+        "quantities": true,
+        "unit_prices": true,
+        "categories": true
+      }
+    },
+    {
+      "id": "sound-injection",
+      "repeat": 2,
+      "fields": {
+        "vendor": true,
+        "production": true,
+        "approval_reference": true,
+        "needed_by": true,
+        "currency": true,
+        "quantities": true,
+        "unit_prices": true,
+        "categories": true,
+        "injection_noted": true
+      }
+    },
+    {
+      "id": "catering-new-vendor",
+      "repeat": 2,
+      "fields": {
+        "vendor": true,
+        "production": true,
+        "approval_reference": true,
+        "needed_by": true,
+        "currency": true,
+        "quantities": true,
+        "unit_prices": true,
+        "categories": true
+      }
+    },
+    {
+      "id": "arabic-lights",
+      "repeat": 2,
+      "fields": {
+        "vendor": true,
+        "production": true,
+        "approval_reference": true,
+        "needed_by": true,
+        "currency": true,
+        "quantities": true,
+        "unit_prices": true,
+        "categories": true
+      }
+    },
+    {
+      "id": "mixed-camera",
+      "repeat": 2,
+      "fields": {
+        "vendor": true,
+        "production": true,
+        "approval_reference": true,
+        "needed_by": true,
+        "currency": true,
+        "quantities": true,
+        "unit_prices": true,
+        "categories": true
+      }
+    },
+    {
+      "id": "crew-freelancer",
+      "repeat": 2,
+      "fields": {
+        "vendor": true,
+        "production": true,
+        "approval_reference": true,
+        "needed_by": true,
+        "currency": true,
+        "quantities": true,
+        "unit_prices": true,
+        "categories": true
+      }
+    },
+    {
+      "id": "location-fee",
+      "repeat": 2,
+      "fields": {
+        "vendor": true,
+        "production": true,
+        "approval_reference": true,
+        "needed_by": true,
+        "currency": true,
+        "quantities": true,
+        "unit_prices": true,
+        "categories": true
+      }
+    },
+    {
+      "id": "led-wall-over-budget",
+      "repeat": 2,
+      "fields": {
+        "vendor": true,
+        "production": true,
+        "approval_reference": true,
+        "needed_by": true,
+        "currency": true,
+        "quantities": true,
+        "unit_prices": true,
+        "categories": true
+      }
+    },
+    {
+      "id": "unclear-production",
+      "repeat": 2,
+      "fields": {
+        "vendor": true,
+        "production": true,
+        "approval_reference": true,
+        "needed_by": true,
+        "currency": true,
+        "quantities": true,
+        "unit_prices": true,
+        "categories": true
+      }
+    }
+  ],
+  "_note": "Synthetic labelled emails from samples/requests.json; not Sadaf data."
+}

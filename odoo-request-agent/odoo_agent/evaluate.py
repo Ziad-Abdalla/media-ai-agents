@@ -2,6 +2,7 @@
 
   python -m odoo_agent eval                    current settings (effort low), saves evals/last_run.json
   python -m odoo_agent eval --effort medium    same emails at another effort, saved as its own file
+  python -m odoo_agent eval --repeats 3        read every email 3 times: is the model consistent?
 
 The emails and their right answers are in samples/requests.json (synthetic, written by hand).
 Each email is read by the model exactly like in production, then every field is compared with
@@ -62,27 +63,28 @@ def check_fields(got, expected: dict, accounts: list[dict]) -> dict[str, bool]:
     return result
 
 
-def run_eval(client, effort: str = "low") -> dict:
+def run_eval(client, effort: str = "low", repeats: int = 1) -> dict:
     data = json.loads(SAMPLES_FILE.read_text(encoding="utf-8"))
     cases = [s for s in data["samples"] if s.get("eval", True) and "expected" in s]
     accounts = _accounts()
     started = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime())
     per_email, misses = [], []
 
-    for case in cases:
+    for case, repeat in [(c, r) for r in range(repeats) for c in cases]:
         email = Email(message_id=f"<eval-{case['id']}>", sender=case["sender"], subject=case["subject"],
                       body=case["body"], received_at=data["eval_received_at"])
         try:
-            got = extract_request(client, email, f"eval-{case['id']}", effort=effort, operation=OPERATION)
+            got = extract_request(client, email, f"eval-{case['id']}-{repeat}", effort=effort, operation=OPERATION,
+                                  productions=[a["name"] for a in accounts])
         except ExtractionFailed as e:
-            per_email.append({"id": case["id"], "error": str(e), "fields": {}})
+            per_email.append({"id": case["id"], "repeat": repeat, "error": str(e), "fields": {}})
             misses.append({"id": case["id"], "field": "everything", "got": str(e)})
             continue
         fields = check_fields(got, case["expected"], accounts)
-        per_email.append({"id": case["id"], "fields": fields})
+        per_email.append({"id": case["id"], "repeat": repeat, "fields": fields})
         for field, ok in fields.items():
             if not ok:
-                misses.append({"id": case["id"], "field": field,
+                misses.append({"id": case["id"], "repeat": repeat, "field": field,
                                "got": got.model_dump(include={"vendor_name", "production", "approval_reference",
                                                               "needed_by", "items", "confidence_notes"})})
 
@@ -96,9 +98,10 @@ def run_eval(client, effort: str = "low") -> dict:
     field_names = sorted({f for e in per_email for f in e["fields"]})
     summary = {
         "date": date.today().isoformat(), "model": config.MODEL, "effort": effort,
-        "emails": len(cases), "fields_checked": len(checked),
+        "emails": len(cases), "repeats": repeats, "readings": len(per_email),
+        "fields_checked": len(checked),
         "field_accuracy_pct": round(sum(checked) / len(checked) * 100, 1) if checked else 0.0,
-        "emails_all_correct": sum(1 for e in per_email if e["fields"] and all(e["fields"].values())),
+        "readings_all_correct": sum(1 for e in per_email if e["fields"] and all(e["fields"].values())),
         "per_field_pct": {f: round(sum(e["fields"][f] for e in per_email if f in e["fields"]) /
                                    sum(1 for e in per_email if f in e["fields"]) * 100, 1)
                           for f in field_names},
@@ -118,9 +121,10 @@ def save(result: dict) -> Path:
 
 def as_text(result: dict) -> str:
     s = result["summary"]
-    lines = [f"Extraction eval: {s['model']}, effort {s['effort']}, {s['emails']} labelled synthetic emails",
+    lines = [f"Extraction eval: {s['model']}, effort {s['effort']}, {s['emails']} labelled synthetic emails"
+             f" x {s['repeats']}",
              f"Fields right: {s['field_accuracy_pct']}% of {s['fields_checked']}   "
-             f"emails fully right: {s['emails_all_correct']}/{s['emails']}",
+             f"readings fully right: {s['readings_all_correct']}/{s['readings']}",
              f"Cost: ${s['cost_usd']:.5f}   mean latency: {s['mean_latency_ms']} ms", ""]
     lines += [f"  {field:<20} {pct}%" for field, pct in s["per_field_pct"].items()]
     if result["misses"]:

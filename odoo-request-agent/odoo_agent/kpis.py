@@ -168,6 +168,6 @@ def as_text(k: dict) -> str:
                   f"({b['used_pct']}%, {b['po_count']} POs)" for b in k["budgets"]]
     if k["extraction_eval"]:
         e = k["extraction_eval"]
-        lines += ["", f"Extraction accuracy (last eval, {e['emails']} labelled synthetic emails): "
-                      f"{e['field_accuracy_pct']}% of fields, {e['emails_all_correct']} emails fully right"]
+        lines += ["", f"Extraction accuracy (last eval, {e['emails']} labelled synthetic emails x {e['repeats']}): "
+                      f"{e['field_accuracy_pct']}% of fields, {e['readings_all_correct']} of {e['readings']} readings fully right"]
     return "\n".join(lines)

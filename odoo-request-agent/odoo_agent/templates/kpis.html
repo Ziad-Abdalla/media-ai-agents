@@ -54,7 +54,7 @@
     <div class="note">${{ "%.5f"|format(k.model_cost_usd) }} total, {{ k.requests_read_by_model }} requests</div></div>
   <div class="tile"><div class="label">Extraction accuracy (eval)</div>
     <div class="value">{% if k.extraction_eval %}{{ k.extraction_eval.field_accuracy_pct }}%{% else %}n/a{% endif %}</div>
-    <div class="note">{% if k.extraction_eval %}{{ k.extraction_eval.emails_all_correct }} of {{ k.extraction_eval.emails }} labelled emails fully right{% else %}run: python -m odoo_agent eval{% endif %}</div></div>
+    <div class="note">{% if k.extraction_eval %}{{ k.extraction_eval.readings_all_correct }} of {{ k.extraction_eval.readings }} readings fully right ({{ k.extraction_eval.emails }} synthetic emails x {{ k.extraction_eval.repeats }}){% else %}run: python -m odoo_agent eval{% endif %}</div></div>
   <div class="tile"><div class="label">Asked sender for missing info</div>
     <div class="value">{{ k.needed_info }}</div>
     <div class="note">reply drafted in the sender's language</div></div>
