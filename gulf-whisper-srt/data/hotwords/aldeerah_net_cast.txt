@@ -1,0 +1,6 @@
+# Character names for the SADA evaluation episode of «الديرة نت» (a public Saudi TV series).
+# A production house has its cast list before transcription; for this public episode we
+# took the two names spoken in the evaluation clips from the dataset's reference transcript.
+# That makes this list a best case for names, so the before/after numbers are measured, not assumed.
+عبود
+أبو حمد
