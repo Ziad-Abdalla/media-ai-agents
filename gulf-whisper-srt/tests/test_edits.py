@@ -44,9 +44,13 @@ def test_folders_are_paired_by_file_name(tmp_path, capsys):
     (tmp_path / "final").mkdir()
     write_srt(DRAFT, tmp_path / "draft" / "ep01.srt")
     write_srt(FINAL, tmp_path / "final" / "ep01.srt")
-    write_srt(DRAFT, tmp_path / "draft" / "ep02.srt")  # not edited yet: no final, so skipped
+    write_srt(DRAFT, tmp_path / "draft" / "ep02.srt")  # not edited yet: no final, so not counted
+    write_srt(FINAL, tmp_path / "final" / "ep03_final.srt")  # saved under another name
     main([str(tmp_path / "draft"), str(tmp_path / "final"), "--report", str(tmp_path / "kpi.md"),
           "--suggest", str(tmp_path / "fixes.txt"), "--min-count", "1"])
-    assert "| ep01 | 4 | 2 (50%) | 1 |" in (tmp_path / "kpi.md").read_text(encoding="utf-8")
-    assert "ep02" not in capsys.readouterr().out
+    kpi = (tmp_path / "kpi.md").read_text(encoding="utf-8")
+    assert "| ep01 | 4 | 2 (50%) | 1 |" in kpi and "| ep02 |" not in kpi
+    assert "1 draft(s) with no final of the same name: ep02.srt" in kpi
+    assert "1 final(s) with no draft of the same name: ep03_final.srt" in kpi
+    assert "ep03_final.srt has no draft" in capsys.readouterr().err
     assert "# على شأن => علشان" in (tmp_path / "fixes.txt").read_text(encoding="utf-8")

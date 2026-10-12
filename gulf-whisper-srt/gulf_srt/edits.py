@@ -3,7 +3,9 @@
     python -m gulf_srt.edits out/ep01.srt final/ep01.srt
     python -m gulf_srt.edits out/ final/ --report edits.md --suggest suggested_fixes.txt
 
-Given two folders, it pairs the SRT files by name. For each episode it measures:
+Given two folders, it pairs the SRT files by identical name. A draft with no final of the same
+name (or a final with no draft, like ep01_final.srt) is listed on screen and in the report, so
+an episode never drops out of the monthly figure without anyone noticing. For each episode it measures:
 
 - lines changed: the share of draft subtitles whose words the editor changed or deleted.
   A line the editor only moved in time counts as "retimed", not changed.
@@ -92,14 +94,21 @@ def suggestions(swaps: Counter, episodes: dict[tuple[str, str], set], min_count:
     return "\n".join(out) + "\n"
 
 
-def report(rows: list[tuple[str, dict]]) -> str:
-    """A short markdown table per episode, with a total, for a weekly or monthly report."""
+def report(rows: list[tuple[str, dict]], unpaired: tuple[list[str], list[str]] = ([], [])) -> str:
+    """A short markdown table per episode, with a total, for a weekly or monthly report.
+    `unpaired` is (drafts with no final, finals with no draft); they are listed as not counted."""
     def line(name: str, r: dict) -> str:
         share = r["changed"] / r["lines"] if r["lines"] else 0.0
         rate = r["word_edits"] / r["final_words"] if r["final_words"] else 0.0
         return f"| {name} | {r['lines']} | {r['changed']} ({share:.0%}) | {r['retimed']} | {rate:.1%} |"
 
     total = {k: sum(r[k] for _, r in rows) for k in ("lines", "changed", "retimed", "word_edits", "final_words")}
+    no_final, no_draft = unpaired
+    missing = []
+    if no_final:
+        missing.append(f"{len(no_final)} draft(s) with no final of the same name: {', '.join(no_final)}")
+    if no_draft:
+        missing.append(f"{len(no_draft)} final(s) with no draft of the same name: {', '.join(no_draft)}")
     return "\n".join([
         "| Episode | Draft lines | Lines changed by the editor | Retimed only | Word edit rate |",
         "|---|---|---|---|---|",
@@ -108,6 +117,7 @@ def report(rows: list[tuple[str, dict]]) -> str:
         "",
         "Lines changed and word edit rate measure how far the draft was from the approved subtitles. "
         "Editing time is not in the files; log minutes per episode to report time saved.",
+        *(["", "**Not counted** (files are paired by identical name): " + "; ".join(missing) + "."] if missing else []),
     ]) + "\n"
 
 
@@ -115,6 +125,14 @@ def pairs(draft: Path, final: Path) -> list[tuple[Path, Path]]:
     if draft.is_file():
         return [(draft, final)]
     return [(d, final / d.name) for d in sorted(draft.glob("*.srt")) if (final / d.name).exists()]
+
+
+def unpaired(draft: Path, final: Path) -> tuple[list[str], list[str]]:
+    """(draft files with no final of the same name, final files with no draft of the same name)."""
+    if draft.is_file():
+        return [], []
+    drafts, finals = {d.name for d in draft.glob("*.srt")}, {f.name for f in final.glob("*.srt")}
+    return sorted(drafts - finals), sorted(finals - drafts)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -137,7 +155,12 @@ def main(argv: list[str] | None = None) -> None:
     if not rows:
         parser.error("no draft/final pairs found (folders are paired by file name)")
 
-    table = report(rows)
+    missing = unpaired(Path(args.draft), Path(args.final))
+    for name in missing[0]:
+        print(f"not counted: {name} has no final with the same name", file=sys.stderr)
+    for name in missing[1]:
+        print(f"not counted: {name} has no draft with the same name", file=sys.stderr)
+    table = report(rows, missing)
     print(table)
     if args.report:
         Path(args.report).write_text(table, encoding="utf-8")
