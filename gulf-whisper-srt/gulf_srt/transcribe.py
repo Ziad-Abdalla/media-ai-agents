@@ -4,6 +4,8 @@ import glob
 import os
 import sys
 
+import numpy as np
+
 from gulf_srt.segment import Word
 
 
@@ -26,7 +28,12 @@ def load_model(name: str = "large-v3-turbo", device: str = "auto"):
 
     if device in ("auto", "cuda"):
         try:
-            return WhisperModel(name, device="cuda", compute_type="float16"), "cuda"
+            model = WhisperModel(name, device="cuda", compute_type="float16")
+            # Loading can succeed even when a CUDA library (like cuBLAS) is missing; the
+            # error only shows up on the first real run. So do a one-second test run now.
+            segments, _ = model.transcribe(np.zeros(16000, dtype=np.float32), language="ar")
+            list(segments)  # segments is a generator; this makes the work actually happen
+            return model, "cuda"
         except Exception as error:  # no GPU, or CUDA libraries missing
             if device == "cuda":
                 raise
@@ -42,7 +49,7 @@ def transcribe(model, audio) -> tuple[list[Word], float]:
     segments, info = model.transcribe(
         audio,
         language="ar",  # don't let Whisper guess; dialect speech can be mis-detected
-        vad_filter=True,  # skip music/silence, where Whisper tends to invent text
+        vad_filter=True,  # skip stretches with no speech, where Whisper tends to invent text
         word_timestamps=True,  # we need per-word times to cut subtitles well
         beam_size=5,
         condition_on_previous_text=False,  # stops one mistake repeating down the file
