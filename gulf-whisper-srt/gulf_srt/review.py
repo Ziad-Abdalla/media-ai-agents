@@ -1,4 +1,4 @@
-﻿"""A one-file HTML review page: play the episode with the draft subtitles under it,
+"""A one-file HTML review page: play the episode with the draft subtitles under it,
 see the QC flags, and click any flag or line to jump to that moment.
 
 It is a plain .html file with no server and nothing loaded from the internet. The media
@@ -14,13 +14,18 @@ import re
 from pathlib import Path
 
 from gulf_srt.formats import timecode
-from gulf_srt.qc import LOOK_FIRST, MISSING, READABILITY, Issue, summary
+from gulf_srt.qc import MAYBE_MISSING, MAYBE_WRONG, QUIET_GAP, READABILITY, Issue, summary
 from gulf_srt.segment import Cue
 
 VIDEO_EXTENSIONS = {".mp4", ".mov", ".mkv", ".webm", ".m4v", ".mxf"}
 # The page is for Arabic-speaking staff, so its labels are Arabic. The QC details stay in
 # English (they are technical and also go into the .qc.md report).
-PRIORITY_AR = {LOOK_FIRST: "قد تكون الكلمات خاطئة", READABILITY: "صعبة القراءة", MISSING: "ربما فات حوار"}
+PRIORITY_AR = {
+    MAYBE_MISSING: "ربما فات حوار",
+    MAYBE_WRONG: "قد تكون الكلمات خاطئة",
+    READABILITY: "صعبة القراءة",
+    QUIET_GAP: "فراغ طويل بلا كلام تقريبًا",
+}
 
 _STYLE = """
 body { font-family: "Segoe UI", Tahoma, sans-serif; margin: 0; background: #f4f1ea; color: #222; }
@@ -43,7 +48,7 @@ li:hover { background: #eef3f8; }
 li.now { background: #fff3c4; }
 li.flag { border-right: 4px solid #c0392b; }
 .time { font-family: Consolas, monospace; color: #555; direction: ltr; unicode-bidi: isolate; }
-.p1 { color: #c0392b; } .p2 { color: #b9770e; } .p3 { color: #2471a3; }
+.p1 { color: #8e1b10; } .p2 { color: #c0392b; } .p3 { color: #b9770e; } .p4 { color: #2471a3; }
 .detail { font-size: 13px; color: #444; }
 """
 
@@ -113,6 +118,7 @@ def review_page(cues: list[Cue], issues: list[Issue], media: str | Path, output:
 <div class="stat"><b>{s['cues']}</b>سطر ترجمة</div>
 <div class="stat"><b>{s['cues_flagged']}</b>عليها ملاحظة</div>
 <div class="stat"><b>{s['share_flagged']:.0%}</b>نسبة المراجعة</div>
+<div class="stat"><b>{s['gaps_to_check']}</b>مقاطع بلا ترجمة<br>{s['gap_seconds']:.0f} ثانية</div>
 </div>
 <ol>{issue_items}</ol>
 </section>
