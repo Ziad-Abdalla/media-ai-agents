@@ -223,3 +223,44 @@ booking 3: activity 7 removed from Odoo; the booking itself is kept
 
 A Claude call that fails (fake API key) was tested in the earlier run of this repo: the email ended as `failed`
 in email_log and was processed normally when delivered again. That part of the workflow did not change.
+
+# Follow-up run after the review fixes (same stack, 2026-10-12, late evening Riyadh time)
+
+Changes tested: the new KPI view (decisions counted on decided_at, invalid clicks left out of the
+approval rate, time saved on complete requests only), booking cancellation, the Arabic "الموضوع"
+label in approval emails, and Arabic number phrasing in the weekly summary.
+The database was migrated in place (ALTER TABLE bookings ADD cancelled_at, cancel_reason; view
+re-created) and the workflows re-imported with scripts/setup.py.
+
+## 6. KPIs for the 9-email run above, recomputed with the new view (before anything below was sent)
+ booking_requests | auto_routed_pct | approved | rejected | expired | invalid_clicks | approval_rate_pct | est_minutes_saved
+------------------+-----------------+----------+----------+---------+----------------+-------------------+-------------------
+                8 |            87.5 |        4 |        2 |       0 |              1 |              66.7 |                42
+(The 8th booking request is the tamper test from section 1: message tamper-test@sadafprod.test,
+omar.zaki@ asking for 2 lighting kits for Al Bait.
+Its invalid_click is no longer counted as a manager decision: approval is 4 of 6.)
+
+## 7. The Arabic clash email again, with a new Message-ID (1 Claude call: 1,842 in / 188 out, $0.000278)
+$ python -c "...send the 'clash' sample with Message-ID <layali-cameras-clash-v2@sadafprod.test>"
+               message_id               |  status  | route | clash
+----------------------------------------+----------+-------+-------
+ layali-cameras-clash-v2@sadafprod.test | received | ready | t
+Approval email subject: ⚠ تعارض - طلب حجز: طقم كاميرا ARRI Alexa Mini LF (2026-10-21)
+The clash box now says "محجوز: Desert Rose" (booked), because booking 1 was approved in the first run.
+Left waiting on purpose (it shows as "بانتظار قرارك" in the weekly summary).
+
+## 8. Cancel a booking
+$ python scripts/cancel_booking.py 2 "location permit fell through (synthetic test)"
+booking 2 cancelled. Tell the requester; the system doesn't email them.
+$ python scripts/odoo_link.py status
+booking 2 | Al Masmak courtyard location (night exterior) | not_sent |  |  | CANCELLED
+
+## 9. Weekly summary again
+$ python scripts/weekly_summary_now.py
+weekly summary sent to production-manager@sadafprod.test (see http://localhost:8026)
+Subject: ملخص الحجوزات الأسبوعي: عدد الطلبات 9، الحجوزات المعتمدة 4
+ booking_requests | auto_routed_pct | approved | rejected | expired | invalid_clicks | approval_rate_pct | waiting_for_manager | clashes_flagged | cancelled | est_minutes_saved
+------------------+-----------------+----------+----------+---------+----------------+-------------------+---------------------+-----------------+-----------+-------------------
+                9 |            88.9 |        4 |        2 |       0 |              1 |              66.7 |                   1 |               2 |         1 |                48
+
+Total Claude spend for the whole stack so far: 10 calls, $0.0028.
