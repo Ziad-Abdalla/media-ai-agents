@@ -194,6 +194,17 @@
    "compression_ratio": 1.688622754491018
   }
  ],
- "source": "data/samples/fleurs_ar_066.wav",
- "hotwords": ""
+ "source": "../../data/samples/fleurs_ar_066.wav",
+ "hotwords": "",
+ "hotwords_dropped": "",
+ "speech": [
+  [
+   1.18,
+   14.09
+  ],
+  [
+   14.42,
+   24.23
+  ]
+ ]
 }

@@ -186,6 +186,17 @@
    "compression_ratio": 1.6666666666666667
   }
  ],
- "source": "data/samples/fleurs_ar_066.wav",
- "hotwords": "عبود أبو حمد"
+ "source": "../../data/samples/fleurs_ar_066.wav",
+ "hotwords": "عبود أبو حمد",
+ "hotwords_dropped": "",
+ "speech": [
+  [
+   1.18,
+   14.09
+  ],
+  [
+   14.42,
+   24.23
+  ]
+ ]
 }

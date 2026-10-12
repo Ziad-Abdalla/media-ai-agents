@@ -42,16 +42,54 @@ def load_model(name: str = "large-v3-turbo", device: str = "auto"):
     return WhisperModel(name, device="cpu", compute_type="int8"), "cpu"
 
 
+def fit_hotwords(model, hotwords: str) -> tuple[str, str]:
+    """Return (kept, dropped). faster-whisper silently cuts hotwords to max_length // 2 - 1
+    tokens (223 for Whisper). Arabic names take several tokens each, so a long cast list can go
+    over. We drop whole words from the end instead, so we know exactly what reached the model."""
+    words = hotwords.split()
+    limit = model.max_length // 2 - 1
+
+    def tokens(text: str) -> int:
+        return len(model.hf_tokenizer.encode(" " + text, add_special_tokens=False).ids)
+
+    kept = len(words)
+    while kept and tokens(" ".join(words[:kept])) > limit:
+        kept -= 1
+    return " ".join(words[:kept]), " ".join(words[kept:])
+
+
+def detect_speech(audio) -> list[list[float]]:
+    """Where the voice-activity detector hears speech, as [start, end] pairs in seconds.
+
+    Whisper's own VAD filter joins speech across pauses of up to 2 seconds, which is right for
+    cutting audio but too coarse for checking it. Here a pause of half a second ends a stretch,
+    so the QC report can measure how much speech sits in a gap between subtitles."""
+    from faster_whisper.audio import decode_audio
+    from faster_whisper.vad import VadOptions, get_speech_timestamps
+
+    samples = decode_audio(audio) if isinstance(audio, str) else audio
+    chunks = get_speech_timestamps(samples, VadOptions(min_silence_duration_ms=500, speech_pad_ms=200))
+    return [[round(c["start"] / 16000, 2), round(c["end"] / 16000, 2)] for c in chunks]
+
+
 def transcribe(model, audio, hotwords: str | None = None) -> Transcript:
     """Transcribe Arabic audio (a file path or 16 kHz numpy array).
 
     hotwords: names and words to favour (cast, characters, places), for example
     "عبود أبو حمد". faster-whisper adds them to every 30-second window. It is a hint,
-    not a guarantee, so measure it on your own clips before trusting it.
+    not a guarantee, so measure it on your own clips before trusting it. A list over
+    Whisper's token limit is cut from the end, with a warning, and the cut is recorded.
 
-    Returns the words with their timings and confidence, Whisper's per-segment
-    confidence numbers (used by the QC report), and the audio length in seconds.
+    Returns the words with their timings and confidence, Whisper's per-window
+    confidence numbers (used by the QC report), where speech was heard, and the audio
+    length in seconds.
     """
+    dropped = ""
+    if hotwords:
+        hotwords, dropped = fit_hotwords(model, hotwords)
+        if dropped:
+            print(f"Hotwords over Whisper's limit of {model.max_length // 2 - 1} tokens; "
+                  f"these were not used: {dropped}", file=sys.stderr)
     segments, info = model.transcribe(
         audio,
         language="ar",  # don't let Whisper guess; dialect speech can be mis-detected
@@ -61,9 +99,9 @@ def transcribe(model, audio, hotwords: str | None = None) -> Transcript:
         condition_on_previous_text=False,  # stops one mistake repeating down the file
         hotwords=hotwords or None,  # unlike initial_prompt, this reaches every window
     )
-    words, speech = [], []
+    words, decoded = [], []
     for segment in segments:  # segments is a generator; the work happens here
-        speech.append(
+        decoded.append(
             SpeechSegment(
                 segment.start, segment.end, segment.text.strip(),
                 segment.avg_logprob, segment.no_speech_prob, segment.compression_ratio,
@@ -74,4 +112,5 @@ def transcribe(model, audio, hotwords: str | None = None) -> Transcript:
             if text:
                 words.append(Word(w.start, w.end, text, w.probability))
     source = audio if isinstance(audio, str) else ""
-    return Transcript(words, info.duration, speech, source=source, hotwords=hotwords or "")
+    return Transcript(words, info.duration, decoded, source=source, hotwords=hotwords or "",
+                      hotwords_dropped=dropped, speech=detect_speech(audio))

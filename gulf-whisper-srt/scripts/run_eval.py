@@ -61,7 +61,6 @@ def main() -> None:
         elapsed = time.perf_counter() - started
         duration = transcript.duration
         write_srt(cues, out_dir / f"{clip['id']}.srt")
-        transcript.source = f"data/samples/{clip['id']}.wav"  # relative, so the file is the same on any machine
         save_transcript(transcript, out_dir / f"{clip['id']}.words.json")
         hypothesis = " ".join(w.text for w in transcript.words)
         (out_dir / f"{clip['id']}.hyp.txt").write_text(hypothesis, encoding="utf-8")

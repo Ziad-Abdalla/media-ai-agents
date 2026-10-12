@@ -8,6 +8,7 @@ with different rules, without running the model again:
 """
 
 import json
+import os
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
@@ -16,8 +17,12 @@ from gulf_srt.segment import Word
 
 @dataclass
 class SpeechSegment:
-    """One stretch Whisper decoded in a single go (usually a phrase or sentence),
-    with the three numbers Whisper uses to judge its own output."""
+    """One segment of Whisper's output (usually a phrase), with the three numbers Whisper uses
+    to judge its own output.
+
+    The numbers belong to the whole 30-second window Whisper decoded in one go, not to the
+    phrase: with word timestamps on, faster-whisper splits one window into several segments
+    that all carry the same three numbers. The QC report groups them back into windows."""
 
     start: float
     end: float
@@ -33,22 +38,44 @@ class Transcript:
     duration: float  # length of the audio in seconds
     segments: list[SpeechSegment] = field(default_factory=list)
     source: str = ""  # the audio or video file it came from
-    hotwords: str = ""  # the hotwords used, so a result can be traced back to its settings
+    hotwords: str = ""  # the hotwords Whisper actually got, so a result can be traced to its settings
+    hotwords_dropped: str = ""  # hotwords cut because the list was over Whisper's token limit
+    # Where the voice-activity detector (VAD) heard speech, as [start, end] pairs in seconds.
+    # The QC report compares these with the subtitles to find speech that was never written down.
+    speech: list[list[float]] = field(default_factory=list)
 
 
 def save_transcript(transcript: Transcript, path: str | Path) -> None:
-    Path(path).write_text(json.dumps(asdict(transcript), ensure_ascii=False, indent=1), encoding="utf-8")
+    """Save as JSON. The media path is stored relative to the JSON file, so the folder can be moved
+    or the outputs rebuilt from any working directory."""
+    path = Path(path)
+    data = asdict(transcript)
+    if transcript.source:
+        data["source"] = Path(os.path.relpath(Path(transcript.source).resolve(), path.resolve().parent)).as_posix()
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
 
 
 def load_transcript(path: str | Path) -> Transcript:
-    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    path = Path(path)
+    data = json.loads(path.read_text(encoding="utf-8"))
     return Transcript(
         words=[Word(**w) for w in data["words"]],
         duration=data["duration"],
         segments=[SpeechSegment(**s) for s in data.get("segments", [])],
-        source=data.get("source", ""),
+        source=_find_media(data.get("source", ""), path.parent),
         hotwords=data.get("hotwords", ""),
+        hotwords_dropped=data.get("hotwords_dropped", ""),
+        speech=data.get("speech", []),
     )
+
+
+def _find_media(source: str, json_folder: Path) -> str:
+    """The saved media path is relative to the JSON file. Return a path that works from here,
+    or the saved text unchanged if the file isn't there (the review page then says it's missing)."""
+    if not source:
+        return ""
+    beside_json = json_folder / source
+    return str(beside_json) if beside_json.exists() else source
 
 
 def read_names(file: str | Path) -> list[str]:
