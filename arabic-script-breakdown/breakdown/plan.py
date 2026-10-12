@@ -116,6 +116,12 @@ def main(argv: list[str] | None = None) -> int:
     summary = budget_summary(schedule)
 
     # Check everything before writing anything, so a mistake never leaves half the files behind.
+    if schedule.unknown_availability:
+        # Most likely a typo. Going on would drop that actor's blocked dates without a word.
+        print("Stopped: these names in the availability file match no character in the breakdown: "
+              + "، ".join(schedule.unknown_availability)
+              + ". Write them as the breakdown writes them, or delete the row if the actor is not in this episode.")
+        return 2
     sheet_days = call_sheet_days(args.call_sheet_day, schedule)
     if isinstance(sheet_days, str):
         print(sheet_days)

@@ -23,6 +23,10 @@ greedy method that anyone can follow by hand:
    limits allow, even at the cost of one extra company move, because a crew day costs far more than a move.
 5. A strip that never fits within the horizon is reported as unscheduled, with the reason.
 
+The availability file is matched to the breakdown's character names with the same spelling rules as the
+rest of the tool ("ابو  فهد" is أبو فهد). A name in that file that matches no character is kept as
+unknown, and the plan command refuses to go on: a typo must never silently drop an actor's blocked date.
+
 Same inputs, same schedule, every time: there is no randomness and no model call.
 """
 
@@ -33,7 +37,7 @@ from datetime import date, datetime, timedelta
 from itertools import combinations, pairwise
 from pathlib import Path
 
-from .normalize import item_key, same_place
+from .normalize import item_key, normalize_arabic, same_place
 from .schema import SceneBreakdown
 
 DAY_SHIFT, NIGHT_SHIFT = "نهاري", "ليلي"
@@ -126,6 +130,24 @@ def load_locations(path: Path) -> list[LocationEntry]:
     return entries
 
 
+def match_availability(availability: dict[str, Availability],
+                       scenes: list[SceneBreakdown]) -> tuple[dict[str, Availability], list[str]]:
+    """Key the availability rows by the breakdown's own character names.
+
+    Hamza, extra spaces and tashkeel don't matter. Returns (rows by character name, names that match no one).
+    """
+    by_key = {normalize_arabic(c): c for s in scenes for c in s.characters}
+    matched: dict[str, Availability] = {}
+    unknown: list[str] = []
+    for name, rule in availability.items():
+        character = by_key.get(normalize_arabic(name))
+        if character is None:
+            unknown.append(name)
+        else:
+            matched[character] = rule
+    return matched, unknown
+
+
 def load_availability(path: Path) -> dict[str, Availability]:
     """Columns: character, unavailable dates, only-available dates, day only (نعم), notes."""
     result = {}
@@ -209,6 +231,7 @@ class Schedule:
     settings: Settings
     sites: dict[str, Site]
     availability: dict[str, Availability]
+    unknown_availability: list[str] = field(default_factory=list)  # availability names that match no character
 
     def day(self, number: int) -> ShootDay:
         found = next((d for d in self.days if d.number == number), None)
@@ -235,6 +258,10 @@ def make_strips(scenes: list[SceneBreakdown], entries: list[LocationEntry]) -> t
                 used.append(site)
         if len(used) > 1:
             flags.append("المشهد في أكثر من موقع: يُصوَّر على جزأين")
+        # A name a person still has to check is not matched to anyone's availability, so say so.
+        for c in s.characters:
+            if any(f"«{c}»" in f for f in s.review_flags):
+                flags.append(f"لم يُفحص توفر «{c}»: صحّح الاسم في التفريغ ثم أعد الجدولة")
         strips.append(Strip(s, SHIFT_OF_TIME[s.time_of_day], " + ".join(x.name for x in used), item_key(s.location),
                             flags, notes, used))
     order = [DAY_SHIFT, NIGHT_SHIFT]
@@ -258,6 +285,7 @@ def strip_free(strip: Strip, day: date, availability: dict[str, Availability]) -
 
 def build_schedule(scenes: list[SceneBreakdown], entries: list[LocationEntry],
                    availability: dict[str, Availability], settings: Settings) -> Schedule:
+    availability, unknown = match_availability(availability, scenes)
     strips, sites = make_strips(scenes, entries)
     dates = working_dates(settings)
     rank = {s: i for i, s in enumerate(strips)}
@@ -284,7 +312,7 @@ def build_schedule(scenes: list[SceneBreakdown], entries: list[LocationEntry],
 
     days = _join_light_days(days, settings, availability)
     unscheduled = [(s, _why_not(s, dates, availability)) for s in remaining]
-    return Schedule(days, unscheduled, settings, sites, availability)
+    return Schedule(days, unscheduled, settings, sites, availability, unknown)
 
 
 def _shooting_order(strips: list[Strip]) -> list[Strip]:

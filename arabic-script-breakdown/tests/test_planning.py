@@ -183,6 +183,26 @@ def test_a_closed_site_is_named_as_the_reason():
     assert s.days == [] and "المدرسة" in s.unscheduled[0][1]
 
 
+def test_availability_names_are_matched_with_the_spelling_rules():
+    # "ابو  فهد" (no hamza, two spaces) is still أبو فهد, so his blocked date still holds.
+    sunday = date(2026, 11, 1)
+    availability = {"ابو  فهد": Availability(unavailable={sunday})}
+    s = build_schedule([scene(1, "البيت", ["أبو فهد"])], [], availability, Settings(start=sunday))
+    assert s.days[0].date != sunday and s.unknown_availability == []
+
+
+def test_an_availability_name_that_matches_no_character_is_reported():
+    s = build_schedule([scene(1, "البيت", ["أبو فهد"])], [], {"أبو فهدد": Availability()},
+                       Settings(start=date(2026, 11, 1)))
+    assert s.unknown_availability == ["أبو فهدد"]
+
+
+def test_a_flagged_name_says_its_availability_was_not_checked():
+    flagged = scene(1, "البيت", ["سلمان"], review_flags=["الاسم «سلمان» يطابق أكثر من شخصية"])
+    s = build_schedule([flagged], [], {}, Settings(start=date(2026, 11, 1)))
+    assert any("لم يُفحص توفر «سلمان»" in f for f in s.days[0].strips[0].flags)
+
+
 def test_hardest_scene_goes_first_on_its_only_free_date():
     # Two scenes compete for one day slot; the one whose actor is free only that day must get it.
     availability = {"ضيف": Availability(only_on={date(2026, 11, 1)})}
@@ -343,7 +363,7 @@ def test_a_call_sheet_with_an_open_flag_cannot_be_approved_without_an_override()
     with pytest.raises(ValueError):
         call_sheet_html(s, 1, "تجربة", Approval("مساعد المخرج"))
     approved = call_sheet_html(s, 1, "تجربة", Approval("مساعد المخرج", override=True))
-    assert "اعتُمدت مع تجاوز 1 مشكلة" in approved and "يطابق أكثر من شخصية" in approved
+    assert "اعتُمدت مع تجاوز 2 مشكلة" in approved and "يطابق أكثر من شخصية" in approved
 
 
 def test_schedule_csv_has_bom_and_one_row_per_scene(schedule, tmp_path):
@@ -376,6 +396,16 @@ def test_a_real_script_must_bring_its_own_locations_and_availability(tmp_path):
     assert plan.main([str(own), "--out", str(tmp_path / "plan")]) == 2
     assert plan.main([str(own), "--out", str(tmp_path / "plan"), "--locations", str(ROOT / "data" / "kamera_jaddi.locations.csv"),
                       "--availability", str(ROOT / "data" / "kamera_jaddi.availability.csv")]) == 0
+
+
+def test_a_typo_in_the_availability_file_stops_the_plan(tmp_path, capsys):
+    av = (ROOT / "data" / "kamera_jaddi.availability.csv").read_text(encoding="utf-8-sig")
+    (tmp_path / "av.csv").write_text(av.replace("الجد عبدالله", "الجد عبداللة"), encoding="utf-8")   # ة: still him
+    (tmp_path / "typo.csv").write_text(av.replace("الجد عبدالله", "الجد عبدالرحمن"), encoding="utf-8")
+    common = [str(ROOT / "examples" / "breakdown.jsonl"), "--locations", str(ROOT / "data" / "kamera_jaddi.locations.csv")]
+    assert plan.main([*common, "--availability", str(tmp_path / "av.csv"), "--out", str(tmp_path / "ok")]) == 0
+    assert plan.main([*common, "--availability", str(tmp_path / "typo.csv"), "--out", str(tmp_path / "no")]) == 2
+    assert "الجد عبدالرحمن" in capsys.readouterr().out and not (tmp_path / "no").exists()
 
 
 def test_approval_is_refused_on_open_problems_and_logged_when_overridden(tmp_path):
