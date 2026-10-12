@@ -35,3 +35,4 @@ class SceneBreakdown(SceneFields):
     scene_number: int
     heading: str
     length_eighths: int = Field(description="Estimated length in eighths of a page (counted, not guessed)")
+    alias_fixes: list[str] = Field(default=[], description="Names the alias map corrected, e.g. 'سعد -> أبو فهد'")

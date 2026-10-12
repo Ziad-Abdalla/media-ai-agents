@@ -87,11 +87,14 @@ def extract_scene(client, scene: Scene, previous_heading: str | None, cast: str,
         raise ExtractionError(f"scene {scene.number}: no text in the answer")
 
     fields = SceneFields.model_validate_json(text)
-    # Safety net: map any nickname the model still used to the cast-list name.
+    # Safety net: map any nickname the model still used to the cast-list name,
+    # and keep a note of what we changed so we can see how often it was needed.
+    fixes = [f"{c} -> {canonical_character(c)}" for c in fields.characters if canonical_character(c) != c]
     fields.characters = list(dict.fromkeys(canonical_character(c) for c in fields.characters))
     return SceneBreakdown(
         **fields.model_dump(),
         scene_number=scene.number,
         heading=scene.heading,
         length_eighths=scene.length_eighths,
+        alias_fixes=fixes,
     )
