@@ -41,7 +41,7 @@ def test_approval_creates_one_draft_po(store, odoo):
 def test_missing_fields_ask_for_info_and_draft_a_reply(store, odoo):
     incomplete = {**NORMAL_REQUEST, "approval_reference": None,
                   "items": [{"name": "Lighting kit", "quantity": None, "unit_price": None,
-                             "currency": None}]}
+                             "currency": None, "category": "equipment_rental"}]}
     r = run(store, odoo, client=FakeAnthropic(incomplete))
     assert r["status"] == "needs_info"
     assert "approval reference" in r["reply_draft"]

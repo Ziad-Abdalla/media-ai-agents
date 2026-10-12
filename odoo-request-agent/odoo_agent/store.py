@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS runs (
     po_id INTEGER,
     error TEXT,
     approved_by TEXT,
+    first_status TEXT,                -- where the agent left the run, before any person acted
+    planned_at TEXT,                  -- when the agent finished preparing it
     created_at TEXT, updated_at TEXT
 );
 CREATE TABLE IF NOT EXISTS audit (
@@ -42,6 +44,8 @@ CREATE TABLE IF NOT EXISTS audit (
 """
 
 JSON_COLUMNS = ("request_json", "problems_json", "resolution_json", "plan_json")
+# Columns added after the first version. An older agent.sqlite gets them on start-up.
+ADDED_COLUMNS = {"first_status": "TEXT", "planned_at": "TEXT"}
 
 
 def now() -> str:
@@ -58,6 +62,11 @@ class Store:
         # Lets SQL ask "is the stored plan still the one the approver saw?" (see claim_for_writing)
         self.conn.create_function("plan_hash", 1, lambda text: plan_hash(json.loads(text or "null")))
         self.conn.executescript(SCHEMA)
+        have = {row["name"] for row in self.conn.execute("PRAGMA table_info(runs)")}
+        for column, kind in ADDED_COLUMNS.items():
+            if column not in have:
+                self.conn.execute(f"ALTER TABLE runs ADD COLUMN {column} {kind}")
+        self.conn.commit()
 
     # ---- runs ----
     def add_run(self, **fields) -> None:
@@ -128,6 +137,12 @@ class Store:
             d["after"] = json.loads(d.pop("after_json")) if r["after_json"] else None
             out.append(d)
         return out
+
+    def all_audit_rows(self) -> list[dict]:
+        """Every audit row, oldest first (for the KPI report)."""
+        with self.lock:
+            rows = self.conn.execute("SELECT run_id, ts, actor, operation, model FROM audit ORDER BY id").fetchall()
+        return [dict(r) for r in rows]
 
     # ---- helpers ----
     @staticmethod

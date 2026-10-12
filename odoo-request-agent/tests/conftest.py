@@ -16,7 +16,9 @@ RECEIVED = "2026-10-12T10:00:00+03:00"
 
 NORMAL_REQUEST = {
     "vendor_name": "Riyadh Grip Co",
-    "items": [{"name": "Camera crane rental", "quantity": 2, "unit_price": 3500, "currency": "SAR"}],
+    "production": "Rimal Al-Khobar",
+    "items": [{"name": "Camera crane rental", "quantity": 2, "unit_price": 3500, "currency": "SAR",
+               "category": "equipment_rental"}],
     "needed_by": "2026-10-20",
     "requester": "Noura Al-Harbi",
     "department": "Production",
@@ -37,12 +39,19 @@ def approve(store, odoo, run_id, approver="Ziad"):
     return approve_run(store, odoo, run_id, approver, shown)
 
 
+# The same fictional productions as production_budgets.json (the budgets come from that file).
+PRODUCTIONS = {"RML-S1": "Rimal Al-Khobar (رمال الخبر)", "BYT-R27": "Bayt Al-Jadd (بيت الجد)",
+               "SHK-S3": "Sahrat Al-Khamis (سهرة الخميس)"}
+
+
 class FakeOdoo:
-    """Just enough of OdooClient for the tests: search_read, create, write, call."""
+    """Just enough of OdooClient for the tests: search_read, create, write, call.
+    purchase.order.line is not stored separately: it is read out of each PO's order_line."""
 
     def __init__(self):
         self.records = {"res.partner": {}, "product.product": {}, "res.currency": {},
-                        "purchase.order": {}}
+                        "purchase.order": {}, "account.analytic.plan": {},
+                        "account.analytic.account": {}}
         self.next_id = 1
         self.lose_next_create_answer = False  # simulate: Odoo saved it, but our reply got lost
         for name in ["Riyadh Grip Co", "Riyadh Grip & Lighting", "Desert Lights Rental",
@@ -50,7 +59,32 @@ class FakeOdoo:
             self._add("res.partner", {"name": name, "ref": False, "supplier_rank": 1, "active": True})
         for name in ["Camera Crane Rental", "Lighting Kit Rental", "Production Service"]:
             self._add("product.product", {"name": name, "purchase_ok": True})
-        self._add("res.currency", {"name": "SAR"})
+        self.sar = self._add("res.currency", {"name": "SAR"})
+        for name in ["Location Fee", "Crew & Freelancer Services"]:
+            self._add("product.product", {"name": name, "purchase_ok": True})
+        plan = self._add("account.analytic.plan", {"name": "Productions"})
+        self.production_ids = {
+            code: self._add("account.analytic.account", {"name": name, "code": code, "plan_id": plan})
+            for code, name in PRODUCTIONS.items()}
+
+    def commit_spend(self, code, amount):
+        """An existing confirmed PO of `amount` SAR charged to production `code`."""
+        line = {"product_id": 1, "name": "earlier order", "product_qty": 1, "price_unit": amount,
+                "analytic_distribution": {str(self.production_ids[code]): 100}}
+        po_id = self.create("purchase.order", {"partner_id": 1, "currency_id": self.sar,
+                                               "origin": f"earlier-{self.next_id}",
+                                               "order_line": [[0, 0, line]]})
+        self.records["purchase.order"][po_id]["state"] = "purchase"
+        return po_id
+
+    def _lines(self):
+        for po in self.records["purchase.order"].values():
+            for _, _, line in po.get("order_line", []):
+                currency = self.records["res.currency"].get(po.get("currency_id"), {}).get("name", "SAR")
+                yield {"state": po["state"], "order_id": [po["id"], po["name"]],
+                       "price_subtotal": line["product_qty"] * line["price_unit"],
+                       "analytic_distribution": line.get("analytic_distribution", False),
+                       "currency_id": [po.get("currency_id"), currency]}
 
     def _add(self, model, values):
         rid = self.next_id
@@ -63,6 +97,8 @@ class FakeOdoo:
             have = record.get(field)
             if op == "=" and have != value:
                 return False
+            if op == "!=" and have == value:
+                return False
             if op == ">" and not (have or 0) > value:
                 return False
             if op == "in" and have not in value:
@@ -70,6 +106,8 @@ class FakeOdoo:
         return True
 
     def search_read(self, model, domain, fields):
+        if model == "purchase.order.line":
+            return [line for line in self._lines() if self._matches(line, domain)]
         return [{f: r.get(f) for f in ["id", *fields]}
                 for r in self.records[model].values()
                 if r.get("active", True) and self._matches(r, domain)]

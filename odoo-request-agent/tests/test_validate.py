@@ -51,3 +51,23 @@ def test_reply_asks_for_exactly_the_missing_fields():
     reply = draft_needs_info_reply(make_email(subject="Lights"), ["vendor name", "approval reference"])
     assert "- vendor name" in reply and "- approval reference" in reply
     assert "Lights" in reply
+
+
+def test_production_is_required():
+    problems = validate(request(production=None), make_email())
+    assert any("production" in p for p in problems)
+
+
+def test_arabic_request_gets_an_arabic_reply():
+    email = make_email(body="نرجو استئجار أطقم إضاءة من Desert Lights Rental", subject="طلب إضاءة")
+    problems = validate(request(approval_reference=None, production=None), email)
+    reply = draft_needs_info_reply(email, problems)
+    assert reply.startswith("السلام عليكم")
+    assert "- رقم الموافقة الداخلية" in reply and "اسم الإنتاج" in reply
+    assert "approval reference" in problems[1]  # staff still see English on the approval page
+
+
+def test_english_request_gets_an_english_reply():
+    email = make_email(body="Please order lights, نبيها بكرة")  # mostly English
+    reply = draft_needs_info_reply(email, validate(request(approval_reference=None), email))
+    assert reply.startswith("Hello") and "- approval reference" in reply

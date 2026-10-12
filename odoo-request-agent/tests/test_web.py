@@ -69,7 +69,7 @@ def test_a_rejected_or_rolled_back_run_cannot_be_reopened(store, odoo):
     rollback(store, odoo, rolled)
 
     for run_id in (rejected, rolled):
-        web.post(f"/runs/{run_id}/resolve", data={"partner": "confirm_resend"})
+        web.post(f"/runs/{run_id}/resolve", data={"partner": "confirm_resend", "approver": "Ziad"})
         current = plan_hash(store.get_run(run_id)["plan_json"])  # even with the right hash
         web.post(f"/runs/{run_id}/approve", data={"approver": "Ziad", "plan_hash": current})
     assert odoo.pos() == []

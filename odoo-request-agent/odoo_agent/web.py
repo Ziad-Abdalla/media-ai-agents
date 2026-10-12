@@ -1,4 +1,4 @@
-"""Step 5: the approval page. One page, plain HTML forms, no JavaScript.
+"""Step 5: the approval page. Plain HTML forms, no JavaScript.
 
 Start it with:  python -m odoo_agent serve   then open http://localhost:8000
 Nothing is written to Odoo until someone presses Approve here.
@@ -15,11 +15,12 @@ from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from . import pipeline
+from . import budget, pipeline
 from .permissions import ForbiddenAction, WritesDisabled, execute
 
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 templates.env.filters["pretty"] = lambda v: json.dumps(v, indent=2, ensure_ascii=False)
+OPEN = ("pending_approval", "needs_human", "write_failed")  # runs still waiting on a person
 STATUS_ORDER = ["pending_approval", "needs_human", "write_failed", "needs_info",
                 "done", "reply_sent", "failed", "blocked_sender", "rejected", "rolled_back"]
 
@@ -41,16 +42,35 @@ def create_app(store, get_odoo) -> FastAPI:
             r["cost_usd"] = ledger.run_spend(conn, r["run_id"])
             r["plan_hash"] = pipeline.plan_hash(r["plan_json"])  # goes back with the Approve click
         conn.close()
-        return templates.TemplateResponse(request, "index.html", {"runs": runs, "message": message})
+        budget_error = add_budgets([r for r in runs if r["status"] in OPEN])
+        return templates.TemplateResponse(request, "index.html", {
+            "runs": runs, "message": message, "budget_error": budget_error})
+
+    def add_budgets(runs) -> str:
+        """Fresh budget numbers for the runs still waiting on someone. Needs Odoo; if Odoo is
+        down the page still loads, says so, and Approve re-checks anyway."""
+        if not runs:
+            return ""
+        try:
+            odoo = get_odoo()
+            for r in runs:
+                r["budget"] = budget.check_run(odoo, r)
+        except (OSError, xmlrpc.client.Error, PermissionError) as e:
+            return f"Budget check unavailable (Odoo not reachable: {e}). Approve checks it again."
+        return ""
+
 
     def back(message: str) -> RedirectResponse:
         return RedirectResponse(f"/?message={quote(message)}", status_code=303)
 
     @app.post("/runs/{run_id}/approve")
-    def approve(run_id: str, approver: str = Form(...), plan_hash: str = Form("")):
+    def approve(run_id: str, approver: str = Form(...), plan_hash: str = Form(""),
+                over_budget_ok: str = Form(""), over_budget_reason: str = Form("")):
         # plan_hash is the hash of the plan this person saw. A missing one is refused.
+        # The reason only counts if the "approve over budget" box was ticked too.
+        reason = over_budget_reason if over_budget_ok else ""
         try:
-            po_id = pipeline.approve_run(store, get_odoo(), run_id, approver, plan_hash)
+            po_id = pipeline.approve_run(store, get_odoo(), run_id, approver, plan_hash, reason)
         except (WritesDisabled, ForbiddenAction, ValueError, OSError, xmlrpc.client.Error) as e:
             return back(f"Not written: {e}")
         return back(f"{run_id} approved by {approver}: draft PO id {po_id} created")
@@ -64,17 +84,23 @@ def create_app(store, get_odoo) -> FastAPI:
         return back(f"{run_id} rejected by {approver}")
 
     @app.post("/runs/{run_id}/resolve")
-    def resolve(run_id: str, partner: str = Form(...)):
-        # The answer to a needs_human question. partner is one of:
+    def resolve(run_id: str, approver: str = Form(...), partner: str = Form(""),
+                production: str = Form("")):
+        # The answer to a needs_human question. partner is empty (no vendor question) or:
         #   "<id>|<name>"     the person picked this vendor
         #   "new"             none of these: create a new vendor
         #   "confirm_resend"  yes, this re-send really is a second order
+        # production is empty (no production question) or the id of the chosen production.
         try:
-            if partner in ("new", "confirm_resend"):
-                pipeline.resolve_needs_human(store, run_id, None)
-            else:
+            if not approver.strip():
+                raise ValueError("type your name")
+            choice = {"new_vendor": partner == "new", "chosen_by": approver.strip(),
+                      "production_id": int(production) if production else None}
+            if partner and partner not in ("new", "confirm_resend"):
                 pid, name = partner.split("|", 1)
-                pipeline.resolve_needs_human(store, run_id, int(pid), name)
+                pipeline.resolve_needs_human(store, run_id, int(pid), name, **choice)
+            else:
+                pipeline.resolve_needs_human(store, run_id, **choice)
         except ValueError as e:
             return back(f"Not changed: {e}")
         return back(f"{run_id}: ready for approval")

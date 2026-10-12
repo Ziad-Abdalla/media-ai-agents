@@ -64,3 +64,24 @@ def test_new_vendor_then_rollback_on_real_odoo(store):
     assert odoo.search_read("res.partner", [("name", "=", vendor)], ["id"]) == []  # archived
     origin = store.get_run(run_id)["plan_json"][-1]["values"]["origin"]
     assert pos_with_origin(odoo, origin) == []
+
+
+def test_po_line_is_charged_to_the_production_on_real_odoo(store):
+    """Odoo 17 stores analytic_distribution as JSON; check it lands and the budget sees it."""
+    from odoo_agent import budget
+
+    odoo = OdooClient()
+    run_id = process_email(make_email(message_id=f"<{uuid.uuid4()}@sadaf.example>"),
+                           client=FakeAnthropic({**NORMAL_REQUEST, "approval_reference": f"APR-{uuid.uuid4().hex[:6]}"}),
+                           odoo=odoo, store=store)
+    production = store.get_run(run_id)["resolution_json"]["production"]
+    assert production["code"] == "RML-S1"
+    before, _ = budget.committed_sar(odoo, production["analytic_id"])
+
+    po_id = approve(store, odoo, run_id, "live-test")
+    [line] = odoo.search_read("purchase.order.line", [("order_id", "=", po_id)], ["analytic_distribution"])
+    assert line["analytic_distribution"] == {str(production["analytic_id"]): 100.0}
+    assert budget.committed_sar(odoo, production["analytic_id"])[0] == before + 7000
+
+    rollback(store, odoo, run_id, actor="human:live-test")
+    assert budget.committed_sar(odoo, production["analytic_id"])[0] == before

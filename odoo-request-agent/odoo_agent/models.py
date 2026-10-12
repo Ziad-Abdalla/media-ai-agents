@@ -1,8 +1,13 @@
 """The shapes of our data. PurchaseRequest is what the model must fill in."""
 
 from dataclasses import dataclass
+from typing import Literal
 
 from pydantic import BaseModel, Field
+
+# What kind of production cost a line is. Used to pick a sensible Odoo product when the
+# item name matches none, and to break spend down in the KPI report.
+Category = Literal["equipment_rental", "crew_services", "location", "catering", "transport", "other"]
 
 
 @dataclass
@@ -19,10 +24,17 @@ class LineItem(BaseModel):
     quantity: float | None = Field(description="How many units (days, pieces, hours)")
     unit_price: float | None = Field(description="Price for one unit, numbers only")
     currency: str | None = Field(description="3-letter currency code, e.g. SAR")
+    category: Category = Field(
+        description="equipment_rental (cameras, lights, cranes, sound), crew_services (freelancers, "
+                    "operators, crew hire), location (location fees, permits), catering, "
+                    "transport, or other")
 
 
 class PurchaseRequest(BaseModel):
     vendor_name: str | None = Field(description="Supplier company name, exactly as written")
+    production: str | None = Field(
+        description="The series or programme this purchase is for, exactly as written "
+                    "(Arabic or English). Null if the email does not say.")
     items: list[LineItem]
     needed_by: str | None = Field(description="Date needed, as YYYY-MM-DD")
     requester: str | None = Field(description="Person asking for the purchase")
