@@ -81,7 +81,9 @@
         {% if b.status == "over" %}&#9940; <b>Over budget.</b>{% elif b.status == "near" %}&#9888; <b>Close to budget.</b>{% else %}&#10003; Within budget.{% endif %}
         {{ b.production }}: {{ "{:,.0f}".format(b.committed) }} SAR already committed on {{ b.po_count }} POs
         + this order {{ "{:,.0f}".format(b.this_order) }} = {{ "{:,.0f}".format(b.after) }} of {{ "{:,.0f}".format(b.budget) }} SAR
-        (<b>{{ b.used_pct }}%</b>). {% if b.status == "over" %}Approving needs a written reason.{% endif %}
+        {% if b.used_pct is not none %}(<b>{{ b.used_pct }}%</b>){% else %}(the budget is 0){% endif %}.
+        {% if b.status == "over" %}Approving needs a written reason.{% endif %}
+        {% if b.not_counted %}<br>PO lines in {{ b.not_counted|join(", ") }} are not counted (no riyal rate): check them in Odoo.{% endif %}
       </div>
     {% endif %}
     <h3>Products in Odoo</h3>

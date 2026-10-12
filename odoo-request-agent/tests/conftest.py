@@ -102,7 +102,10 @@ class FakeOdoo:
                 return False
             if op == ">" and not (have or 0) > value:
                 return False
-            if op == "in" and have not in value:
+            if op == "in" and field == "analytic_distribution":  # Odoo: "charged to any of these"
+                if not any(str(v) in (have or {}) for v in value):
+                    return False
+            elif op == "in" and have not in value:
                 return False
         return True
 

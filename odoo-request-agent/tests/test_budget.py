@@ -28,7 +28,8 @@ def test_committed_counts_open_pos_by_their_share(odoo):
     cancelled = odoo.commit_spend("SHK-S3", 9_999)
     odoo.records["purchase.order"][cancelled]["state"] = "cancel"
     odoo.commit_spend("RML-S1", 5_000)  # another production
-    assert budget.committed_sar(odoo, odoo.production_ids["SHK-S3"]) == (40_000, 1)
+    assert budget.committed_sar(odoo, odoo.production_ids["SHK-S3"]) == {"sar": 40_000, "po_count": 1,
+                                                                         "not_counted": []}
 
 
 @pytest.mark.parametrize("earlier, status", [(10_000, "ok"), (41_000, "near"), (50_000, "over")])
@@ -105,3 +106,18 @@ def test_page_still_loads_when_odoo_is_down(store, odoo):
         raise ConnectionRefusedError("no Odoo")
     page = TestClient(create_app(store, odoo_down)).get("/").text
     assert run_id in page and "Budget check unavailable" in page
+
+
+def test_a_budget_of_zero_means_any_spend_is_over(odoo, monkeypatch):
+    monkeypatch.setattr(budget, "budgets", lambda: {"SHK-S3": {"code": "SHK-S3", "budget": 0}})
+    result = budget.check(odoo, production(odoo, "SHK-S3"), 100)
+    assert result["status"] == "over" and result["used_pct"] is None  # no ZeroDivisionError
+
+
+def test_po_lines_in_a_currency_without_a_rate_are_named_not_counted_as_riyals(odoo):
+    odoo.commit_spend("SHK-S3", 40_000)
+    eur_po = odoo.commit_spend("SHK-S3", 1_000)
+    odoo.records["purchase.order"][eur_po]["currency_id"] = odoo._add("res.currency", {"name": "EUR"})
+    assert budget.committed_sar(odoo, odoo.production_ids["SHK-S3"]) == {
+        "sar": 40_000, "po_count": 1, "not_counted": ["EUR"]}
+    assert budget.check(odoo, production(odoo, "SHK-S3"), 0)["not_counted"] == ["EUR"]

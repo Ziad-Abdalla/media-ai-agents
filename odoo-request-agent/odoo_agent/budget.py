@@ -6,6 +6,9 @@ on the approval page (checked again on the server, with fresh numbers, at the cl
 "Committed" = every purchase order line charged to the production that isn't cancelled:
 drafts, POs waiting for confirmation and confirmed POs. Drafts count on purpose, because
 a draft is money someone already plans to spend.
+
+Only SAR and USD (pegged at 3.75) are converted. A PO line in any other currency is left out of
+"committed" and named on the page, so nobody reads a wrong total as a right one.
 """
 
 import json
@@ -33,29 +36,48 @@ def budgets() -> dict[str, dict]:
 
 def order_total_sar(request) -> float:
     """What this request would add, before VAT, in riyals."""
-    return sum((i.quantity or 0) * (i.unit_price or 0) * TO_SAR.get((i.currency or "SAR").upper(), 1.0)
-               for i in request.items)
+    total = 0.0
+    for item in request.items:
+        currency = (item.currency or "SAR").upper()
+        if currency not in TO_SAR:  # validate() only lets SAR and USD through, so this is a setup mistake
+            raise ValueError(f"no riyal rate for {currency}; add it to TO_SAR in budget.py")
+        total += (item.quantity or 0) * (item.unit_price or 0) * TO_SAR[currency]
+    return total
 
 
-def committed_sar(odoo, analytic_id: int, exclude_origin: str | None = None) -> tuple[float, int]:
-    """Riyals already committed to this production, and on how many POs.
+def committed_sar(odoo, analytic_id: int, exclude_origin: str | None = None) -> dict:
+    """Riyals already committed to this production: {"sar", "po_count", "not_counted"}.
     exclude_origin leaves out this run's own PO, so a retry doesn't count the order twice.
-    (Reads every open PO line and adds up in Python; fine for a demo. At scale use read_group.)"""
+    not_counted lists currencies of PO lines that were left out because there is no rate for
+    them (someone typed a EUR PO in Odoo by hand, say). Odoo only returns this production's
+    lines; the share is then read from each line, because one line can be split between two."""
     own = set()
     if exclude_origin:
         own = {p["id"] for p in odoo.search_read("purchase.order", [("origin", "=", exclude_origin)], ["id"])}
-    lines = odoo.search_read("purchase.order.line", [("state", "!=", "cancel")],
+    lines = odoo.search_read("purchase.order.line",
+                             [("state", "!=", "cancel"), ("analytic_distribution", "in", [analytic_id])],
                              ["order_id", "price_subtotal", "analytic_distribution", "currency_id"])
-    total, orders = 0.0, set()
+    total, orders, not_counted = 0.0, set(), set()
     for line in lines:
         share = (line.get("analytic_distribution") or {}).get(str(analytic_id))
         order_id = line["order_id"][0]
         if not share or order_id in own:
             continue
         currency = line["currency_id"][1] if line.get("currency_id") else "SAR"
-        total += line["price_subtotal"] * TO_SAR.get(currency, 1.0) * share / 100
+        if currency not in TO_SAR:
+            not_counted.add(currency)
+            continue
+        total += line["price_subtotal"] * TO_SAR[currency] * share / 100
         orders.add(order_id)
-    return round(total, 2), len(orders)
+    return {"sar": round(total, 2), "po_count": len(orders), "not_counted": sorted(not_counted)}
+
+
+def _status(after: float, budget: float) -> tuple[float | None, str]:
+    """(% used, ok / near / over). A budget of 0 means "nothing may be spent": any spend is over."""
+    if budget <= 0:
+        return None, "over" if after > 0 else "ok"
+    used = after / budget
+    return round(used * 100, 1), "over" if used > 1 else "near" if used >= NEAR else "ok"
 
 
 def check(odoo, production: dict, amount_sar: float, exclude_origin: str | None = None) -> dict | None:
@@ -63,14 +85,14 @@ def check(odoo, production: dict, amount_sar: float, exclude_origin: str | None 
     plan = budgets().get(production.get("code") or "")
     if not plan:
         return None
-    committed, po_count = committed_sar(odoo, production["analytic_id"], exclude_origin)
-    after = committed + amount_sar
-    used = after / plan["budget"]
+    committed = committed_sar(odoo, production["analytic_id"], exclude_origin)
+    after = committed["sar"] + amount_sar
+    used_pct, status = _status(after, plan["budget"])
     return {
         "production": production["name"], "code": plan["code"], "budget": plan["budget"],
-        "committed": committed, "po_count": po_count, "this_order": round(amount_sar, 2),
-        "after": round(after, 2), "used_pct": round(used * 100, 1),
-        "status": "over" if used > 1 else "near" if used >= NEAR else "ok",
+        "committed": committed["sar"], "po_count": committed["po_count"],
+        "not_counted": committed["not_counted"], "this_order": round(amount_sar, 2),
+        "after": round(after, 2), "used_pct": used_pct, "status": status,
     }
 
 
@@ -80,7 +102,7 @@ def check_run(odoo, run: dict) -> dict | None:
     production = (run.get("resolution_json") or {}).get("production") or {}
     if production.get("status") != "matched" or not run.get("request_json"):
         return None
-    request = PurchaseRequest.model_validate(run["request_json"])
+    request = PurchaseRequest.from_stored(run["request_json"])
     own_po = ORIGIN_PREFIX + run["idempotency_key"] if run.get("idempotency_key") else None
     return check(odoo, production, order_total_sar(request), exclude_origin=own_po)
 
@@ -92,8 +114,9 @@ def production_overview(odoo) -> list[dict]:
         plan = budgets().get(account.get("code") or "")
         if not plan:
             continue
-        committed, po_count = committed_sar(odoo, account["id"])
+        committed = committed_sar(odoo, account["id"])
+        used_pct, status = _status(committed["sar"], plan["budget"])
         rows.append({"production": account["name"], "code": plan["code"], "budget": plan["budget"],
-                     "committed": committed, "po_count": po_count,
-                     "used_pct": round(committed / plan["budget"] * 100, 1)})
+                     "committed": committed["sar"], "po_count": committed["po_count"],
+                     "not_counted": committed["not_counted"], "used_pct": used_pct, "status": status})
     return rows

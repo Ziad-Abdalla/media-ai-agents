@@ -76,12 +76,12 @@ def test_po_line_is_charged_to_the_production_on_real_odoo(store):
                            odoo=odoo, store=store)
     production = store.get_run(run_id)["resolution_json"]["production"]
     assert production["code"] == "RML-S1"
-    before, _ = budget.committed_sar(odoo, production["analytic_id"])
+    before = budget.committed_sar(odoo, production["analytic_id"])["sar"]
 
     po_id = approve(store, odoo, run_id, "live-test")
     [line] = odoo.search_read("purchase.order.line", [("order_id", "=", po_id)], ["analytic_distribution"])
     assert line["analytic_distribution"] == {str(production["analytic_id"]): 100.0}
-    assert budget.committed_sar(odoo, production["analytic_id"])[0] == before + 7000
+    assert budget.committed_sar(odoo, production["analytic_id"])["sar"] == before + 7000
 
     rollback(store, odoo, run_id, actor="human:live-test")
-    assert budget.committed_sar(odoo, production["analytic_id"])[0] == before
+    assert budget.committed_sar(odoo, production["analytic_id"])["sar"] == before

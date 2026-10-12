@@ -30,6 +30,8 @@ INJECTION_HINTS = re.compile(
     r"ignore (all |any )?(previous|prior|above|earlier) instructions|you are now|system prompt|"
     r"confirm (the|this) (po|order|purchase order)|forward .* to|send .* (list|data|details) to",
     re.IGNORECASE)
+INJECTION_WARNING = ("This email contains text that looks like instructions to the AI. "
+                     "It was treated as data. Check the plan against the email.")
 
 
 def process_email(email: Email, *, client, odoo, store) -> str | None:
@@ -103,8 +105,7 @@ def process_email(email: Email, *, client, odoo, store) -> str | None:
     # notes ("currency guessed from the price") are shown in a plain box, so red keeps its meaning.
     warnings = []
     if INJECTION_HINTS.search(email.body) or request.suspicious_instructions:
-        warnings.append("This email contains text that looks like instructions to the AI. "
-                        "It was treated as data. Check the plan against the email.")
+        warnings.append(INJECTION_WARNING)
     notes = request.confidence_notes or ""
 
     # 4. Keys, duplicate check, plan
@@ -142,7 +143,7 @@ def resolve_needs_human(store, run_id: str, partner_id: int | None = None, partn
     if not run or run["status"] != "needs_human":
         # Only open questions can be answered. A rejected or rolled-back run stays closed.
         raise ValueError(f"{run_id} is not waiting for a human choice")
-    request = PurchaseRequest.model_validate(run["request_json"])
+    request = PurchaseRequest.from_stored(run["request_json"])
     res = run["resolution_json"]
     production = res.get("production") or {}
 
@@ -195,8 +196,9 @@ def approve_run(store, odoo, run_id: str, approver: str, shown_plan_hash: str,
     over = money is not None and money["status"] == "over"
     if over and not over_budget_reason.strip():
         store.audit(run_id, f"human:{approver}", "refused: over budget without a reason", after=money)
-        raise ValueError(f"this order takes {money['production']} to {money['used_pct']}% of its "
-                         "budget; tick the over-budget box and write a reason to approve anyway")
+        raise ValueError(f"this order takes {money['production']} over its budget ({money['after']:,.0f} "
+                         f"of {money['budget']:,.0f} SAR); tick the over-budget box and write a reason "
+                         "to approve anyway")
     # One database step checks the status AND the plan hash, and sets the status to 'writing'.
     # Two clicks at the same moment can't both get past this line, so they can't both create
     # a PO. And a click on an old copy of the page can't approve a plan nobody looked at.

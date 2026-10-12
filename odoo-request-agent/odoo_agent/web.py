@@ -57,6 +57,8 @@ def create_app(store, get_odoo) -> FastAPI:
                 r["budget"] = budget.check_run(odoo, r)
         except (OSError, xmlrpc.client.Error, PermissionError) as e:
             return f"Budget check unavailable (Odoo not reachable: {e}). Approve checks it again."
+        except ValueError as e:  # e.g. a currency with no riyal rate
+            return f"Budget check unavailable ({e}). Approve checks it again."
         return ""
 
     @app.get("/kpis", response_class=HTMLResponse)
