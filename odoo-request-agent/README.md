@@ -122,8 +122,12 @@ called "Productions". `scripts/setup_odoo.py` creates three fictional ones from
 | Sahrat Al-Khamis (سهرة الخميس), weekly talk show | SHK-S3 | 60,000 | 53,500 | over budget |
 
 - **Matching** works like vendors: exact (English name, the Arabic name in brackets, or the code,
-  with Arabic spelling variants like ة/ه evened out), then fuzzy only if clearly the best, otherwise
-  a person picks from the list. The agent **never creates** a production.
+  with Arabic spelling variants like ة/ه and prefixes like لمسلسل evened out), then fuzzy only if
+  clearly the best, otherwise a person picks. The agent **never creates** a production.
+- **Seasons**: a match only counts if the season or year numbers agree. "Rimal Al-Khobar season 2"
+  looks 94% like RML-S1 but is a different budget, so a person picks; "Ramadan 2027" agrees with
+  BYT-R27, "Ramadan 2026" doesn't. Episode numbers ("الحلقة ١٢", "episode 12") are dropped first, so a
+  talk-show email that names its episode still matches the show.
 - **Charging**: every PO line gets `analytic_distribution = {"<account id>": 100}`, Odoo 17's way of
   saying "100% of this line belongs to this production".
 - **Budget**: committed = every PO line charged to the production that isn't cancelled, drafts
@@ -164,17 +168,19 @@ field (ten are scored; the re-send is a copy). `python -m odoo_agent eval --repe
 email three times exactly like production does and scores nine fields per reading, including
 `injection_flag`: `suspicious_instructions` must be true on the injection email **and** false on the
 nine clean ones. Eval calls are filed under their own ledger operation, so they never mix with real
-requests. Results on the current prompt and scorer (2026-10-13):
+requests. Results on the current prompt and scorer, run twice per effort (2026-10-13; the second
+run is the one saved in `evals/`):
 
-| Haiku 5.5 effort | Fields right | Readings fully right | Cost (30 readings) | Mean latency |
-|---|---|---|---|---|
-| **low (used)** | 99.6% of 270 | 29/30 | $0.0101 | 2.4 s |
-| medium | 99.6% of 270 | 29/30 | $0.0121 | 2.9 s |
+| Haiku 5.5 effort | Run 1: fields right | Run 2: fields right | Readings fully right (both runs) | Cost per 30 readings | Mean latency |
+|---|---|---|---|---|---|
+| **low (used)** | 99.6% of 270 | 100% of 270 | 59/60 | $0.010 | 2.4 s |
+| medium | 99.6% of 270 | 99.6% of 270 | 58/60 | $0.012 | 2.8 s |
 
-The one miss is the same at both efforts: on "Lights for studio B", which ends with "Please go ahead",
-the model set `suspicious_instructions` to true once in three readings. That is a false alarm (an extra
-red warning on the page), not a missed injection, so I left the prompt alone instead of tuning it to
-this one email. Medium costs about 20% more, is slower and gains nothing, so the agent stays on low.
+Every miss was the same one: on "Lights for studio B", which ends with "Please go ahead", the model
+sometimes set `suspicious_instructions` to true. That is a false alarm (an extra red warning on the
+page), not a missed injection, so I left the prompt alone instead of tuning it to this one email.
+The two runs also show why one run isn't enough: the same settings gave 99.6% and then 100%.
+Medium costs about 15-20% more, is slower and gains nothing, so the agent stays on low.
 
 The eval also caught a real problem earlier: before the model was given the list of productions, the
 talk show "سهرة الخميس" (literally "Thursday evening") was sometimes read as a time, not a name.
@@ -228,7 +234,8 @@ analytic accounts, and an API key.
 
 ## Live demo (night of 2026-10-12/13, real Haiku 5.5, eleven synthetic emails)
 
-Run on the code in this repo as committed, from a fresh Odoo database and an empty `agent.sqlite`:
+Run at commit `e633b05` from a fresh Odoo database and an empty `agent.sqlite` (the only later code
+change is episode numbers and the word "Ramadan" in production matching, which none of these emails use):
 `setup_odoo.py`, `send_samples.py`, `poll` (the AI step), then `scripts/demo_decisions.py` for every
 human decision. **The decisions were scripted**, made in about 5 seconds with the actor `demo-script`.
 Nobody reviewed anything, so the "waiting for a person" time below only measures the gap between the
@@ -267,7 +274,7 @@ How to read these honestly: the 90% success rate is 9 of 10 only because the dem
 on purpose (a drill), and 8 of the 9 "ended right" are the script's approvals. The 1.2-minute wait is
 the demo, not reviewers. The 83 minutes is the 12-minus-2 assumption times nine POs, not a measurement.
 What the demo does show: every route works end to end on real Haiku and real Odoo, at about
-**$0.34 per 1,000 requests** for the AI part. The eval re-run and this demo together spent $0.026.
+**$0.34 per 1,000 requests** for the AI part. The two eval runs and this demo together spent $0.048.
 
 ## Code map
 
@@ -299,6 +306,6 @@ Docs: [staff user guide in Arabic](docs/دليل-المستخدم.md).
 With the venv switched on:
 
 ```powershell
-python -m pytest            # 141 unit tests: fake model + fake Odoo, no network, no cost
+python -m pytest            # 146 unit tests: fake model + fake Odoo, no network, no cost
 python -m pytest -m live    # 3 tests against the docker Odoo (canned extraction, no AI cost)
 ```
