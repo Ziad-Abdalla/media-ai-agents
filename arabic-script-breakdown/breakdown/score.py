@@ -3,7 +3,9 @@
 Three kinds of field, three ways to score:
 - EXACT_FIELDS:    one right answer from a short list (داخلي / خارجي, نهار / ليل ...). Right or wrong.
 - LOCATION_FIELDS: free text, so we normalize the Arabic first and allow small wording differences.
-- SET_FIELDS:      lists (characters, props). We count what was found, what was missed,
+- SET_FIELDS:      lists (characters, props). Characters are compared after the alias map;
+                   props match when their main noun (first word) is the same. We count what was
+                   found, what was missed,
                    and what was invented, then compute precision / recall / F1.
 
 Precision = of the things the agent listed, how many were really there.
@@ -11,7 +13,11 @@ Recall    = of the things really there, how many the agent listed.
 F1        = one number that is high only when both are high.
 """
 
-from .normalize import canonical_character, normalize_arabic, same_item
+from .normalize import canonical_character, normalize_arabic, same_place, same_prop
+
+# Bump this whenever the scoring rules change, so old and new scores are never mixed up.
+# v1: props matched by containment. v2: props matched by main noun + synonym list.
+SCORER_VERSION = "v2"
 
 EXACT_FIELDS = ["int_ext", "time_of_day"]
 LOCATION_FIELDS = ["location"]
@@ -27,10 +33,10 @@ def match_lists(predicted: list[str], gold: list[str], field: str) -> tuple[list
         gold_left = list(dict.fromkeys(canonical_character(g) for g in gold))
         same = lambda a, b: normalize_arabic(a) == normalize_arabic(b)  # noqa: E731
     else:
-        # Props and the like: loose match ("الكاميرا القديمة" ~ "كاميرا").
+        # Props: same main noun ("الكاميرا القديمة" ~ "كاميرا سينما قديمة", "هاتف" ~ "جوال").
         pred = list(dict.fromkeys(predicted))
         gold_left = list(dict.fromkeys(gold))
-        same = same_item
+        same = same_prop
 
     matched, extra = [], []
     for p in pred:
@@ -50,7 +56,7 @@ def score_scene(pred: dict | None, gold: dict) -> dict:
     for field in EXACT_FIELDS:
         result[field] = pred.get(field) == gold[field]
     for field in LOCATION_FIELDS:
-        result[field] = bool(pred.get(field)) and same_item(pred[field], gold[field])
+        result[field] = bool(pred.get(field)) and same_place(pred[field], gold[field])
     for field in SET_FIELDS:
         matched, extra, missing = match_lists(pred.get(field, []), gold[field], field)
         result[field] = {"tp": len(matched), "extra": extra, "missing": missing}

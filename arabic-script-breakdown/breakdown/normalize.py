@@ -43,16 +43,42 @@ def item_key(text: str) -> str:
     return " ".join(strip_al(w) for w in normalize_arabic(text).split())
 
 
-def same_item(a: str, b: str) -> bool:
-    """Loose match for free-text items like props or locations.
+def same_place(a: str, b: str) -> bool:
+    """Loose match for locations: same after normalizing, or one contained in the other.
 
-    "الكاميرا القديمة" and "كاميرا" should count as the same prop,
-    so we accept an exact match or one being contained in the other.
+    "بيت ابو فهد، المجلس" matches "بيت أبو فهد - المجلس".
     """
     ka, kb = item_key(a), item_key(b)
     if not ka or not kb:
         return False
     return ka == kb or ka in kb or kb in ka
+
+
+# Words that name the same object. Some are Gulf dialect vs Modern Standard Arabic
+# (جوال / هاتف), some are spelling variants (فنجال / فنجان), some are plural vs singular.
+# All keys and values are already normalized (no hamza, ة -> ه).
+WORD_SYNONYMS = {
+    "هاتف": "جوال", "موبايل": "جوال", "تلفون": "جوال",
+    "فنجان": "فنجال",
+    "سماعه": "سماعات",
+    "حقيبه": "شنطه",
+    "كوب": "كاسه",
+    "فلاش": "ذاكره",
+}
+
+
+def head_noun(text: str) -> str:
+    """The first word of an Arabic noun phrase is the main noun.
+
+    "كاميرا سينما قديمة", "الكاميرا القديمة" and "كاميرا سينمائية" are all a كاميرا.
+    """
+    words = item_key(text).split()
+    return WORD_SYNONYMS.get(words[0], words[0]) if words else ""
+
+
+def same_prop(a: str, b: str) -> bool:
+    """Two prop names match if they share the same main noun (first word)."""
+    return bool(head_noun(a)) and head_noun(a) == head_noun(b)
 
 
 # ---------------------------------------------------------------------------
