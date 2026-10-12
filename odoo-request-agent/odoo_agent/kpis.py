@@ -8,13 +8,19 @@ cost ledger. Nothing here calls the model or writes anything.
 
 Definitions (also printed with the report, so nobody has to guess):
   auto-resolved     the agent matched vendor and production itself; the run went straight to
-                    "waiting for approval"
+                    "waiting for approval". It can still need a careful look: over-budget
+                    approvals and injection warnings are counted separately.
   needed a human    a person had to pick the vendor or production, or confirm a re-send
-  approval rate     approved / (approved + rejected), over runs a person decided
+  approval rate     approved / (approved + rejected). "Approved" means the writes actually ran
+                    (the run reached done, write_failed or rolled_back), not a click that the
+                    kill switch then stopped.
   success rate      finished runs that ended right without a fix: a draft PO that was not rolled
                     back, or a clarification reply sent. Rolled back, failed and write_failed
                     count as failures. Rejected runs are a person's decision, so they are left out.
-  handling time     from the email's Date header to the draft PO being created in Odoo
+                    Rolled back is also shown on its own, because a rollback can be a drill.
+  handling time     from the email's Date header to the draft PO being created in Odoo. It is
+                    split into the agent's part (email -> plan ready) and the wait for a person
+                    (plan ready -> the Approve click). The wait is queue time, not reading time.
   minutes saved     an estimate from the assumptions in config.py (MINUTES_*), not a measurement
 """
 
@@ -30,6 +36,7 @@ from agent_cost_tracker import ledger
 from . import config
 from .budget import order_total_sar
 from .models import PurchaseRequest
+from .pipeline import INJECTION_WARNING
 
 EXTRACT_OPERATION = "extract_purchase_request"
 EVAL_RESULT = Path(__file__).resolve().parent.parent / "evals" / "last_run.json"
@@ -63,28 +70,36 @@ def compute(store) -> dict:
     # Routes: what the agent could do on its own.
     planned = first["pending_approval"] + first["needs_human"]
 
-    # Decisions by people.
-    approved = {a["run_id"] for a in audit if a["operation"] == "approve"}
+    # Decisions by people. An Approve click only counts if the writes then ran: a click the
+    # kill switch stopped puts the run back to pending_approval, so it isn't an approval.
+    wrote = {r["run_id"] for r in runs if r["status"] in ("done", "write_failed", "rolled_back")}
+    approved = {a["run_id"] for a in audit if a["operation"] == "approve" and a["run_id"] in wrote}
     decided = len(approved) + status["rejected"]
+    over_budget = {a["run_id"] for a in audit if a["operation"] == "approve_over_budget"}
+    flagged = [r for r in runs if INJECTION_WARNING in ((r["resolution_json"] or {}).get("warnings") or [])]
 
     # Success: ended right, without a fix.
     good = status["done"] + status["reply_sent"]
-    bad = status["rolled_back"] + status["failed"] + status["write_failed"]
+    failed = status["failed"] + status["write_failed"]
+    bad = failed + status["rolled_back"]
 
-    # Time: email received -> draft PO created (and the agent's own part: received -> plan ready).
-    po_created = {}
+    # Time: email received -> draft PO created, split into the agent's part (received -> plan
+    # ready) and the wait for a person (plan ready -> the Approve click that wrote it).
+    po_created, approved_at = {}, {}
     for a in audit:
         if a["model"] == "purchase.order" and a["operation"] in ("create", "found_existing"):
             po_created.setdefault(a["run_id"], a["ts"])
-    to_po, to_plan = [], []
+        if a["operation"] == "approve" and a["run_id"] in approved:
+            approved_at[a["run_id"]] = a["ts"]  # the last click is the one that wrote
+    to_po, to_plan, waiting = [], [], []
     for r in runs:
-        received = parse_time(r["received_at"])
-        if not received:
-            continue
-        if r["run_id"] in po_created:
+        received, ready = parse_time(r["received_at"]), parse_time(r["planned_at"])
+        if received and r["run_id"] in po_created:
             to_po.append((parse_time(po_created[r["run_id"]]) - received).total_seconds())
-        if r["planned_at"]:
-            to_plan.append((parse_time(r["planned_at"]) - received).total_seconds())
+        if received and ready:
+            to_plan.append((ready - received).total_seconds())
+        if ready and r["run_id"] in approved_at:
+            waiting.append((parse_time(approved_at[r["run_id"]]) - ready).total_seconds())
 
     # Cost: model spend for these runs, from the shared ledger.
     conn = ledger.connect()
@@ -100,13 +115,15 @@ def compute(store) -> dict:
     per_po = config.MINUTES_MANUAL_PO - config.MINUTES_REVIEW_PO
     minutes_saved = status["done"] * per_po + status["reply_sent"] * config.MINUTES_PER_REPLY
 
-    # Money: draft POs the agent created, by production.
-    by_production = Counter()
+    # Money: draft POs the agent created, by production and by cost type.
+    by_production, by_category = Counter(), Counter()
     for r in runs:
         if r["status"] == "done" and r["request_json"]:
             production = (r["resolution_json"] or {}).get("production") or {}
-            name = production.get("name") or "(no production)"
-            by_production[name] += order_total_sar(PurchaseRequest.model_validate(r["request_json"]))
+            request = PurchaseRequest.from_stored(r["request_json"])
+            by_production[production.get("name") or "(no production)"] += order_total_sar(request)
+            for item in request.items:
+                by_category[item.category] += order_total_sar(request.model_copy(update={"items": [item]}))
 
     return {
         "runs_total": len(runs),
@@ -119,11 +136,16 @@ def compute(store) -> dict:
         "approved": len(approved),
         "rejected": status["rejected"],
         "approval_rate_pct": _share(len(approved), decided),
+        "over_budget_approvals": len(over_budget),
+        "injection_warnings": len(flagged),
         "succeeded": good,
+        "failed": failed,
+        "rolled_back": status["rolled_back"],
         "failed_or_undone": bad,
         "success_rate_pct": _share(good, good + bad),
         "median_minutes_email_to_po": _minutes(to_po),
         "median_minutes_email_to_plan": _minutes(to_plan),
+        "median_minutes_waiting_for_approval": _minutes(waiting),
         "pos_timed": len(to_po),
         "model_cost_usd": round(total_cost, 5),
         "cost_per_request_usd": round(total_cost / len(model_runs), 5) if model_runs else None,
@@ -133,6 +155,7 @@ def compute(store) -> dict:
                        f"plan {config.MINUTES_REVIEW_PO:g} min, so each draft PO saves {per_po:g} min; "
                        f"each drafted clarification reply saves {config.MINUTES_PER_REPLY:g} min"),
         "draft_po_sar_by_production": {k: round(v, 2) for k, v in by_production.most_common()},
+        "draft_po_sar_by_category": {k: round(v, 2) for k, v in by_category.most_common()},
         "extraction_eval": json.loads(EVAL_RESULT.read_text(encoding="utf-8"))["summary"]
                            if EVAL_RESULT.exists() else None,
     }
@@ -150,10 +173,13 @@ def as_text(k: dict) -> str:
         f"auto share: {show(k['auto_resolved_pct'], '%')}",
         f"Asked the sender for missing info: {k['needed_info']}   blocked outside senders: {k['blocked_senders']}",
         f"Approval rate: {show(k['approval_rate_pct'], '%')} ({k['approved']} approved, {k['rejected']} rejected)",
+        f"Needed a closer look: {k['over_budget_approvals']} approved over budget with a written reason, "
+        f"{k['injection_warnings']} with an injection warning",
         f"Success rate: {show(k['success_rate_pct'], '%')} ({k['succeeded']} ended right, "
-        f"{k['failed_or_undone']} failed or rolled back)",
-        f"Median time, email -> draft PO: {show(k['median_minutes_email_to_po'], ' min')} "
-        f"({k['pos_timed']} POs); email -> plan ready: {show(k['median_minutes_email_to_plan'], ' min')}",
+        f"{k['failed']} failed, {k['rolled_back']} rolled back)",
+        f"Median time, email -> draft PO: {show(k['median_minutes_email_to_po'], ' min')} ({k['pos_timed']} POs)",
+        f"  the agent (email -> plan ready): {show(k['median_minutes_email_to_plan'], ' min')}; "
+        f"waiting for a person (plan ready -> Approve): {show(k['median_minutes_waiting_for_approval'], ' min')}",
         f"Model cost: ${k['model_cost_usd']:.5f} for {k['requests_read_by_model']} requests, "
         + ("n/a per request" if k["cost_per_request_usd"] is None
            else f"${k['cost_per_request_usd']:.5f} per request"),
@@ -162,10 +188,14 @@ def as_text(k: dict) -> str:
     if k["draft_po_sar_by_production"]:
         lines += ["", "Draft POs created by the agent, by production (SAR, before VAT):"]
         lines += [f"  {name}: {amount:,.2f}" for name, amount in k["draft_po_sar_by_production"].items()]
+        lines += ["", "The same draft POs by cost type (SAR, before VAT):"]
+        lines += [f"  {name}: {amount:,.2f}" for name, amount in k["draft_po_sar_by_category"].items()]
     if k.get("budgets"):
         lines += ["", "Production budgets (committed = all open POs, drafts included):"]
         lines += [f"  {b['production']}: {b['committed']:,.0f} of {b['budget']:,.0f} SAR "
-                  f"({b['used_pct']}%, {b['po_count']} POs)" for b in k["budgets"]]
+                  f"({show(b['used_pct'], '%')}, {b['po_count']} POs"
+                  + (f"; lines in {', '.join(b['not_counted'])} not counted" if b["not_counted"] else "") + ")"
+                  for b in k["budgets"]]
     if k["extraction_eval"]:
         e = k["extraction_eval"]
         lines += ["", f"Extraction accuracy (last eval, {e['emails']} labelled synthetic emails x {e['repeats']}): "

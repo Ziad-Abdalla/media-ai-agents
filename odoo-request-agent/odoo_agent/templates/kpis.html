@@ -45,10 +45,11 @@
     <div class="note">{{ k.approved }} approved, {{ k.rejected }} rejected</div></div>
   <div class="tile"><div class="label">Success rate</div>
     <div class="value">{{ pct(k.success_rate_pct) }}</div>
-    <div class="note">{{ k.succeeded }} ended right, {{ k.failed_or_undone }} failed or rolled back</div></div>
+    <div class="note">{{ k.succeeded }} ended right, {{ k.failed }} failed, {{ k.rolled_back }} rolled back</div></div>
   <div class="tile"><div class="label">Median time, email to draft PO</div>
     <div class="value">{% if k.median_minutes_email_to_po is none %}n/a{% else %}{{ k.median_minutes_email_to_po }} min{% endif %}</div>
-    <div class="note">agent part (email to plan ready): {% if k.median_minutes_email_to_plan is none %}n/a{% else %}{{ k.median_minutes_email_to_plan }} min{% endif %}</div></div>
+    <div class="note">the agent (email to plan ready): {% if k.median_minutes_email_to_plan is none %}n/a{% else %}{{ k.median_minutes_email_to_plan }} min{% endif %};
+      waiting for a person: {% if k.median_minutes_waiting_for_approval is none %}n/a{% else %}{{ k.median_minutes_waiting_for_approval }} min{% endif %}</div></div>
   <div class="tile"><div class="label">AI cost per request</div>
     <div class="value">{% if k.cost_per_request_usd is none %}n/a{% else %}${{ "%.5f"|format(k.cost_per_request_usd) }}{% endif %}</div>
     <div class="note">${{ "%.5f"|format(k.model_cost_usd) }} total, {{ k.requests_read_by_model }} requests</div></div>
@@ -58,6 +59,9 @@
   <div class="tile"><div class="label">Asked sender for missing info</div>
     <div class="value">{{ k.needed_info }}</div>
     <div class="note">reply drafted in the sender's language</div></div>
+  <div class="tile"><div class="label">Needed a closer look</div>
+    <div class="value">{{ k.over_budget_approvals + k.injection_warnings }}</div>
+    <div class="note">{{ k.over_budget_approvals }} approved over budget with a reason, {{ k.injection_warnings }} injection warning</div></div>
   <div class="tile"><div class="label">Outside senders blocked</div>
     <div class="value">{{ k.blocked_senders }}</div>
     <div class="note">never reached the AI, cost $0</div></div>
@@ -69,18 +73,19 @@
 <table>
   <tr><th>Production</th><th class="num">Committed (SAR)</th><th class="num">Budget (SAR)</th><th>Used</th><th></th><th class="num">POs</th></tr>
   {% for b in k.budgets %}
-  {% set state = "over" if b.used_pct > 100 else "near" if b.used_pct >= 90 else "ok" %}
+  {% set state = b.status %}
   <tr>
     <td>{{ b.production }}</td>
     <td class="num">{{ "{:,.0f}".format(b.committed) }}</td>
     <td class="num">{{ "{:,.0f}".format(b.budget) }}</td>
-    <td><div class="meter {{ state }}" title="{{ b.used_pct }}% used"><span style="width: {{ [b.used_pct, 100]|min }}%"></span></div></td>
-    <td class="badge">{{ b.used_pct }}% {% if state == "over" %}&#9940; over budget{% elif state == "near" %}&#9888; close to budget{% else %}&#10003; within budget{% endif %}</td>
+    <td><div class="meter {{ state }}" title="{{ b.used_pct }}% used"><span style="width: {{ [b.used_pct or 100, 100]|min }}%"></span></div></td>
+    <td class="badge">{% if b.used_pct is not none %}{{ b.used_pct }}%{% else %}budget 0{% endif %} {% if state == "over" %}&#9940; over budget{% elif state == "near" %}&#9888; close to budget{% else %}&#10003; within budget{% endif %}</td>
     <td class="num">{{ b.po_count }}</td>
   </tr>
   {% endfor %}
 </table>
-<p class="fine">Committed = every PO line charged to the production that isn't cancelled, drafts included. Before VAT.</p>
+<p class="fine">Committed = every PO line charged to the production that isn't cancelled, drafts included. Before VAT.
+{% for b in k.budgets if b.not_counted %}{{ b.production }}: PO lines in {{ b.not_counted|join(", ") }} are not counted (no riyal rate). {% endfor %}</p>
 {% endif %}
 
 {% if k.draft_po_sar_by_production %}
@@ -89,6 +94,13 @@
   <tr><th>Production</th><th class="num">SAR, before VAT</th></tr>
   {% for name, amount in k.draft_po_sar_by_production.items() %}
   <tr><td>{{ name }}</td><td class="num">{{ "{:,.2f}".format(amount) }}</td></tr>
+  {% endfor %}
+</table>
+<h2>The same draft POs by cost type</h2>
+<table>
+  <tr><th>Cost type</th><th class="num">SAR, before VAT</th></tr>
+  {% for name, amount in k.draft_po_sar_by_category.items() %}
+  <tr><td>{{ name.replace("_", " ") }}</td><td class="num">{{ "{:,.2f}".format(amount) }}</td></tr>
   {% endfor %}
 </table>
 {% endif %}
@@ -101,8 +113,9 @@
 </table>
 
 <p class="fine">Definitions: auto-resolved = vendor and production matched without a person. Approval rate =
-approved / (approved + rejected). Success rate = draft POs not rolled back plus sent clarification replies, out of
-finished runs (rejections are a person's decision and are left out). Handling time runs from the email's Date
-header to the draft PO in Odoo. The same numbers: <code>python -m odoo_agent kpis</code>.</p>
+approved / (approved + rejected). Approved = the writes ran (a click stopped by the kill switch doesn't count). Success rate = draft POs not
+rolled back plus sent clarification replies, out of finished runs (rejections are a person's decision and are left
+out; a rollback can be a drill, so it is shown on its own). Handling time runs from the email's Date header to the
+draft PO in Odoo; "waiting for a person" is plan ready to the Approve click, which is queue time, not reading time. The same numbers: <code>python -m odoo_agent kpis</code>.</p>
 </body>
 </html>

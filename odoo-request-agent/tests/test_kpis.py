@@ -1,9 +1,12 @@
 """The KPI report: numbers computed from the runs, the audit log and the cost ledger."""
 
+import pytest
 from fastapi.testclient import TestClient
 
 from odoo_agent import config, kpis
-from odoo_agent.pipeline import reject_run, resolve_needs_human
+from odoo_agent.permissions import WritesDisabled
+from odoo_agent.pipeline import approve_run, reject_run, resolve_needs_human
+from odoo_agent.plan import plan_hash
 from odoo_agent.rollback import rollback
 from odoo_agent.web import create_app
 
@@ -80,3 +83,44 @@ def test_parse_time_reads_iso_and_email_dates():
     assert kpis.parse_time("2026-10-12T10:00:00+03:00").hour == 10
     assert kpis.parse_time("Mon, 12 Oct 2026 10:00:00 +0300").hour == 10
     assert kpis.parse_time("not a date") is None
+
+
+def test_runs_stored_before_a_field_was_added_still_load(store, odoo):
+    """agent.sqlite keeps every run. Adding a field to PurchaseRequest must not break old runs."""
+    r = run(store, odoo)
+    approve(store, odoo, r["run_id"])
+    old = {k: v for k, v in r["request_json"].items() if k != "suspicious_instructions"}
+    store.update_run(r["run_id"], request_json=old)  # as saved by the version before the field
+    pending = run(store, odoo, client=FakeAnthropic(order(7)), message_id="<7@sadaf.example>")
+    store.update_run(pending["run_id"], request_json={k: v for k, v in pending["request_json"].items()
+                                                      if k != "suspicious_instructions"})
+
+    assert kpis.compute(store)["draft_po_sar_by_production"]  # no ValidationError
+    web = TestClient(create_app(store, lambda: odoo))
+    assert web.get("/kpis").status_code == 200
+    assert "Within budget" in web.get(f"/?run={pending['run_id']}").text
+
+
+def test_a_click_stopped_by_the_kill_switch_is_not_an_approval(store, odoo):
+    r = run(store, odoo)
+    open(config.KILL_SWITCH_FILE, "w").close()
+    with pytest.raises(WritesDisabled):
+        approve(store, odoo, r["run_id"])
+    assert store.get_run(r["run_id"])["status"] == "pending_approval"
+    assert kpis.compute(store)["approved"] == 0
+
+
+def test_closer_looks_waiting_time_and_cost_types_are_reported(store, odoo):
+    from .test_budget import TALK_SHOW
+    odoo.commit_spend("SHK-S3", 50_000)
+    over = run(store, odoo, client=FakeAnthropic(TALK_SHOW))
+    approve_run(store, odoo, over["run_id"], "Ziad", plan_hash(over["plan_json"]), "opening episode")
+    flagged = run(store, odoo, client=FakeAnthropic({**order(8), "suspicious_instructions": True}),
+                  message_id="<8@sadaf.example>")
+    approve(store, odoo, flagged["run_id"])
+
+    k = kpis.compute(store)
+    assert (k["over_budget_approvals"], k["injection_warnings"]) == (1, 1)
+    assert k["median_minutes_waiting_for_approval"] is not None
+    assert k["draft_po_sar_by_category"] == {"equipment_rental": 13_500 + 7_000}
+    assert "1 approved over budget" in kpis.as_text(k)
