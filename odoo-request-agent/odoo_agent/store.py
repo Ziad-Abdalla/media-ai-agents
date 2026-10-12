@@ -3,6 +3,7 @@
 
 import json
 import sqlite3
+import threading
 from datetime import datetime, timezone
 
 from . import config
@@ -48,6 +49,9 @@ def now() -> str:
 
 class Store:
     def __init__(self, path: str = config.AGENT_DB_PATH):
+        # The web server answers requests on several threads, and they share this one
+        # connection, so every method takes the lock first: one database call at a time.
+        self.lock = threading.Lock()
         self.conn = sqlite3.connect(path, check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
         self.conn.executescript(SCHEMA)
@@ -57,43 +61,61 @@ class Store:
         fields = self._encode(fields)
         fields["created_at"] = fields["updated_at"] = now()
         cols = ", ".join(fields)
-        self.conn.execute(f"INSERT INTO runs ({cols}) VALUES ({', '.join('?' * len(fields))})",
-                          list(fields.values()))
-        self.conn.commit()
+        with self.lock:
+            self.conn.execute(f"INSERT INTO runs ({cols}) VALUES ({', '.join('?' * len(fields))})",
+                              list(fields.values()))
+            self.conn.commit()
 
     def update_run(self, run_id: str, **fields) -> None:
         fields = self._encode(fields)
         fields["updated_at"] = now()
         sets = ", ".join(f"{k} = ?" for k in fields)
-        self.conn.execute(f"UPDATE runs SET {sets} WHERE run_id = ?", [*fields.values(), run_id])
-        self.conn.commit()
+        with self.lock:
+            self.conn.execute(f"UPDATE runs SET {sets} WHERE run_id = ?", [*fields.values(), run_id])
+            self.conn.commit()
+
+    def claim_for_writing(self, run_id: str, approver: str) -> bool:
+        """Move a run to 'writing' in ONE database step, only if it is waiting for approval.
+        If two people click Approve at the same moment, only one gets True."""
+        with self.lock:
+            cur = self.conn.execute(
+                "UPDATE runs SET status = 'writing', approved_by = ?, updated_at = ?"
+                " WHERE run_id = ? AND status IN ('pending_approval', 'write_failed')",
+                (approver, now(), run_id))
+            self.conn.commit()
+        return cur.rowcount == 1
 
     def get_run(self, run_id: str) -> dict | None:
-        row = self.conn.execute("SELECT * FROM runs WHERE run_id = ?", (run_id,)).fetchone()
+        with self.lock:
+            row = self.conn.execute("SELECT * FROM runs WHERE run_id = ?", (run_id,)).fetchone()
         return self._decode(row) if row else None
 
     def find_run(self, **where) -> dict | None:
         conds = " AND ".join(f"{k} = ?" for k in where)
-        row = self.conn.execute(f"SELECT * FROM runs WHERE {conds} ORDER BY created_at LIMIT 1",
-                                list(where.values())).fetchone()
+        with self.lock:
+            row = self.conn.execute(f"SELECT * FROM runs WHERE {conds} ORDER BY created_at LIMIT 1",
+                                    list(where.values())).fetchone()
         return self._decode(row) if row else None
 
     def list_runs(self) -> list[dict]:
-        rows = self.conn.execute("SELECT * FROM runs ORDER BY created_at DESC").fetchall()
+        with self.lock:
+            rows = self.conn.execute("SELECT * FROM runs ORDER BY created_at DESC").fetchall()
         return [self._decode(r) for r in rows]
 
     # ---- audit ----
     def audit(self, run_id, actor, operation, model=None, record_id=None, before=None, after=None):
-        self.conn.execute(
-            "INSERT INTO audit (ts, run_id, actor, operation, model, record_id, before_json, after_json)"
-            " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (now(), run_id, actor, operation, model, record_id,
-             json.dumps(before, default=str) if before is not None else None,
-             json.dumps(after, default=str) if after is not None else None))
-        self.conn.commit()
+        with self.lock:
+            self.conn.execute(
+                "INSERT INTO audit (ts, run_id, actor, operation, model, record_id, before_json, after_json)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (now(), run_id, actor, operation, model, record_id,
+                 json.dumps(before, default=str) if before is not None else None,
+                 json.dumps(after, default=str) if after is not None else None))
+            self.conn.commit()
 
     def audit_rows(self, run_id: str) -> list[dict]:
-        rows = self.conn.execute("SELECT * FROM audit WHERE run_id = ? ORDER BY id", (run_id,)).fetchall()
+        with self.lock:
+            rows = self.conn.execute("SELECT * FROM audit WHERE run_id = ? ORDER BY id", (run_id,)).fetchall()
         out = []
         for r in rows:
             d = dict(r)

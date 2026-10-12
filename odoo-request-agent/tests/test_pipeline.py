@@ -1,5 +1,8 @@
 """The whole flow with a fake model and a fake Odoo: statuses, duplicates, idempotency."""
 
+import threading
+import time
+
 import pytest
 
 from odoo_agent.pipeline import approve_run, choose_vendor, process_email
@@ -109,3 +112,47 @@ def test_lost_answer_then_retry_makes_no_duplicate(store, odoo):
     assert len(odoo.pos()) == 1  # still one
     assert po_id == odoo.pos()[0]["id"]
     assert store.get_run(r["run_id"])["status"] == "done"
+
+
+def test_two_approvals_at_the_same_moment_make_one_po(store, odoo, monkeypatch):
+    """A double-click, or two approvers at once. Only one of them may write."""
+    r = run(store, odoo)
+    real_create = odoo.create
+
+    def slow_create(model, values):
+        time.sleep(0.1)  # make the two requests overlap
+        return real_create(model, values)
+    monkeypatch.setattr(odoo, "create", slow_create)
+
+    results = []
+
+    def approve():
+        try:
+            results.append(approve_run(store, odoo, r["run_id"], "Ziad"))
+        except ValueError:
+            results.append("refused")
+    threads = [threading.Thread(target=approve) for _ in range(2)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert len(odoo.pos()) == 1
+    assert results.count("refused") == 1
+
+
+def test_blank_approver_name_is_refused(store, odoo):
+    r = run(store, odoo)
+    with pytest.raises(ValueError):
+        approve_run(store, odoo, r["run_id"], "   ")
+    assert odoo.pos() == []
+    assert store.get_run(r["run_id"])["status"] == "pending_approval"
+
+
+def test_unexpected_error_leaves_the_run_retryable(store, odoo, monkeypatch):
+    r = run(store, odoo)
+    def broken_create(model, values):
+        raise KeyError("a bug we didn't expect")
+    monkeypatch.setattr(odoo, "create", broken_create)
+    with pytest.raises(KeyError):
+        approve_run(store, odoo, r["run_id"], "Ziad")
+    assert store.get_run(r["run_id"])["status"] == "write_failed"  # not stuck in 'writing'

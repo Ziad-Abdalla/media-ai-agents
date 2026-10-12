@@ -6,7 +6,6 @@ approve_run:    human said yes -> execute the plan through the permission gate
 
 import re
 import uuid
-import xmlrpc.client
 
 import anthropic
 import pydantic
@@ -117,10 +116,15 @@ def choose_vendor(store, run_id: str, partner_id: int | None, partner_name: str 
 
 def approve_run(store, odoo, run_id: str, approver: str) -> int:
     """Run the plan. Safe to call again after a failure: the PO step is idempotent."""
+    approver = approver.strip()
+    if not approver:
+        raise ValueError("type your name to approve")
     run = store.get_run(run_id)
-    if run["status"] not in ("pending_approval", "write_failed"):
-        raise ValueError(f"{run_id} is '{run['status']}', it can't be approved")
-    store.update_run(run_id, status="writing", approved_by=approver)
+    # One database step checks the status AND sets it to 'writing'. Two clicks at the same
+    # moment can't both get past this line, so they can't both create a PO.
+    if not run or not store.claim_for_writing(run_id, approver):
+        status = store.get_run(run_id)["status"] if run else "unknown"
+        raise ValueError(f"{run_id} is '{status}', it can't be approved")
     store.audit(run_id, f"human:{approver}", "approve")
 
     partner_id = po_id = None
@@ -138,8 +142,9 @@ def approve_run(store, odoo, run_id: str, approver: str) -> int:
     except (WritesDisabled, ForbiddenAction) as e:
         store.update_run(run_id, status="pending_approval", error=str(e))
         raise
-    except (OSError, xmlrpc.client.Error) as e:
-        # Network trouble or an Odoo error. The PO may or may not exist: retrying is safe.
+    except Exception as e:
+        # Network trouble, an Odoo error, or a bug. The PO may or may not exist: retrying is
+        # safe because the create steps search Odoo first. Never leave the run stuck in 'writing'.
         store.update_run(run_id, status="write_failed", error=str(e))
         raise
     store.update_run(run_id, status="done", po_id=po_id, error=None)
