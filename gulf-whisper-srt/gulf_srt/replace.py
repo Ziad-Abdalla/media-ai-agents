@@ -65,7 +65,7 @@ def split_punctuation(text: str) -> tuple[str, str, str]:
 
 def letter_count(text: str) -> int:
     """Letters only: diacritics, tatweel and punctuation don't count."""
-    return sum(ch.isalpha() and ch != "ـ" for ch in text)
+    return sum(ch.isalpha() and ch != "\u0640" for ch in text)  # tatweel (ـ) is not a letter
 
 
 def allows_attached(wrong: list[str]) -> bool:
