@@ -9,9 +9,12 @@ on or off takes effect on the next booking, with no restart.
     python scripts/odoo_link.py undo 3      # roll back: remove booking 3's activity from Odoo
 
 Where the activity goes: equipment that already exists as a product in Odoo gets the activity
-on that product (so opening "Camera Crane Rental" shows its upcoming bookings). Everything else
-(studios, crew, locations) goes on the company's own contact record. The script never creates
-products or contacts in Odoo; it only reads them, and later the workflow adds activities.
+on that product (so opening "Camera Crane Rental" shows its upcoming bookings). Every other
+catalogue item (studios, crew, the catalogue location) goes on the company's own contact record.
+A booking for something outside the catalogue has no Odoo record; with the switch on it is marked
+skipped_no_target. The script never creates or changes products or contacts in Odoo; it only reads
+them. The workflow only creates activities. The only delete is `undo`, which a person runs to
+remove an activity the workflow created.
 
 Uses the local Odoo from the odoo-request-agent project (database sadaf_demo). Standard library only.
 """
@@ -107,19 +110,29 @@ def link_off():
 def status():
     print("odoo_sync =", psql("SELECT value FROM app_settings WHERE key = 'odoo_sync'")[0][0])
     for row in psql("SELECT id, item, odoo_sync, coalesce(odoo_activity_id::text, ''), "
-                    "coalesce(replace(odoo_error, chr(10), ' '), '') FROM bookings ORDER BY id"):
+                    "coalesce(replace(odoo_error, chr(10), ' '), ''), "
+                    "CASE WHEN cancelled_at IS NULL THEN '' ELSE 'CANCELLED' END FROM bookings ORDER BY id"):
         print("booking " + " | ".join(row))
 
 
-def undo(booking_id):
+def remove_activity(booking_id):
+    """Delete the To-Do activity the workflow created for this booking. The only delete in Odoo,
+    and it only touches an activity id the workflow stored. Returns the id, or None if nothing was synced."""
     rows = psql(f"SELECT odoo_activity_id FROM bookings WHERE id = {int(booking_id)} AND odoo_sync = 'synced'")
     if not rows:
-        sys.exit(f"booking {booking_id} has nothing in Odoo to undo")
+        return None
     activity = int(rows[0][0])
     odoo = Odoo(env())
     if odoo.call("mail.activity", "search", [["id", "=", activity]]):
         odoo.call("mail.activity", "unlink", [activity])
     psql(f"UPDATE bookings SET odoo_sync = 'rolled_back' WHERE id = {int(booking_id)}")
+    return activity
+
+
+def undo(booking_id):
+    activity = remove_activity(booking_id)
+    if activity is None:
+        sys.exit(f"booking {booking_id} has nothing in Odoo to undo")
     print(f"booking {booking_id}: activity {activity} removed from Odoo; the booking itself is kept")
 
 
