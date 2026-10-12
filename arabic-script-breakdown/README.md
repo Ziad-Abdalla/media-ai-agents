@@ -2,9 +2,11 @@
 
 > **ملخص بالعربي:** أداة تقرأ سيناريو مسلسل عربي وتفرّغه مشهداً مشهداً: داخلي أو خارجي، نهار أو ليل،
 > المكان، الشخصيات الموجودة فعلاً، والإكسسوار والمركبات والكومبارس. ثم تبني من التفريغ **مسودة جدول تصوير**
-> (تجمع المشاهد حسب الموقع والوردية وتحترم أيام توفر الممثلين)، و**ورقة استدعاء** ليوم تصوير جاهزة للطباعة،
+> (تجمع المشاهد حسب الموقع والوردية وتحترم أيام توفر الممثلين وأيام إتاحة المواقع)، و**ورقة استدعاء** ليوم تصوير
+> جاهزة للطباعة (مشاهد الغروب والفجر محسوبة على وقت الضوء الفعلي)،
 > و**ملخصاً يهم الميزانية** (أيام كل ممثل، التنقلات، الليالي). معها مجموعة اختبار عربية وبوابة جودة تمنع أي تحديث
-> يسوء النتائج، ومجموعة منفصلة للحالات الصعبة. كل ما تنتجه مسودة يراجعها مساعد المخرج، ولا ترسل شيئاً لأحد.
+> يسوء النتائج، ومجموعة منفصلة للحالات الصعبة. كل ما تنتجه مسودة يراجعها مساعد المخرج، ولا تُعتمد ورقة استدعاء
+> فيها مشكلة مفتوحة إلا بتجاوز صريح باسم من اعتمدها. ولا ترسل الأداة شيئاً لأحد.
 > النص والبيانات كلها اصطناعية للتجربة. دليل الموظفين: [docs/دليل-المستخدم.md](docs/دليل-المستخدم.md).
 
 An agent that reads an Arabic TV screenplay and produces a **script breakdown**: for every scene, whether
@@ -25,15 +27,20 @@ a new model or prompt is better or worse before you trust it.
 ## Why this matters for a production house
 
 - **The breakdown is the first week of prep, every episode.** A 30-episode series is hundreds of scenes. The agent
-  does the first pass in about a minute for about 2 cents an episode; the assistant director corrects it instead of
-  typing it.
+  does the first pass in about a minute at about $0.0006 per scene (measured: $0.016 for this 26-scene synthetic
+  episode). A real 40 to 60 scene episode should cost roughly 3 to 4 cents; that is an estimate, not measured. The
+  assistant director corrects the draft instead of typing it.
 - **Mistakes here cost shooting days.** A silent actor left off the list is not called; a scene shot at two places
   that is planned as one wastes a move. The eval measures exactly these mistakes, and the gate stops a model or
   prompt update that makes them worse.
-- **It goes all the way to the documents the crew uses:** a stripboard, a call sheet with call times, and a summary
-  of the numbers the budget is built from (cast days, hold days, night shifts, company moves, site days).
-- **Nothing leaves without a person.** Names the agent can't place are flagged, every schedule and call sheet is
-  marked DRAFT until someone approves it by name, and the tool never emails anyone.
+- **It goes all the way to the documents the crew uses:** a stripboard, a call sheet whose times follow the real
+  sunset and dawn, and a summary of the numbers the budget is built from (cast days, hold days, night shifts, company
+  moves, site days). It respects the rules a production office really has: an actor only free two dates, a child
+  actor on day shifts only, a school that can only be used by day on Saturday.
+- **Nothing leaves without a person.** Names the agent can't place are flagged, not guessed. The schedule is always
+  a draft. A call sheet stays DRAFT until someone approves it by name, and approval is refused while the day has an
+  open problem (a review flag, or a scene that doesn't fit the light) unless that person overrides it on purpose;
+  every approval is logged. The tool never emails anyone.
 - **Arabic first.** Saudi dialect dialogue, MSA headings, nicknames, `متصل` scenes and dialect words for props are
   the test cases, and the staff guide is in Arabic.
 
@@ -58,14 +65,14 @@ flowchart LR
 | `breakdown/extract.py` | The prompt and the API call. Structured output means the answer is always valid JSON in the schema. The scene text is treated as data, and the previous scene's heading is passed so `متصل` (continuous) scenes get the right time of day. |
 | `breakdown/pipeline.py` | Splits the script, sends 4 scenes at a time, and collects the results. A scene that fails (bad answer, API error, budget used up) is reported as failed; the other scenes still finish. For two `متصل` scenes in a row it adds the last written time to the context. |
 | `breakdown/normalize.py` | Arabic normalization (tashkeel, tatweel, alef/ya/ta marbuta forms, Arabic-Indic digits) and the prop/location matching rules. |
-| `breakdown/cast_aliases.py` | The character alias map. Written by hand for this script's cast only. |
+| `breakdown/cast_aliases.py` | The alias maps of the two scripts in this repo, plus the two ways a new script gets its names: its own cast list (default) or its own alias file. |
 | `breakdown/report.py` | The CSV (UTF-8 with BOM so Excel shows Arabic) and the per-actor / per-location schedule view. |
 | `breakdown/score.py` | Per-field scoring and the regression check. |
 | `breakdown/eval.py` | The eval command: run, score, log to `eval/history.csv`, gate. `--set hard` runs the separate hard set. |
-| `breakdown/planning.py` | The draft shooting schedule (a greedy method, explained below), call times and the budget summary. No AI. |
-| `breakdown/production_docs.py` | The Arabic HTML/CSV files: stripboard, budget summary, printable call sheet. |
+| `breakdown/planning.py` | The draft shooting schedule (a greedy method, explained below), call times built around sunset and dawn, and the budget summary. No AI. |
+| `breakdown/production_docs.py` | The Arabic HTML/CSV files: stripboard, budget summary, printable call sheet, and the approval rule. |
 | `breakdown/plan.py` | The planning command: `python -m breakdown.plan <breakdown.jsonl>`. |
-| `data/kamera_jaddi.locations.csv` | Which real site each script place is shot at (synthetic). |
+| `data/kamera_jaddi.locations.csv` | Which real site each script place is shot at, and on which weekdays a site can be used (synthetic). |
 | `data/kamera_jaddi.availability.csv` | Which dates each actor can't come, or can only come, and who is day-only (synthetic). |
 
 **Why an alias map?** In a script one person has several names: the father is `أبو فهد` in dialogue,
@@ -83,9 +90,15 @@ name two cast members share (the hard set has two people called سلمان), the
 gets a `review_flags` note in Arabic. The flag shows up in red on the schedule and on the call sheet, so a person
 decides who it is before anyone is booked.
 
-The map is **written for this script** (`breakdown/cast_aliases.py`). A new script needs its own map,
-built from its cast list. Short keys like `خالد` are only safe because this cast has one Khalid. The
-scorer runs the map on the model's answer only, not on the gold (which uses cast names, checked by a test),
+**A new script never borrows this map.** The map in `breakdown/cast_aliases.py` is written for this script: short
+keys like `خالد` or `الجدة` are only safe because this cast has one Khalid and one grandmother. So
+`python -m breakdown <script>` with no `--aliases` uses **only the exact names in that script's own cast list**:
+`خالد العمري` is accepted, but a bare `خالد` or `الجدة` is kept as written and flagged for a person. To accept
+nicknames for a new show, the office writes a small alias file (`--aliases my_show.aliases.csv`, columns: cast name,
+other names separated by `;`). The example map is only used when asked for by name (`--aliases kamera_jaddi`).
+A test runs a new script with a character called خالد and checks that he is flagged, not turned into المدير.
+
+The scorer runs the map on the model's answer only, not on the gold (which uses cast names, checked by a test),
 so if the map ever merged two different people, the eval would show it as an error.
 
 ## Quickstart
@@ -103,15 +116,19 @@ py -3.13 -m venv .venv
 .venv\Scripts\activate                 # if PowerShell blocks it: Set-ExecutionPolicy -Scope Process Bypass
 pip install -r requirements.txt        # installs ../agent-cost-tracker too; this is the only install path
 copy .env.example .env                 # put ANTHROPIC_API_KEY in it (a .env in a parent folder also works)
-python -m pytest                       # 77 tests, no API calls
-python -m breakdown data/kamera_jaddi.txt --out output
-python -m breakdown.plan output/breakdown.jsonl --out output/plan --call-sheet-day 2   # no API calls
+python -m pytest                       # 104 tests, no API calls
+python -m breakdown data/kamera_jaddi.txt --out output --aliases kamera_jaddi
+python -m breakdown.plan output/breakdown.jsonl --out output/plan --call-sheet-day 2 `
+    --locations data/kamera_jaddi.locations.csv --availability data/kamera_jaddi.availability.csv   # no API calls
 python -m breakdown.eval --model claude-haiku-5-5 --effort low --gate
 python -m breakdown.eval --set hard --model claude-haiku-5-5 --effort low --gate     # the hard set
 ```
 
 To try the planning part with no API key at all, use the saved breakdown:
-`python -m breakdown.plan examples/breakdown.jsonl --out output/plan --call-sheet-day 2`.
+`python -m breakdown.plan examples/breakdown.jsonl --out output/plan --call-sheet-day 2,4`. Only this example
+breakdown picks up the synthetic locations and availability files by itself. Any other breakdown must be given its
+own `--locations` and `--availability`, because a schedule built on another show's availability would look right
+and be wrong.
 
 All API calls go through `tracked_call` from `agent-cost-tracker`, which records the cost of each call in
 a shared SQLite ledger and refuses to call once the budget is used up.
@@ -140,55 +157,90 @@ section (`examples/plan/`).
 ## From breakdown to schedule, call sheet and budget
 
 `python -m breakdown.plan` takes the breakdown plus two small files the production office keeps, and writes a
-draft schedule (`schedule.html`, `schedule.csv`), `budget_summary.md`, `cast_days.csv` and a printable call sheet
-for one day. It is plain code, no model: the same inputs give the same schedule every time.
+draft schedule (`schedule.html`, `schedule.csv`), `budget_summary.md`, `cast_days.csv` and printable call sheets.
+It is plain code, no model: the same inputs give the same schedule every time.
 
 - **Locations file** (`data/kamera_jaddi.locations.csv`): which real site each script place is shot at. The school
   corridor, the principal's office and the school gate are all one site, and the grandmother's house "in Jeddah" is
   a dressed room in the same villa, so nobody travels. A place is matched by its words (the most specific entry
-  wins: `سطح بيت أبو فهد` matches `بيت أبو فهد`). A place that is not in the file is flagged.
+  wins: `سطح بيت أبو فهد` matches `بيت أبو فهد`). A place that is not in the file is flagged. Two optional columns
+  say on which weekdays a site can be used for a day shift and for a night shift. In the example the school can't be
+  used during school hours, so its day scenes go only on Saturday (no school), and its night scenes on any night.
 - **Availability file** (`data/kamera_jaddi.availability.csv`): dates an actor can't come, dates they can only
   come, and "day shift only" (for the child actor).
 
 **How the schedule is built (greedy, by rules you can check by hand):**
 
 1. Each scene becomes a strip with a **shift** (`نهار` and `غروب` are a day shift; `ليل` and `فجر` a night shift,
-   dawn being the end of a night) and a **site**. One shoot day is one shift.
+   dawn being the end of a night) and a **site**. One shoot day is one shift. A strip is "free" on a date when all
+   its actors are free and its site is open that weekday for that shift.
 2. Strips are sorted: day shift first, then by site, then by place, then by scene number.
-3. For each working date (Friday off by default): start the day with the strip that is **hardest to place**, the one
-   whose actors are free on the fewest dates. Then add strips of the same shift whose actors are free that date,
-   best first: same place, then same site, then a new site (only one company move a day by default). Stop at the
-   scene or page limit.
-4. A scene that never fits is listed as unscheduled, with the reason.
+3. For each working date (Friday off by default; the example starts on Saturday 31 October, because the week runs
+   Saturday to Thursday): start the day with the strip that is **hardest to place**, the one with the fewest free
+   dates. Then add strips of the same shift that are free that date, best first: same place, then same site, then a
+   new site (one company move a day by default). If a new site is needed, take **the site with the most scenes
+   waiting that date**, so the move is spent on a site that fills the day. Stop at the scene or page limit.
+4. **Second pass:** two light days of the same shift (under half the page limit) are joined into one day when the
+   limits allow, even if that costs one extra company move. An hour's move is far cheaper than a whole crew day.
+5. A scene that never fits is listed as unscheduled, with the reason (the actor or the site that is never free).
 
 "Greedy" means it makes the best-looking choice at each step and never goes back, so it is fast and easy to
-explain, but not guaranteed to be the best possible schedule. Starting with the hardest strip is what makes it work
-in practice: the grandmother is only free on two dates, so her scene takes the first of those dates before easier
-scenes fill it.
+explain, but not guaranteed to be the best possible schedule. The second pass fixes the most expensive greedy
+mistake (a near-empty crew day). Beyond that, the next step is a solver, see [Limits](#limits).
 
 On the saved example: 26 scenes in **5 shoot days** (3 day, 2 night), **3 company moves**, nothing unscheduled.
-أبو فهد is kept off the first two days, the grandmother's scene lands on her date, the child actor's flashback is on a
-day shift, the four night scenes in Fahd's room are shot together, and the dawn scenes come at the end of the nights.
+The school's day scenes are on the two Saturdays, أبو فهد is kept off 1 and 2 November, the grandmother's scene lands
+on one of her two dates, the child actor's flashback is on a day shift, the three night scenes in Fahd's room are
+shot together, and the dawn scenes come at the end of the nights. Day 2 (the villa, the child actor at the
+playground, and the Diriyah sunset) was two separate days in the first pass; the second pass joined them.
 
 ![Draft stripboard](docs/screenshots/schedule.png)
 
-The stripboard uses the usual colours (white INT day, yellow EXT day, blue INT night, green EXT night).
+The stripboard uses the usual colours (white INT day, yellow EXT day, blue INT night, green EXT night), and each day
+shows its pages against the day limit.
 
 **The call sheet** for one day lists the sites with addresses, the scenes in order with an estimated start, the
 cast with cast numbers and call times (makeup and wardrobe 90 minutes before their first scene), costume, vehicles,
 extras, effects, and notes built from the data: the child actor's rules, the heritage site that needs a permit,
-the sunset scene whose time must follow the real sunset, the horse that needs its handler, and any review flag.
-Time estimates are simple and editable (`TimeRules`: a setup per scene, 15 minutes per eighth of a page, an hour
-per company move, a meal break after six hours). Until it is run with `--approved-by "name"`, it carries a
-DRAFT watermark and the line "not to be sent to actors before approval".
+the school's hours, the horse that needs its handler.
+
+**Times follow the real light.** A sunset scene must be shot as the sun goes down, and a dawn scene as it comes up,
+so these are not stacked after the crew call:
+
+- Sunset scenes are counted **back from sunset**, so the last one ends at sunset. Dawn scenes are counted back from
+  the next morning's sunrise.
+- The other scenes run forward from the crew call. If they would finish early, **the crew call moves later**, so
+  nobody waits around for the light. On day 2 the crew is called at 10:50, not 07:00, and the Diriyah sunset scene
+  starts at 16:07 and ends at sunset, 17:07.
+- A night shift never starts its first shot before it is dark (40 minutes after sunset).
+- Sunrise and sunset come from a small table for Riyadh (the 15th of each month, about 10 minutes off at most), or
+  from `--sunrise` / `--sunset` for another city or the exact minute.
+
+Anything that does not fit becomes an **open problem** printed in red at the top of the sheet, instead of a wrong
+time: not enough time before sunset, sunset scenes longer than the light lasts (about an hour), an exterior day scene
+that ends after sunset, a night that runs past sunrise, or a shift longer than 12 hours. Review flags (a name to
+check, an unknown place) are open problems too.
 
 ![Call sheet, day 2](docs/screenshots/call_sheet_day_2.png)
 
-**The budget summary** gives the numbers a line producer prices: shoot days, day and night shifts, night scenes,
-company moves, night-to-day turnarounds (crew rest), days per site (rental), extras / vehicles / animals per day,
-and for each actor the days worked and the **hold days** (shoot days between their first and last day on which
-they don't work, which are paid on a weekly deal). In the example, الأستاذ عادل works days 1 and 4 and is on hold
-for 2 days; that is the kind of line an AD then tries to fix by moving one scene.
+The night of day 4 is built back from its dawn scene: crew call 20:20, and the dawn scene starts at 05:09 and ends
+at sunrise (06:09). See `docs/screenshots/call_sheet_day_4.png`.
+
+**Approval.** `--approved-by "name"` removes the DRAFT watermark. It is **refused** (exit code 3, no files written)
+while any of those days has an open problem. `--override-problems` approves anyway, but the problems stay printed on
+the sheet under the approver's name, and every approval is added to `approvals.csv` (time, day, name, what was
+overridden). This is a rule, not a login: anyone who can run the command can type a name. Real access control (only
+the AD or the line producer can approve) belongs in the system people log into, for example Odoo user groups.
+
+**The budget summary** gives the numbers a line producer prices: shoot days, day and night shifts, night, dawn and
+sunset scenes (counted apart), company moves, night-to-day turnarounds (a night shift and then a day shift on the
+next calendar date: crew rest), days per site (rental), extras / vehicles / animals per day, and for each actor the
+days worked and the **hold days** (shoot days between their first and last day on which they don't work, which are
+paid on a weekly deal). In the example, الأستاذ عادل, ماجد and عم بندر work days 1, 4 and 5 and are each on hold for 2
+days. No single move fixes that: their day scenes can only be shot on the two school Saturdays, and their night
+scene at the school (day 4) can't go on a Saturday day shift. The real options are a cost decision for a person:
+pay the holds, ask the school for a weekday afternoon window, or agree day rates with those three actors. The tool
+shows the cost; it doesn't make that call.
 
 ## The evaluation
 
@@ -229,8 +281,8 @@ easy episode can't hide a failure here.
 | 6, 7 | **Dialect-only props**: `المحماس` is named only in dialogue but handed over (a prop); `الزولية` and `الكاميرا` are only asked for (not props). |
 
 Each hard scene also has **zero-tolerance checks** in its gold: `critical` fields that must be exactly right in that
-scene, and `must_exclude` / `must_include` words (the Ferrari must not appear in any field; the محماس must be
-found). The hard gate fails on any broken check, on top of the usual 0.05 threshold and the failed-scene rule.
+scene, and `must_exclude` / `must_include` words, and `must_count` (the Ferrari must not appear in any field of the answer,
+checked with the field `"*"`; the محماس must be found; the intercut needs two laptops, one in each place). The hard gate fails on any broken check, on top of the usual 0.05 threshold and the failed-scene rule.
 
 ### Metrics
 
@@ -324,15 +376,16 @@ One live run, Haiku at effort low, same prompt version `9eb1d255`, cost **$0.004
 
 | INT/EXT | Time | Location | Characters F1 | Props F1 | Overall | Hard checks broken |
 |---|---|---|---|---|---|---|
-| 1.00 | 1.00 | 1.00 | 1.000 | 0.938 | 0.988 | 1 (scene 6) |
+| 1.00 | 1.00 | 1.00 | 1.000 | 0.938 | 0.988 | 2 (scenes 5 and 6) |
 
 The injection was ignored (day, two people, no Ferrari), both Salmans were told apart, the time was carried
 through two `متصل` scenes, and the dialect prop `المحماس` was found while `الزولية` was left out. **The hard gate is
-red** on one check: in scene 6 the agent listed the camera that is only asked for in dialogue (`جيب الكاميرا معك`).
+red** on two checks. In scene 6 the agent listed the camera that is only asked for in dialogue (`جيب الكاميرا معك`).
 That is the same mistake as `بكاميرا أبوي` in scene 18 of the main set, so it is a real weakness of the prompt, not
-noise. I accepted the run as the hard baseline for the field scores and left the gate red on purpose: fixing it
-means a prompt change, and a prompt change means re-running both sets before it ships. The other error (scene 5
-lists one laptop where the gold has one in each place) only lowers props recall.
+noise. In scene 5, the intercut video call, it listed one laptop where there is one in each place; this check was
+added after a review pointed out that the scene's own hard case was not checked (scorer v4, re-scored for free from
+the saved run). I accepted the run as the hard baseline for the field scores and left the gate red on purpose:
+fixing it means a prompt change, and a prompt change means re-running both sets before it ships.
 
 ## Limits
 
@@ -342,15 +395,21 @@ lists one laptop where the gold has one in each place) only lowers props recall.
   evaluated. The text is probably easier for these models than a real script, and the labels reflect one
   reviewer. Read 0.99 as "the pipeline and the gate work", not as accuracy on real Saudi scripts.
 - Gold labels are drafted and still need the native-speaker review in `eval/GOLD_REVIEW.md`.
-- The alias map in `breakdown/cast_aliases.py` only fits this cast. A new script needs its own map.
+- The alias maps in `breakdown/cast_aliases.py` only fit these two casts. A new script uses its own cast list
+  (nicknames get flagged) until someone writes its alias file.
 - Prompt injection and two `متصل` scenes in a row are now covered by the hard set, but by one or two scenes
   each; that is a smoke test, not a security evaluation. A heading without `داخلي` or `خارجي` is not found by the splitter,
   so its text joins the scene before it.
 - Costume, effects, extras, vehicles and animals are extracted but not scored yet; props and characters
   were the priority because they are what schedules and budgets break on.
 - Length in eighths of a page is counted from line numbers, so it is a rough estimate.
-- The schedule is a draft built by simple rules. It does not know actor rates, travel, weather, sunrise and sunset
-  times, crew rest rules beyond counting night-to-day turnarounds, or how long a stunt really takes. Time estimates
-  are averages, and the synthetic episode is short (about 5 pages), so the day limits in the example are small.
+- The schedule is a draft built by simple rules: a greedy pass and a pass that joins light days. It does not know
+  actor rates, travel, weather, permit dates, hour windows inside a day (only weekdays per site), crew rest rules
+  beyond counting night-to-day turnarounds and flagging shifts over 12 hours, or how long a stunt really takes.
+  Availability is per character, not per actor, so one actor playing two roles is not modelled yet. Time estimates
+  are averages, sunrise and sunset are a monthly Riyadh table, and the synthetic episode is short (about 5 pages),
+  so every day in the example is under the page limit. With hard constraints that interact (permits, actor deals,
+  hour windows), the next step is a constraint solver such as OR-Tools CP-SAT, with the same files as input.
+- Approval is a rule in the tool, not a login: the name is typed. Who may approve needs real accounts.
 - The prompt and the gold labels follow the same written rules (what counts as a prop, who counts as
   present). A production team with different rules would need to change both.
