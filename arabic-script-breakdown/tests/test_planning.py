@@ -285,6 +285,19 @@ def test_dawn_scene_ends_at_the_next_sunrise_and_night_starts_after_dark():
     assert night_only.scene_start[1] >= night_only.sunset + timedelta(minutes=RULES.dark_after_sunset_minutes)
 
 
+def test_a_crew_call_moved_later_for_the_sunset_still_gets_a_meal(schedule):
+    # Example day 2: two day scenes, then the sunset scene at Diriyah. Without the meal the crew would be
+    # called at 10:50 and work to 17:07 (6h17) with no break. The meal is added and the call moves earlier.
+    ct = call_times(schedule.day(2), RULES)
+    assert ct.meal is not None
+    assert ct.meal - ct.crew_call <= timedelta(hours=RULES.meal_after_hours)
+    assert ct.scene_start[17].strftime("%H:%M") == "16:07" and ct.wrap.strftime("%H:%M") == "17:07"
+    for d in schedule.days:   # and no example day runs past the meal rule without a meal
+        times = call_times(d, RULES)
+        if times.wrap - times.crew_call > timedelta(hours=RULES.meal_after_hours):
+            assert times.meal is not None, d.number
+
+
 def test_sunrise_and_sunset_can_be_set_by_hand():
     day = ShootDay(1, date(2026, 11, 2), DAY_SHIFT, [strip(1, "الدرعية", time="غروب", eighths=1)])
     ct = call_times(day, TimeRules(sunset="17:30"))

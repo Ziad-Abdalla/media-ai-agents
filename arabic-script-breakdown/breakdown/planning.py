@@ -441,19 +441,28 @@ def _round_up_5(t: datetime) -> datetime:
     return t + timedelta(minutes=-t.minute % 5)
 
 
-def _stack(strips: list[Strip], crew_call: datetime, rules: TimeRules) -> tuple[dict[int, datetime], datetime | None,
-                                                                                 datetime]:
-    """Scenes one after another from the crew call: (start of each scene, meal start, end of the last scene)."""
+def _stack(strips: list[Strip], crew_call: datetime, rules: TimeRules,
+           meal_needed: bool = False) -> tuple[dict[int, datetime], datetime | None, datetime]:
+    """Scenes one after another from the crew call: (start of each scene, meal start, end of the last scene).
+
+    The meal comes before the first scene that would start after meal_after_hours. With meal_needed
+    (the whole day is longer than that), it comes before the first scene that would END after it,
+    or at the end of this block if no scene does.
+    """
     t = crew_call + timedelta(minutes=rules.first_setup_minutes)
+    due = crew_call + timedelta(hours=rules.meal_after_hours)
     meal = None
     starts: dict[int, datetime] = {}
     for i, strip in enumerate(strips):
         if i and strip.site != strips[i - 1].site:
             t += timedelta(minutes=rules.move_minutes)
-        if meal is None and t >= crew_call + timedelta(hours=rules.meal_after_hours):
+        ends_late = meal_needed and t + timedelta(minutes=rules.scene_minutes(strip)) > due
+        if meal is None and (t >= due or ends_late):
             meal, t = t, t + timedelta(minutes=rules.meal_minutes)
         starts[strip.number] = t
         t += timedelta(minutes=rules.scene_minutes(strip))
+    if meal_needed and meal is None:
+        meal, t = t, t + timedelta(minutes=rules.meal_minutes)
     return starts, meal, t
 
 
@@ -507,6 +516,11 @@ def call_times(day: ShootDay, rules: TimeRules | None = None) -> CallTimes:
             crew_call += shift
             forward = {n: s + shift for n, s in forward.items()}
             meal = meal + shift if meal else None
+            # The later call can still leave a day (crew call to the end of the light) longer than the meal
+            # rule. Then add the meal and call the crew that much earlier, so the light scenes don't move.
+            if meal is None and light_end - crew_call > timedelta(hours=rules.meal_after_hours):
+                crew_call -= timedelta(minutes=rules.meal_minutes)
+                forward, meal, _ = _stack(others, crew_call, rules, meal_needed=True)
         else:
             warnings.append(f"لا يكفي الوقت قبل {LIGHT_TIMES[tied[0].scene.time_of_day]}: مشاهد اليوم تحتاج "
                             f"{_minutes(-gap)} دقيقة أكثر. انقل مشهداً إلى يوم آخر")
@@ -521,6 +535,9 @@ def call_times(day: ShootDay, rules: TimeRules | None = None) -> CallTimes:
     elif wrap > sunrise:
         warnings.append("المشاهد الليلية تمتد بعد الشروق: انقل مشهداً إلى ليلة أخرى")
     hours = (wrap - crew_call).total_seconds() / 3600
+    if meal is None and hours > rules.meal_after_hours:
+        warnings.append(f"الوردية {hours:.1f} ساعة بلا استراحة طعام (القاعدة: بعد {rules.meal_after_hours} ساعات): "
+                        "أضفها يدوياً")
     if hours > rules.max_shift_hours:
         warnings.append(f"طول الوردية {hours:.1f} ساعة، أكثر من {rules.max_shift_hours}: راجع راحة الطاقم والعمل الإضافي")
 
