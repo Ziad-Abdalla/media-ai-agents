@@ -1,8 +1,8 @@
 import pytest
 
 from gulf_srt.qc import (
-    MAYBE_MISSING, MAYBE_WRONG, QUIET_GAP, READABILITY, QcRules, check, decode_windows, headline, run, summary,
-    to_markdown, words_by_cue,
+    MAYBE_MISSING, MAYBE_WRONG, QUIET_GAP, READABILITY, QcRules, check, decode_windows, headline, parse_duration, run,
+    summary, to_markdown, words_by_cue,
 )
 from gulf_srt.segment import Cue, Rules, Word
 from gulf_srt.transcript import SpeechSegment, Transcript
@@ -121,3 +121,15 @@ def test_clean_file_and_summary():
     assert summary(cues, []) == {"cues": 1, "cues_flagged": 0, "share_flagged": 0.0, "gaps_to_check": 0,
                                  "gap_seconds": 0.0, "by_kind": {}}
     assert "Nothing to flag." in to_markdown(cues, [], "ep01")
+
+
+def test_a_vendor_file_missing_its_last_act_is_only_caught_with_the_episode_length():
+    cues = [Cue(0, 2, ["هلا"]), Cue(3, 5, ["مرحبا"])]
+    issues, notes = run(cues, RULES)
+    assert issues == [] and notes == ["no-words", "no-end"]
+    issues, notes = run(cues, RULES, duration=parse_duration("5:05"))
+    assert [(i.kind, i.start, i.end) for i in issues] == [("long-gap", 5, 305)] and notes == ["no-words"]
+
+
+def test_episode_length_formats():
+    assert parse_duration("2670") == parse_duration("44:30") == parse_duration("00:44:30") == 2670

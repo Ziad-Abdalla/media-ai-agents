@@ -6,7 +6,9 @@ Four kinds of problem, ranked by what costs most if it goes out unchecked:
    covers it: Whisper skipped or dropped it. Whisper's own scores can't show this (there is
    no word to score), so it goes first, the stretch with the most speech first. Without
    speech data (for example a delivered SRT), any 10 s stretch with no subtitle is listed
-   here instead, because we can't tell speech from music.
+   here instead, because we can't tell speech from music. The end of a delivered SRT is only
+   checked if you give the episode length with --duration; otherwise a file missing its
+   last act would pass.
 2. The words may be wrong. Whisper scores its own output: each word gets a probability,
    and each 30-second window it decodes gets an average log-probability, a "no speech"
    probability and a compression ratio (repetitive text compresses well, a sign Whisper got
@@ -19,7 +21,7 @@ Four kinds of problem, ranked by what costs most if it goes out unchecked:
 Run it on our own output, or on any SRT (for example a vendor's delivery):
 
     python -m gulf_srt.qc out/episode01.srt --words out/episode01.words.json
-    python -m gulf_srt.qc delivered/episode01.srt
+    python -m gulf_srt.qc delivered/episode01.srt --duration 44:30
 """
 
 import argparse
@@ -50,6 +52,8 @@ NOTES = {
     "no-words": "No Whisper data was given (for example, a delivered SRT), so only readability and "
                 "gaps are checked, and gaps are judged by length only.",
     "no-speech": "This words.json has no speech-activity data, so gaps are judged by length only.",
+    "no-end": "The episode length wasn't given, so the stretch after the last subtitle was not checked. "
+              "Pass --duration (for example --duration 44:30) to check the end of the file too.",
 }
 
 
@@ -254,11 +258,13 @@ def to_json(cues: list[Cue], issues: list[Issue], notes: list[str] = ()) -> str:
                        "issues": [asdict(i) for i in issues]}, ensure_ascii=False, indent=1)
 
 
-def run(cues: list[Cue], rules: Rules, transcript: Transcript | None = None) -> tuple[list[Issue], list[str]]:
+def run(cues: list[Cue], rules: Rules, transcript: Transcript | None = None,
+        duration: float | None = None) -> tuple[list[Issue], list[str]]:
     """Check cues with whatever data there is. If the SRT was edited, the word check is
-    switched off and the notes say so. Returns the issues and the notes."""
+    switched off and the notes say so. `duration` is the episode length, for a delivered SRT
+    (a transcript has its own). Returns the issues and the notes."""
     if transcript is None:
-        return check(cues, rules), ["no-words"]
+        return check(cues, rules, duration=duration), ["no-words"] + ([] if duration else ["no-end"])
     notes = [] if transcript.speech else ["no-speech"]
     speech = transcript.speech or None
     try:
@@ -270,6 +276,14 @@ def run(cues: list[Cue], rules: Rules, transcript: Transcript | None = None) -> 
     return issues, notes
 
 
+def parse_duration(text: str) -> float:
+    """'2670', '44:30' or '00:44:30.5' -> seconds."""
+    seconds = 0.0
+    for part in text.split(":"):
+        seconds = seconds * 60 + float(part)
+    return seconds
+
+
 def main(argv: list[str] | None = None) -> None:
     sys.stdout.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description="QC report for a subtitle file.")
@@ -277,6 +291,8 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--words", help="the .words.json saved by python -m gulf_srt (adds confidence and speech checks)")
     parser.add_argument("--replacements", help="the replacements file the SRT was made with, if any")
     parser.add_argument("-o", "--output", help="where to write the .qc.md (default: next to the SRT)")
+    parser.add_argument("--duration", type=parse_duration,
+                        help="the episode length (seconds, mm:ss or hh:mm:ss), so the end of the file is checked too")
     parser.add_argument("--max-line-chars", type=int, default=42)
     args = parser.parse_args(argv)
 
@@ -284,9 +300,10 @@ def main(argv: list[str] | None = None) -> None:
     transcript = load_transcript(args.words) if args.words else None
     if transcript and args.replacements:
         transcript.words, _ = apply_replacements(transcript.words, read_replacements(args.replacements))
-    issues, notes = run(cues, Rules(max_line_chars=args.max_line_chars), transcript)
-    if "edited" in notes:
-        print(NOTES["edited"], file=sys.stderr)
+    issues, notes = run(cues, Rules(max_line_chars=args.max_line_chars), transcript, args.duration)
+    for note in ("edited", "no-end"):
+        if note in notes:
+            print(NOTES[note], file=sys.stderr)
     output = Path(args.output) if args.output else Path(args.srt).with_suffix(".qc.md")
     output.write_text(to_markdown(cues, issues, Path(args.srt).name, notes), encoding="utf-8")
     output.with_suffix(".json").write_text(to_json(cues, issues, notes), encoding="utf-8")
