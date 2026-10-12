@@ -1,11 +1,13 @@
 """Write the planning files the crew reads: the schedule (HTML + CSV), the budget summary and a call sheet.
 
-All pages are Arabic, right-to-left, and print on A4. They are drafts: every page says so until a
-named person approves the call sheet with --approved-by.
+All pages are Arabic, right-to-left, and print on A4. The schedule is always a draft. A call sheet is a
+draft until a named person approves it with --approved-by, and that is refused while the day still has
+open problems (review flags, or times that don't fit the light), unless they are overridden on purpose.
 """
 
 import csv
-from datetime import datetime
+from dataclasses import dataclass
+from datetime import date, datetime
 from html import escape
 from pathlib import Path
 
@@ -17,9 +19,24 @@ from .planning import (
     Schedule,
     ShootDay,
     Strip,
+    TimeRules,
     budget_summary,
     call_times,
+    is_light,
 )
+
+
+@dataclass
+class Approval:
+    """Who approved a call sheet, and whether they chose to override its open problems (shown on the sheet)."""
+    by: str
+    override: bool = False
+
+
+def open_problems(day: ShootDay, rules: TimeRules | None = None) -> list[str]:
+    """What must be solved before this day's call sheet can be approved: review flags and time conflicts."""
+    problems = [f"المشهد {s.number}: {f}" for s in day.strips for f in s.flags]
+    return problems + call_times(day, rules).warnings
 
 DRAFT_NOTE = "مسودة آلية: يراجعها مساعد المخرج ويعدّلها قبل الاعتماد. لا تُرسل للممثلين قبل الاعتماد."
 HOLD_DAYS_NOTE = ('<p class="sub">أيام الانتظار: أيام تصوير بين أول وآخر يوم للممثل لا يصوّر فيها.'
@@ -54,6 +71,9 @@ tr.int-night td { background: #cfe0ff; }
 tr.ext-night td { background: #cdeccd; }
 .legend span { display: inline-block; padding: 2px 10px; border: 1px solid #bbb; margin-left: 6px; }
 .flag { color: #a40000; font-weight: 600; }
+.problems { background: #fdecec; border: 1px solid #c94a4a; color: #7a0000; padding: 8px 12px; border-radius: 6px;
+            margin: 10px 0; }
+.problems ul { margin: 4px 0 0; }
 .num { font-variant-numeric: tabular-nums; }
 span[dir="ltr"] { white-space: nowrap; }
 .watermark { position: fixed; top: 40%; left: 0; right: 0; text-align: center; font-size: 110px;
@@ -77,8 +97,10 @@ def date_ar(d) -> str:
     return f'{WEEKDAY_AR[d.weekday()]} <span dir="ltr">{d.isoformat()}</span>'
 
 
-def hhmm(t: datetime) -> str:
-    return t.strftime("%H:%M")
+def hhmm(t: datetime, day: date | None = None) -> str:
+    """HH:MM, with "(+1)" for a time after midnight on a night shift: "01:35 (+1)"."""
+    after_midnight = day is not None and t.date() > day
+    return t.strftime("%H:%M") + (" (+1)" if after_midnight else "")
 
 
 def strip_class(strip: Strip) -> str:
@@ -128,8 +150,10 @@ def schedule_html(schedule: Schedule, title: str) -> str:
     ]
     rows, classes = [], []
     for day in schedule.days:
+        light = " · يوم خفيف" if is_light(day, s) else ""
         rows.append(f"اليوم {day.number} · {date_ar(day.date)} · وردية {day.shift} · {len(day.strips)} مشاهد"
-                    f" · {pages(day.eighths)} صفحة · تنقلات بين المواقع: {day.moves}")
+                    f" · {pages(day.eighths)} من {pages(s.max_eighths)} صفحات{light}"
+                    f" · تنقلات بين المواقع: {day.moves}")
         classes.append("daybreak")
         shown_notes: set[str] = set()  # a place note is shown once per day, not on every strip
         for strip in day.strips:
@@ -162,8 +186,9 @@ def budget_html(summary: BudgetSummary) -> str:
     ids = cast_ids(summary)
     parts = ["<h2>ملخص يهم الميزانية</h2>",
              (f"<p>{summary.shoot_days} أيام تصوير: {summary.day_shifts} نهارية و{summary.night_shifts} ليلية"
-              f" ({summary.night_scenes} مشهد ليلي). تنقلات الطاقم بين المواقع داخل اليوم: {summary.company_moves}."
-              f" انتقال من وردية ليلية إلى نهارية في اليوم التالي: {summary.night_to_day_turnarounds}.</p>"),
+              f" ({summary.night_scenes} مشهد ليل، {summary.dawn_scenes} فجر، {summary.sunset_scenes} غروب)."
+              f" تنقلات الطاقم بين المواقع داخل اليوم: {summary.company_moves}."
+              f" وردية ليلية تليها وردية نهارية في اليوم التالي مباشرة: {summary.night_to_day_turnarounds}.</p>"),
              "<h2>أيام عمل كل ممثل</h2>",
              _table(["رقم", "الشخصية", "أيام العمل", "الأيام", "أيام انتظار"],
                     [[str(ids[a.name]), escape(a.name), str(len(a.days)), "، ".join(map(str, a.days)),
@@ -203,9 +228,11 @@ def budget_markdown(summary: BudgetSummary) -> str:
              f"| أيام التصوير | {summary.shoot_days} |",
              f"| ورديات نهارية | {summary.day_shifts} |",
              f"| ورديات ليلية | {summary.night_shifts} |",
-             f"| مشاهد ليلية | {summary.night_scenes} |",
+             f"| مشاهد ليل | {summary.night_scenes} |",
+             f"| مشاهد فجر | {summary.dawn_scenes} |",
+             f"| مشاهد غروب | {summary.sunset_scenes} |",
              f"| تنقلات الطاقم بين المواقع | {summary.company_moves} |",
-             f"| انتقال من ليلي إلى نهاري | {summary.night_to_day_turnarounds} |",
+             f"| وردية ليلية تليها نهارية في اليوم التالي | {summary.night_to_day_turnarounds} |",
              f"| مشاهد لم تُجدول | {summary.unscheduled} |",
              f"| مشاهد تحتاج مراجعة | {len(summary.flagged_scenes)} |",
              "", "## أيام عمل كل ممثل", "",
@@ -224,7 +251,7 @@ def budget_markdown(summary: BudgetSummary) -> str:
 
 # ---------- call sheet ----------
 
-def call_sheet_notes(day: ShootDay, schedule: Schedule) -> list[str]:
+def call_sheet_notes(day: ShootDay, schedule: Schedule, times: CallTimes) -> list[str]:
     """Notes a crew needs for the day, built from the data. Nothing here is invented by a model."""
     notes = []
     for name in day.cast:
@@ -235,36 +262,56 @@ def call_sheet_notes(day: ShootDay, schedule: Schedule) -> list[str]:
         notes += strip.place_notes
     for strip in day.strips:
         sc = strip.scene
-        if sc.time_of_day in ("فجر", "غروب"):
-            light = "الفجر" if sc.time_of_day == "فجر" else "الغروب"
-            notes.append(f"المشهد {sc.scene_number} مرتبط بضوء {light}: الوقت المكتوب تقديري، "
-                         f"يُضبط على وقت {light} الفعلي في يوم التصوير")
+        if sc.scene_number in times.light:
+            light = times.light[sc.scene_number]
+            when = hhmm(times.sunset) if light == "الغروب" else hhmm(times.sunrise, day.date)
+            notes.append(f"المشهد {sc.scene_number} يُصوَّر في ضوء {light}: وقته محسوب ليصل إلى "
+                         f"{'الغروب' if light == 'الغروب' else 'الشروق'} ({when} تقريباً). تأكد من الدقيقة يوم التصوير")
         if sc.is_flashback:
             notes.append(f"المشهد {sc.scene_number} فلاش باك: أزياء ومكياج الفترة القديمة")
         if sc.animals:
             notes.append(f"المشهد {sc.scene_number}: حيوان في التصوير ({'، '.join(sc.animals)}): يحضر المسؤول عنه")
-        notes += [f"⚠ المشهد {sc.scene_number}: {f}" for f in strip.flags]
     return list(dict.fromkeys(notes))
 
 
-def call_sheet_html(schedule: Schedule, day_number: int, title: str, approved_by: str | None = None) -> str:
-    day = next((d for d in schedule.days if d.number == day_number), None)
-    if day is None:
-        raise ValueError(f"no shoot day {day_number}: the schedule has {len(schedule.days)} days")
-    times: CallTimes = call_times(day)
+def call_sheet_html(schedule: Schedule, day_number: int, title: str, approval: Approval | None = None,
+                    rules: TimeRules | None = None) -> str:
+    """The printable call sheet for one day. With open problems it can only be approved with an override."""
+    day = schedule.day(day_number)
+    times: CallTimes = call_times(day, rules)
+    problems = open_problems(day, rules)
+    if approval and problems and not approval.override:
+        raise ValueError(f"day {day_number} has {len(problems)} open problems: solve them or override them by name")
     ids = cast_ids(budget_summary(schedule))
     first_scene = {}
     for strip in day.strips:
         for name in strip.scene.characters:
             first_scene.setdefault(name, strip.number)
 
-    status = (f'<div class="approved">معتمدة من: {escape(approved_by)}</div>' if approved_by
-              else f'<div class="watermark">مسودة</div><div class="draft">{escape(DRAFT_NOTE)}</div>')
-    meal = f" · الاستراحة {hhmm(times.meal)}" if times.meal else ""
+    if approval:
+        status = f'<div class="approved">معتمدة من: {escape(approval.by)}</div>'
+        if problems:
+            status += (f'<div class="problems"><b>اعتُمدت مع تجاوز {len(problems)} مشكلة، على مسؤولية '
+                       f'{escape(approval.by)}:</b><ul>' + "".join(f"<li>{escape(x)}</li>" for x in problems)
+                       + "</ul></div>")
+    else:
+        status = f'<div class="watermark">مسودة</div><div class="draft">{escape(DRAFT_NOTE)}</div>'
+        if problems:
+            status += ('<div class="problems"><b>⚠ مشاكل يجب حلها قبل الاعتماد:</b><ul>'
+                       + "".join(f"<li>{escape(x)}</li>" for x in problems) + "</ul></div>")
+    meal = f" · الاستراحة {hhmm(times.meal, day.date)}" if times.meal else ""
+    sun = (f"الغروب {hhmm(times.sunset)}" if day.shift == DAY_SHIFT
+           else f"الغروب {hhmm(times.sunset)} · الشروق {hhmm(times.sunrise, day.date)}")
+
+    def start(st: Strip) -> str:
+        t = hhmm(times.scene_start[st.number], day.date)
+        return f"{t}<br><small>ضوء {times.light[st.number]}</small>" if st.number in times.light else t
+
     body = [
         f"<h1>ورقة الاستدعاء: {escape(title)}</h1>",
         (f'<p class="sub">اليوم {day.number} من {len(schedule.days)} · {date_ar(day.date)} · وردية {day.shift}'
-         f" · حضور الطاقم <b>{hhmm(times.crew_call)}</b>{meal} · نهاية متوقعة {hhmm(times.wrap)}</p>"),
+         f" · حضور الطاقم <b>{hhmm(times.crew_call)}</b>{meal} · نهاية متوقعة {hhmm(times.wrap, day.date)}"
+         f" · {sun} (تقريبي)</p>"),
         status,
         '<p class="synthetic">نص وبيانات اصطناعية للتجربة: لا تخص أي إنتاج حقيقي.</p>',
         "<h2>المواقع</h2>",
@@ -275,15 +322,15 @@ def call_sheet_html(schedule: Schedule, day_number: int, title: str, approved_by
         "<h2>المشاهد بالترتيب</h2>",
         _table(["#", "بداية تقديرية", "المشهد", "داخلي/خارجي", "الوقت", "المكان", "الطول", "الشخصيات (بالرقم)",
                 "الإكسسوار"],
-               [[str(i), hhmm(times.scene_start[st.number]), str(st.number), escape(st.scene.int_ext),
+               [[str(i), start(st), str(st.number), escape(st.scene.int_ext),
                  escape(st.scene.time_of_day), escape(st.scene.location), pages(st.scene.length_eighths),
                  escape("، ".join(f"{ids.get(c, '?')}. {c}" for c in st.scene.characters)),
                  escape("، ".join(st.scene.props))] for i, st in enumerate(day.strips, start=1)],
                [strip_class(st) for st in day.strips]),
         "<h2>الممثلون</h2>",
         _table(["رقم", "الشخصية", "الممثل", "أول مشهد", "الحضور (مكياج وملابس)", "جاهز في الموقع"],
-               [[str(ids.get(name, "?")), escape(name), "—", str(first_scene[name]), f"<b>{hhmm(t)}</b>",
-                 hhmm(times.scene_start[first_scene[name]])] for name, t in times.actor_call.items()]),
+               [[str(ids.get(name, "?")), escape(name), "—", str(first_scene[name]), f"<b>{hhmm(t, day.date)}</b>",
+                 hhmm(times.scene_start[first_scene[name]], day.date)] for name, t in times.actor_call.items()]),
         '<div class="grid2">',
         _dept("الأزياء والمكياج", day, "costume_makeup"),
         _dept("المركبات", day, "vehicles"),
@@ -291,7 +338,7 @@ def call_sheet_html(schedule: Schedule, day_number: int, title: str, approved_by
         _dept("المؤثرات والصوت", day, "sfx"),
         "</div>",
         "<h2>ملاحظات</h2>",
-        "<ul>" + "".join(f"<li>{escape(n)}</li>" for n in call_sheet_notes(day, schedule)) + "</ul>",
+        "<ul>" + "".join(f"<li>{escape(n)}</li>" for n in call_sheet_notes(day, schedule, times)) + "</ul>",
         '<div class="sign">اعتماد مساعد المخرج: ____________ &nbsp;&nbsp; التاريخ: ________</div>',
     ]
     return _page(f"ورقة الاستدعاء - اليوم {day.number}", "\n".join(body))
