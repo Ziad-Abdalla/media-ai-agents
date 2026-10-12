@@ -4,9 +4,9 @@ Run after `docker compose up -d`:
     python scripts/setup.py
 
 It does four things:
-  1. creates the four credentials (Postgres, Mailpit SMTP, webhook login, Anthropic key) from
+  1. creates the five credentials (Postgres, Mailpit SMTP, webhook login, Anthropic key, Odoo) from
      credentials/credentials.template.json, filling in values from .env
-  2. imports both workflows from workflows/
+  2. imports the three workflows from workflows/
   3. publishes (activates) them and restarts n8n so the webhooks go live
   4. creates the n8n owner login (from N8N_OWNER_EMAIL / N8N_OWNER_PASSWORD in .env)
 
@@ -26,10 +26,13 @@ from string import Template
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 N8N = "http://localhost:5678"
-WORKFLOW_IDS = ["BookingErrors001", "BookingIntake001"]  # error workflow first
+WORKFLOW_IDS = ["BookingErrors001", "BookingIntake001", "BookingWeekly001"]  # error workflow first
 
 
 NEEDED = ["ANTHROPIC_API_KEY", "POSTGRES_PASSWORD", "WEBHOOK_PASSWORD", "N8N_OWNER_EMAIL", "N8N_OWNER_PASSWORD"]
+# The Odoo link is optional and off by default, so these have local-demo defaults.
+ODOO_DEFAULTS = {"ODOO_URL": "http://host.docker.internal:8069", "ODOO_DB": "sadaf_demo",
+                 "ODOO_USER": "admin", "ODOO_PASSWORD": "admin"}
 
 
 def load_env():
@@ -43,6 +46,8 @@ def load_env():
         if line and not line.startswith("#") and "=" in line:
             k, v = line.split("=", 1)
             env[k.strip()] = v.strip()
+    for k, v in ODOO_DEFAULTS.items():
+        env.setdefault(k, v)
     missing = [k for k in NEEDED if not env.get(k)]
     if missing:
         sys.exit(f"missing in .env: {', '.join(missing)} (see .env.example)")
@@ -107,7 +112,7 @@ def import_credentials(env):
     try:
         compose("cp", tmp, "n8n:/tmp/credentials.json")
         compose("exec", "-T", "n8n", "n8n", "import:credentials", "--input=/tmp/credentials.json")
-        print("credentials imported (Postgres, Mailpit SMTP, webhook login, Anthropic key)")
+        print("credentials imported (Postgres, Mailpit SMTP, webhook login, Anthropic key, Odoo)")
     finally:
         compose("exec", "-T", "n8n", "rm", "-f", "/tmp/credentials.json", check=False)
         os.remove(tmp)

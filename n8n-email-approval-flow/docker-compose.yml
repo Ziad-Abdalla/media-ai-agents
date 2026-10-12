@@ -15,6 +15,9 @@ services:
       - N8N_SECURE_COOKIE=false
       # Lets the Code node use Node's crypto module (random tokens for the approval links).
       - NODE_FUNCTION_ALLOW_BUILTIN=crypto
+    # Lets n8n reach the optional Odoo on your machine (http://host.docker.internal:8069) on Linux too.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - n8n_data:/home/node/.n8n
       - ./workflows:/workflows:ro
