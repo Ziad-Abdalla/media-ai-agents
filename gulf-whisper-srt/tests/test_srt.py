@@ -46,9 +46,9 @@ def test_latin_only_line_is_left_alone():
 
 
 def test_every_arabic_line_in_srt_is_marked():
-    cues = [Cue(0.0, 2.0, ["Sadaf 2024", "إنتاج درامي سعودي"])]
+    cues = [Cue(0.0, 2.0, ["Netflix 2024", "إنتاج درامي سعودي"])]
     lines = to_srt(cues).splitlines()
-    assert lines[2] == "Sadaf 2024"
+    assert lines[2] == "Netflix 2024"
     assert first_strong_direction(lines[3]) == "rtl"
 
 
@@ -71,3 +71,13 @@ def test_parse_srt_round_trip_with_marks():
 def test_parse_srt_handles_windows_line_endings_and_bom():
     text = "﻿1\r\n00:00:01,000 --> 00:00:02,500\r\nتمام\r\n\r\n2\r\n00:00:03,000 --> 00:00:04,000\r\nزين\r\n"
     assert [c.text for c in parse_srt(text)] == ["تمام", "زين"]
+
+
+def test_webvtt_without_hours_and_with_cue_settings():
+    vtt = "WEBVTT\n\n00:01.000 --> 00:02.500 align:start\nهلا\n\n01:02:03.000 --> 01:02:04.000\nزين\n"
+    assert [(c.start, c.end, c.text) for c in parse_srt(vtt)] == [(1.0, 2.5, "هلا"), (3723.0, 3724.0, "زين")]
+
+
+def test_a_timing_line_that_cannot_be_read_is_reported(capsys):
+    assert parse_srt("1\n00:00:01 --> 00:00:02\nهلا\n") == []
+    assert "couldn't be read" in capsys.readouterr().err

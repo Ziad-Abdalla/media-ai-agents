@@ -1,6 +1,7 @@
 """Write cues as an .srt file, with right-to-left marks for Arabic lines."""
 
 import re
+import sys
 from pathlib import Path
 
 from gulf_srt.segment import Cue
@@ -67,26 +68,38 @@ def srt_to_text(srt: str) -> str:
     return " ".join(text_lines)
 
 
-_TIMING = re.compile(r"(\d+):(\d{2}):(\d{2})[,.](\d{3})\s*-->\s*(\d+):(\d{2}):(\d{2})[,.](\d{3})")
+# hh:mm:ss,mmm --> hh:mm:ss,mmm. The hours are optional, because WebVTT allows mm:ss.mmm
+# (common in files from YouTube and web tools). Anything after the end time (WebVTT cue
+# settings like "align:start") is ignored.
+_TIME = r"(?:(\d+):)?(\d{2}):(\d{2})[,.](\d{3})"
+_TIMING = re.compile(_TIME + r"\s*-->\s*" + _TIME)
+
+
+def _seconds(hours: str | None, minutes: str, secs: str, ms: str) -> float:
+    return int(hours or 0) * 3600 + int(minutes) * 60 + int(secs) + int(ms) / 1000
 
 
 def parse_srt(srt: str) -> list[Cue]:
-    """Read an SRT (ours or anyone's, for example a delivered subtitle file) back into cues.
+    """Read an SRT or WebVTT file (ours or anyone's, for example a delivered subtitle file) back into cues.
 
     Blocks are separated by empty lines; in each block we look for the timing line and keep
-    the lines after it as text, without the RLM marks. Blocks with no timing line are skipped."""
+    the lines after it as text, without the RLM marks. Blocks with no timing line (like the
+    WEBVTT header) are skipped. A block that has "-->" but a timing we can't read is skipped
+    with a warning, so a line is never lost silently."""
     cues = []
-    for block in re.split(r"\n\s*\n", srt.replace("\r\n", "\n").lstrip("﻿")):
+    for block in re.split(r"\n\s*\n", srt.replace("\r\n", "\n").lstrip("\ufeff")):
         lines = [line.replace(RLM, "").strip() for line in block.strip().split("\n")]
         for i, line in enumerate(lines):
             match = _TIMING.search(line)
             if match:
-                h1, m1, s1, ms1, h2, m2, s2, ms2 = map(int, match.groups())
-                start = h1 * 3600 + m1 * 60 + s1 + ms1 / 1000
-                end = h2 * 3600 + m2 * 60 + s2 + ms2 / 1000
+                parts = match.groups()
+                start, end = _seconds(*parts[:4]), _seconds(*parts[4:])
                 text = [t for t in lines[i + 1 :] if t]
                 if text:
                     cues.append(Cue(start, end, text))
+                break
+            if "-->" in line:
+                print(f"Skipped a subtitle with a timing line that couldn't be read: {line!r}", file=sys.stderr)
                 break
     return cues
 
