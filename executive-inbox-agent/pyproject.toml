@@ -1,0 +1,37 @@
+[project]
+name = "executive-inbox-agent"
+version = "0.1.0"
+description = "An email agent for a production company's executive office: links threads, classifies, proposes owners with evidence, drafts replies, and never acts on a sensitive step without a named human."
+requires-python = ">=3.11"
+dependencies = [
+    "agent-cost-tracker",   # pip install -e ../agent-cost-tracker (NOT the unrelated PyPI package)
+    "anthropic>=1.0",
+    "pydantic>=2",
+    "pyyaml",
+    "fastapi",
+    "uvicorn",
+    "jinja2",
+    "python-multipart",
+    "httpx",
+    "python-dotenv",
+    "numpy",
+]
+
+[project.optional-dependencies]
+embeddings = ["sentence-transformers"]   # torch: install the CUDA build first if you have a GPU
+gmail = ["google-api-python-client", "google-auth-oauthlib"]
+dev = ["pytest>=8", "playwright"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["inbox_agent"]
+
+[tool.setuptools.package-data]
+inbox_agent = ["templates/*.html"]
+
+[tool.pytest.ini_options]
+markers = ["live: needs Mailpit on 8027 and/or the Anthropic API (python -m pytest -m live)"]
+addopts = "-m 'not live'"

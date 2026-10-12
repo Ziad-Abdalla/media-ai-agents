@@ -1,0 +1,11 @@
+# Local mail server for the demo. Nothing leaves this machine: every email the agent
+# "sends" (approved replies, the morning briefing) lands in Mailpit, not on the internet.
+#   docker compose up -d      then open http://localhost:8027
+services:
+  mailpit:
+    image: axllent/mailpit
+    ports:
+      - "1027:1025"   # SMTP: scripts/seed_mailpit.py sends the dataset here
+      - "8027:8025"   # web UI + HTTP API: the agent reads emails from here
+    environment:
+      MP_MAX_MESSAGES: 2000
