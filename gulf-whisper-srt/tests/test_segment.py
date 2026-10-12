@@ -1,4 +1,4 @@
-from gulf_srt.segment import Cue, Rules, Word, build_cues, wrap_lines
+from gulf_srt.segment import Cue, Rules, Word, build_cues, hard_to_read, wrap_lines
 
 RULES = Rules()
 
@@ -112,3 +112,10 @@ def test_forced_cut_moves_back_to_punctuation():
     cues = build_cues(words_from(text), RULES)
     assert cues[0].text.endswith("الصبح،")
     assert " ".join(c.text for c in cues) == text
+
+
+def test_hard_to_read_flags_fast_back_to_back_speech():
+    # The second cue starts right after the first, so the first can't be stretched.
+    cues = [Cue(0.0, 0.4, ["نعم."]), Cue(0.4, 1.0, ["طيب يا ابو محمد خلنا نبدا الشغل الحين"])]
+    assert hard_to_read(cues, RULES) == [1, 2]
+    assert hard_to_read([Cue(0.0, 2.0, ["هلا والله"])], RULES) == []

@@ -184,3 +184,17 @@ def _fix_timing(cues: list[Cue], rules: Rules) -> None:
             cue.end = wanted_end
         # Never run into the next cue.
         cue.end = min(cue.end, next_start)
+
+
+def hard_to_read(cues: list[Cue], rules: Rules = Rules()) -> list[int]:
+    """The 1 s minimum and 17 characters/s are targets, not guarantees: when speech is
+    fast or back-to-back, the cue keeps the spoken timing. This returns the numbers
+    (from 1, as in the .srt) of cues that miss a target, so an editor can check them."""
+    flagged = []
+    for number, cue in enumerate(cues, start=1):
+        duration = cue.end - cue.start
+        too_short = duration < rules.min_duration - 1e-6
+        too_fast = duration <= 0 or len(cue.text) / duration > rules.max_cps + 1e-6
+        if too_short or too_fast:
+            flagged.append(number)
+    return flagged
