@@ -5,7 +5,7 @@ import os
 import time
 
 from . import ledger
-from .prices import cost_usd
+from .prices import cost_usd, price_key
 
 log = logging.getLogger(__name__)
 
@@ -30,7 +30,10 @@ def tracked_call(client, *, operation: str, run_id: str | None = None,
     """
     conn = ledger.connect(db_path)
     try:
-        # 1. Hard stop: check the budget BEFORE spending anything.
+        # 1. Checks BEFORE spending anything.
+        # Fail now if we can't price this model, so we never pay for a call we can't record.
+        price_key(create_kwargs["model"], 0)
+        # Hard stop: refuse the call if the budget is already used up.
         spent = ledger.total_spend(conn)
         limit = budget_usd()
         if spent >= limit:

@@ -54,3 +54,11 @@ def test_soft_alert_logs_but_does_not_stop(db, caplog):
         tracked_call(client, operation="summarize", alert_usd=0.05, **ARGS)
     assert "summarize" in caplog.text
     assert client.calls == 1
+
+
+def test_unknown_model_fails_before_the_call(db):
+    client = FakeClient()
+    with pytest.raises(KeyError):
+        tracked_call(client, operation="extract", model="claude-haiku-5-5-20261001",
+                     max_tokens=100, messages=[{"role": "user", "content": "hi"}])
+    assert client.calls == 0  # nothing was sent, so nothing was billed
