@@ -3,7 +3,8 @@
     python scripts/fetch_samples.py      # once
     python scripts/run_eval.py --model large-v3-turbo
 
-Writes one .srt per clip and a results table to results/<model>/.
+Writes one .srt per clip and a results table to results/<model>-<device>/.
+Needs the package installed first (pip install -e .).
 """
 
 import argparse
@@ -14,12 +15,10 @@ from pathlib import Path
 
 import numpy as np
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-from gulf_srt.evaluate import normalize, score  # noqa: E402
-from gulf_srt.segment import build_cues  # noqa: E402
-from gulf_srt.srt import write_srt  # noqa: E402
-from gulf_srt.transcribe import load_model, transcribe  # noqa: E402
+from gulf_srt.evaluate import normalize, score
+from gulf_srt.segment import build_cues
+from gulf_srt.srt import write_srt
+from gulf_srt.transcribe import load_model, transcribe
 
 ROOT = Path(__file__).resolve().parent.parent
 SAMPLES = ROOT / "data" / "samples"
@@ -33,10 +32,9 @@ def main() -> None:
     args = parser.parse_args()
 
     manifest = json.loads((SAMPLES / "manifest.json").read_text(encoding="utf-8"))
-    out_dir = ROOT / "results" / f"{args.model}-{args.device}"
-    out_dir.mkdir(parents=True, exist_ok=True)
-
     model, device = load_model(args.model, args.device)
+    out_dir = ROOT / "results" / f"{args.model}-{device}"  # the device that really ran, not "auto"
+    out_dir.mkdir(parents=True, exist_ok=True)
     transcribe(model, np.zeros(16000, dtype=np.float32))  # warm-up, so clip 1 isn't charged for start-up
 
     header = (
@@ -57,14 +55,15 @@ def main() -> None:
         wer_light = wer_norm = cer_norm = "n/a (no reference)"
         ref_path = SAMPLES / f"{clip['id']}.ref.txt"
         if ref_path.exists():  # also picks up references you add later (data/needs_reference.md)
-            reference = ref_path.read_text(encoding="utf-8")
-            light, full = score(reference, hypothesis, arabic=False), score(reference, hypothesis)
-            wer_light, wer_norm, cer_norm = f"{light['wer']:.1%}", f"{full['wer']:.1%}", f"{full['cer']:.1%}"
+            reference = ref_path.read_text(encoding="utf-8-sig")  # -sig: ignore a BOM from Windows editors
+            light, arabic_norm = score(reference, hypothesis, arabic=False), score(reference, hypothesis)
+            wer_light = f"{light['wer']:.1%}"
+            wer_norm, cer_norm = f"{arabic_norm['wer']:.1%}", f"{arabic_norm['cer']:.1%}"
             n_words, n_chars = len(normalize(reference).split()), len(normalize(reference))
             t = totals.setdefault(clip["variety"], [0, 0, 0, 0])
-            t[0] += full["wer"] * n_words
+            t[0] += arabic_norm["wer"] * n_words
             t[1] += n_words
-            t[2] += full["cer"] * n_chars
+            t[2] += arabic_norm["cer"] * n_chars
             t[3] += n_chars
         rtf = elapsed / duration
         rows.append(
