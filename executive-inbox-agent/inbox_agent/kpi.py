@@ -33,7 +33,7 @@ def compute(store, eval_results_path: str | None = None) -> dict:
 
     decided = [t for t in tasks if t["status"] in ("confirmed", "reassigned")]
     kept = [t for t in decided if t["status"] == "confirmed"]
-    approved = [a for a in actions if a["approved_by"]]
+    approved = [a for a in actions if a["approved_by"] and a["status"] != "rejected"]
     succeeded = [a for a in approved if a["status"] in ("executed", "rolled_back")]
 
     manual = config.MANUAL_TRIAGE_MINUTES

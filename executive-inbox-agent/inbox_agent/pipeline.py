@@ -112,7 +112,7 @@ def process_email(email: Email, ctx: Context, client) -> str | None:
                     detail={"category": category, "model_category": result.category,
                             "link": link.as_dict(), "guard": guard.as_dict()})
 
-    labels = [category, f"priority:{result.priority}"]
+    labels = [category, f"priority:{'high' if quarantined else result.priority}"]
     if quarantined:
         labels.append("quarantined")
         ctx.store.audit("agent", "quarantine", email_id=email_id, outcome="blocked",
