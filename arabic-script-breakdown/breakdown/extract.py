@@ -11,7 +11,7 @@ import json
 import anthropic
 from agent_cost_tracker import tracked_call
 
-from .normalize import canonical_character
+from .cast_aliases import canonical_character
 from .schema import SceneBreakdown, SceneFields
 from .split import Scene
 

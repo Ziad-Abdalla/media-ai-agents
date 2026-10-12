@@ -13,7 +13,8 @@ Recall    = of the things really there, how many the agent listed.
 F1        = one number that is high only when both are high.
 """
 
-from .normalize import canonical_character, normalize_arabic, same_place, same_prop
+from .cast_aliases import canonical_character
+from .normalize import normalize_arabic, same_place, same_prop
 
 # Bump this whenever the scoring rules change, so old and new scores are never mixed up.
 # v1: props matched by containment. v2: props matched by main noun + synonym list.
@@ -28,9 +29,12 @@ ALL_FIELDS = EXACT_FIELDS + LOCATION_FIELDS + SET_FIELDS
 def match_lists(predicted: list[str], gold: list[str], field: str) -> tuple[list, list, list]:
     """Pair up predicted and gold items. Returns (matched, extra, missing)."""
     if field == "characters":
-        # Characters: map nicknames to cast names, then compare exactly.
+        # Characters: map the model's nicknames to cast names, then compare exactly.
+        # The gold is NOT passed through the map: it is written with cast names only
+        # (a test checks this). So if the map ever merges two different people,
+        # the gold still has the right name and the eval shows the mistake.
         pred = list(dict.fromkeys(canonical_character(p) for p in predicted))
-        gold_left = list(dict.fromkeys(canonical_character(g) for g in gold))
+        gold_left = list(dict.fromkeys(gold))
         same = lambda a, b: normalize_arabic(a) == normalize_arabic(b)  # noqa: E731
     else:
         # Props: same main noun ("الكاميرا القديمة" ~ "كاميرا سينما قديمة", "هاتف" ~ "جوال").

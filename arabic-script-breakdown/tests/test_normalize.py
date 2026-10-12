@@ -1,4 +1,5 @@
-from breakdown.normalize import ALIASES, canonical_character, normalize_arabic, same_place, same_prop
+from breakdown.cast_aliases import ALIASES, canonical_character
+from breakdown.normalize import normalize_arabic, same_place, same_prop
 
 
 def test_tashkeel_and_tatweel_removed():
@@ -44,3 +45,19 @@ def test_no_alias_points_to_two_people():
         for alias in [canonical, *aliases]:
             key = normalize_arabic(alias)
             assert seen.setdefault(key, canonical) == canonical, f"{alias} is used twice"
+
+
+def test_gold_uses_only_cast_names():
+    # The scorer does not run the alias map on the gold, so the gold must use cast names.
+    import json
+    from pathlib import Path
+    gold = Path(__file__).parent.parent / "eval" / "gold.jsonl"
+    for line in gold.read_text(encoding="utf-8").splitlines():
+        scene = json.loads(line)
+        assert set(scene["characters"]) <= set(ALIASES), scene["scene_number"]
+
+
+def test_a_second_khalid_is_not_merged_into_the_principal():
+    # A different person with a full name stays himself.
+    assert canonical_character("خالد الشهري") == "خالد الشهري"
+    assert canonical_character("الأستاذ خالد الزهراني") == "المدير"

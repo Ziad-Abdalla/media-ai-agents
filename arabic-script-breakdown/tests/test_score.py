@@ -61,3 +61,10 @@ def test_whole_gold_file_scores_perfect_against_itself():
     result = score_run({g["scene_number"]: g for g in golds}, golds)
     assert result["overall"] == 1.0
     assert len(golds) == 26
+
+
+def test_a_wrong_alias_in_the_prediction_is_caught():
+    # If the model (or a bad alias) turns a second Khalid into the principal, the gold
+    # still says "خالد الشهري", so the eval reports one extra and one missing.
+    matched, extra, missing = match_lists(["المدير", "فهد"], ["خالد الشهري", "فهد"], "characters")
+    assert extra == ["المدير"] and missing == ["خالد الشهري"]
