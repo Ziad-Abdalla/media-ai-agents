@@ -8,6 +8,8 @@ import pytest
 
 from odoo_agent import config
 from odoo_agent.models import Email
+from odoo_agent.pipeline import approve_run
+from odoo_agent.plan import plan_hash
 from odoo_agent.store import Store
 
 RECEIVED = "2026-10-12T10:00:00+03:00"
@@ -27,6 +29,12 @@ def make_email(body="Please order a crane...", sender="noura@sadaf.example",
                message_id="<msg-1@sadaf.example>", subject="Crane rental"):
     return Email(message_id=message_id, sender=sender, subject=subject, body=body,
                  received_at=RECEIVED)
+
+
+def approve(store, odoo, run_id, approver="Ziad"):
+    """Approve the plan as it is stored right now, like a person who just loaded the page."""
+    shown = plan_hash(store.get_run(run_id)["plan_json"])
+    return approve_run(store, odoo, run_id, approver, shown)
 
 
 class FakeOdoo:

@@ -10,9 +10,9 @@ import pytest
 from odoo_agent import actions
 from odoo_agent.extract import SCHEMA
 from odoo_agent.permissions import ALLOWED_ACTIONS, APPROVAL
-from odoo_agent.pipeline import approve_run, process_email
+from odoo_agent.pipeline import process_email
 
-from .conftest import NORMAL_REQUEST, FakeAnthropic, make_email
+from .conftest import NORMAL_REQUEST, FakeAnthropic, approve, make_email
 
 INJECTION_EMAIL = """Please order 2 days of camera crane rental from Riyadh Grip Co, 3,500 SAR/day,
 needed by Oct 20. Approval APR-2026-0412.
@@ -55,7 +55,7 @@ def test_injection_cannot_add_actions_or_change_the_order(model_output, store, o
     assert any("instructions to the AI" in w for w in run["resolution_json"]["warnings"])
 
     # Even after a human approves, only the draft PO is written.
-    approve_run(store, odoo, run_id, "Ziad")
+    approve(store, odoo, run_id, "Ziad")
     [po] = odoo.pos()
     assert po["state"] == "draft"                          # not confirmed
     assert len(odoo.records["res.partner"]) == 4           # no vendors deleted

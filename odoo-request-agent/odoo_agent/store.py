@@ -7,6 +7,7 @@ import threading
 from datetime import datetime, timezone
 
 from . import config
+from .plan import plan_hash
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS runs (
@@ -54,6 +55,8 @@ class Store:
         self.lock = threading.Lock()
         self.conn = sqlite3.connect(path, check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
+        # Lets SQL ask "is the stored plan still the one the approver saw?" (see claim_for_writing)
+        self.conn.create_function("plan_hash", 1, lambda text: plan_hash(json.loads(text or "null")))
         self.conn.executescript(SCHEMA)
 
     # ---- runs ----
@@ -74,14 +77,16 @@ class Store:
             self.conn.execute(f"UPDATE runs SET {sets} WHERE run_id = ?", [*fields.values(), run_id])
             self.conn.commit()
 
-    def claim_for_writing(self, run_id: str, approver: str) -> bool:
-        """Move a run to 'writing' in ONE database step, only if it is waiting for approval.
+    def claim_for_writing(self, run_id: str, approver: str, shown_plan_hash: str) -> bool:
+        """Move a run to 'writing' in ONE database step, only if it is waiting for approval
+        AND its plan is still the one the approver saw (same hash).
         If two people click Approve at the same moment, only one gets True."""
         with self.lock:
             cur = self.conn.execute(
                 "UPDATE runs SET status = 'writing', approved_by = ?, updated_at = ?"
-                " WHERE run_id = ? AND status IN ('pending_approval', 'write_failed')",
-                (approver, now(), run_id))
+                " WHERE run_id = ? AND status IN ('pending_approval', 'write_failed')"
+                " AND plan_hash(plan_json) = ?",
+                (approver, now(), run_id, shown_plan_hash))
             self.conn.commit()
         return cur.rowcount == 1
 

@@ -6,10 +6,10 @@ import uuid
 import pytest
 
 from odoo_agent.odoo_client import OdooClient
-from odoo_agent.pipeline import approve_run, process_email
+from odoo_agent.pipeline import process_email
 from odoo_agent.rollback import rollback
 
-from ..conftest import NORMAL_REQUEST, FakeAnthropic, make_email
+from ..conftest import NORMAL_REQUEST, FakeAnthropic, approve, make_email
 
 pytestmark = pytest.mark.live
 
@@ -37,10 +37,10 @@ def test_lost_answer_retry_and_rollback_on_real_odoo(store):
     origin = store.get_run(run_id)["plan_json"][-1]["values"]["origin"]
 
     with pytest.raises(ConnectionResetError):
-        approve_run(store, odoo, run_id, "live-test")
+        approve(store, odoo, run_id, "live-test")
     assert len(pos_with_origin(odoo, origin)) == 1  # Odoo did create it
 
-    po_id = approve_run(store, odoo, run_id, "live-test")  # retry
+    po_id = approve(store, odoo, run_id, "live-test")  # retry
     found = pos_with_origin(odoo, origin)
     assert [p["id"] for p in found] == [po_id]  # still exactly one
     assert found[0]["state"] == "draft"
@@ -56,7 +56,7 @@ def test_new_vendor_then_rollback_on_real_odoo(store):
     run_id = process_email(email, client=FakeAnthropic({**NORMAL_REQUEST, "vendor_name": vendor}),
                            odoo=odoo, store=store)
     assert store.get_run(run_id)["status"] == "pending_approval"
-    approve_run(store, odoo, run_id, "live-test")
+    approve(store, odoo, run_id, "live-test")
     partner = odoo.search_read("res.partner", [("name", "=", vendor)], ["id"])
     assert len(partner) == 1
 

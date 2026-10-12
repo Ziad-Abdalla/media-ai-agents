@@ -39,6 +39,7 @@ def create_app(store, get_odoo) -> FastAPI:
         conn = ledger.connect()
         for r in runs:
             r["cost_usd"] = ledger.run_spend(conn, r["run_id"])
+            r["plan_hash"] = pipeline.plan_hash(r["plan_json"])  # goes back with the Approve click
         conn.close()
         return templates.TemplateResponse(request, "index.html", {"runs": runs, "message": message})
 
@@ -46,9 +47,10 @@ def create_app(store, get_odoo) -> FastAPI:
         return RedirectResponse(f"/?message={quote(message)}", status_code=303)
 
     @app.post("/runs/{run_id}/approve")
-    def approve(run_id: str, approver: str = Form(...)):
+    def approve(run_id: str, approver: str = Form(...), plan_hash: str = Form("")):
+        # plan_hash is the hash of the plan this person saw. A missing one is refused.
         try:
-            po_id = pipeline.approve_run(store, get_odoo(), run_id, approver)
+            po_id = pipeline.approve_run(store, get_odoo(), run_id, approver, plan_hash)
         except (WritesDisabled, ForbiddenAction, ValueError, OSError, xmlrpc.client.Error) as e:
             return back(f"Not written: {e}")
         return back(f"{run_id} approved by {approver}: draft PO id {po_id} created")

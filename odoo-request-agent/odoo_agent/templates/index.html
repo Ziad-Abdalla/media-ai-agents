@@ -82,14 +82,15 @@
   {% endif %}
 
   {% if run.plan_json %}
-    <h3>Exact write plan (sent to Odoo only if approved)</h3>
+    <h3>Exact write plan (sent to Odoo only if approved) · plan #{{ run.plan_hash[:8] }}</h3>
     <pre>{{ run.plan_json | pretty }}</pre>
   {% endif %}
 
   {% if run.status in ["pending_approval", "write_failed"] %}
     <form method="post" action="/runs/{{ run.run_id }}/approve">
+      <input type="hidden" name="plan_hash" value="{{ run.plan_hash }}">
       <input name="approver" placeholder="your name" required>
-      <button>{% if run.status == "write_failed" %}Retry{% else %}Approve{% endif %}</button>
+      <button>{% if run.status == "write_failed" %}Retry{% else %}Approve{% endif %} plan #{{ run.plan_hash[:8] }}</button>
     </form>
   {% endif %}
   {% if run.status in ["pending_approval", "needs_human", "needs_info"] %}

@@ -1,7 +1,7 @@
 """The whole flow for one email, plus what happens when a human clicks a button.
 
 process_email:  email -> extract -> validate -> resolve -> plan -> waits for a human
-approve_run:    human said yes -> execute the plan through the permission gate
+approve_run:    human said yes to the plan they saw -> execute it through the permission gate
 resolve_needs_human / reject_run: the other buttons on the approval page
 """
 
@@ -16,7 +16,7 @@ from . import config, resolve
 from .extract import ExtractionFailed, extract_request
 from .models import Email, PurchaseRequest
 from .permissions import ForbiddenAction, WritesDisabled, execute
-from .plan import NEW_VENDOR, build_plan, fingerprint, idempotency_key
+from .plan import NEW_VENDOR, build_plan, fingerprint, idempotency_key, plan_hash
 from .validate import draft_needs_info_reply, sender_allowed, validate
 
 # Not the defence (the defence is that the model can't act), just a warning for the reviewer.
@@ -129,18 +129,27 @@ def resolve_needs_human(store, run_id: str, partner_id: int | None, partner_name
     store.update_run(run_id, resolution_json=res, plan_json=plan, status="pending_approval")
 
 
-def approve_run(store, odoo, run_id: str, approver: str) -> int:
-    """Run the plan. Safe to call again after a failure: the PO step is idempotent."""
+def approve_run(store, odoo, run_id: str, approver: str, shown_plan_hash: str) -> int:
+    """Run the plan. Safe to call again after a failure: the PO step is idempotent.
+    shown_plan_hash is the hash of the plan the approver saw on the page. If the plan has
+    changed since then (someone answered a question and it was rebuilt), nothing is written."""
     approver = approver.strip()
     if not approver:
         raise ValueError("type your name to approve")
-    run = store.get_run(run_id)
-    # One database step checks the status AND sets it to 'writing'. Two clicks at the same
-    # moment can't both get past this line, so they can't both create a PO.
-    if not run or not store.claim_for_writing(run_id, approver):
-        status = store.get_run(run_id)["status"] if run else "unknown"
-        raise ValueError(f"{run_id} is '{status}', it can't be approved")
+    # One database step checks the status AND the plan hash, and sets the status to 'writing'.
+    # Two clicks at the same moment can't both get past this line, so they can't both create
+    # a PO. And a click on an old copy of the page can't approve a plan nobody looked at.
+    if not store.claim_for_writing(run_id, approver, shown_plan_hash or ""):
+        run = store.get_run(run_id)
+        if not run or run["status"] not in ("pending_approval", "write_failed"):
+            status = run["status"] if run else "unknown"
+            raise ValueError(f"{run_id} is '{status}', it can't be approved")
+        store.audit(run_id, f"human:{approver}", "refused: plan changed since you viewed it",
+                    before={"shown_plan_hash": shown_plan_hash},
+                    after={"current_plan_hash": plan_hash(run["plan_json"])})
+        raise ValueError("the plan changed after you opened the page; reload and review again")
     store.audit(run_id, f"human:{approver}", "approve")
+    run = store.get_run(run_id)  # read AFTER the claim: this is the plan that was approved
 
     partner_id = po_id = None
     try:

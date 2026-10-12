@@ -1,15 +1,15 @@
 import pytest
 
 from odoo_agent.permissions import execute
-from odoo_agent.pipeline import approve_run, process_email
+from odoo_agent.pipeline import process_email
 from odoo_agent.rollback import RollbackRefused, rollback
 
-from .conftest import NORMAL_REQUEST, FakeAnthropic, make_email
+from .conftest import NORMAL_REQUEST, FakeAnthropic, approve, make_email
 
 
 def approved_run(store, odoo, request=NORMAL_REQUEST):
     run_id = process_email(make_email(), client=FakeAnthropic(request), odoo=odoo, store=store)
-    approve_run(store, odoo, run_id, "Ziad")
+    approve(store, odoo, run_id, "Ziad")
     return run_id
 
 
@@ -43,7 +43,7 @@ def test_rollback_finds_a_po_whose_create_answer_was_lost(store, odoo):
     run_id = process_email(make_email(), client=FakeAnthropic(), odoo=odoo, store=store)
     odoo.lose_next_create_answer = True
     with pytest.raises(ConnectionResetError):
-        approve_run(store, odoo, run_id, "Ziad")
+        approve(store, odoo, run_id, "Ziad")
     rollback(store, odoo, run_id)
     assert odoo.pos() == []
 
@@ -69,8 +69,8 @@ def test_rollback_archives_a_vendor_whose_create_answer_was_lost(store, odoo):
     run_id = process_email(make_email(), client=FakeAnthropic(new_vendor), odoo=odoo, store=store)
     odoo.lose_next_create_answer = True  # the vendor is saved, but we never hear back
     with pytest.raises(ConnectionResetError):
-        approve_run(store, odoo, run_id, "Ziad")
-    approve_run(store, odoo, run_id, "Ziad")  # retry finds the vendor by its key: no second vendor
+        approve(store, odoo, run_id, "Ziad")
+    approve(store, odoo, run_id, "Ziad")  # retry finds the vendor by its key: no second vendor
     vendors = [p for p in odoo.records["res.partner"].values() if p["name"] == "Najd Catering House"]
     assert len(vendors) == 1
 

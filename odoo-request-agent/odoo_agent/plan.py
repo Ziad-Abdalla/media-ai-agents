@@ -27,6 +27,13 @@ def fingerprint(request: PurchaseRequest) -> str:
     return hashlib.sha256(json.dumps(core, sort_keys=True).encode()).hexdigest()[:16]
 
 
+def plan_hash(plan) -> str:
+    """Hash of the exact plan. The approval page shows it and sends it back with the click,
+    so Approve only runs the plan the person actually saw. Any change to the plan changes it."""
+    canonical = json.dumps(plan, sort_keys=True, ensure_ascii=False, default=str)
+    return hashlib.sha256(canonical.encode()).hexdigest()
+
+
 def idempotency_key(message_id: str, request: PurchaseRequest) -> str:
     """One email + one request = one key = at most one PO."""
     return hashlib.sha256(f"{message_id}|{fingerprint(request)}".encode()).hexdigest()[:20]
