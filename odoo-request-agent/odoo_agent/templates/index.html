@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Purchase request approvals</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 1100px; margin: 2rem auto; color: #222; }
+  .run { border: 1px solid #ccc; border-radius: 8px; padding: 1rem 1.2rem; margin-bottom: 1.2rem; }
+  .run h2 { margin: 0 0 .3rem; font-size: 1.1rem; }
+  .meta { color: #666; font-size: .9rem; }
+  .status { font-weight: bold; padding: 2px 8px; border-radius: 4px; background: #eee; }
+  .pending_approval { background: #fff3c4; } .needs_human { background: #ffd9b3; }
+  .done { background: #c9f2d0; } .needs_info { background: #d6e8ff; }
+  .failed, .write_failed, .blocked_sender, .rejected { background: #f6c9c9; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  pre { background: #f6f6f6; padding: .6rem; white-space: pre-wrap; font-size: .82rem; margin: .3rem 0; }
+  .warn { background: #fff0f0; border-left: 4px solid #d33; padding: .4rem .7rem; margin: .4rem 0; }
+  .msg { background: #eef6ff; padding: .6rem; border-radius: 6px; }
+  form { display: inline-block; margin: .4rem .6rem .2rem 0; }
+  button { padding: .35rem .9rem; cursor: pointer; }
+  h3 { font-size: .95rem; margin: .8rem 0 .2rem; }
+</style>
+</head>
+<body>
+<h1>Purchase request approvals</h1>
+{% if message %}<p class="msg">{{ message }}</p>{% endif %}
+{% if not runs %}<p>No requests yet. Run <code>python -m odoo_agent poll</code>.</p>{% endif %}
+
+{% for run in runs %}
+<div class="run">
+  <h2>{{ run.subject }} <span class="status {{ run.status }}">{{ run.status }}</span></h2>
+  <div class="meta">{{ run.run_id }} · from {{ run.sender }} · {{ run.received_at }}
+    · AI cost of this run: ${{ "%.5f"|format(run.cost_usd) }}
+    {% if run.po_id %} · Odoo PO id {{ run.po_id }}{% endif %}
+    {% if run.approved_by %} · decided by {{ run.approved_by }}{% endif %}</div>
+  {% if run.error %}<p class="warn">{{ run.error }}</p>{% endif %}
+  {% for w in (run.resolution_json or {}).get("warnings", []) %}<p class="warn">{{ w }}</p>{% endfor %}
+
+  <div class="grid">
+    <div>
+      <h3>Original email (treated as data)</h3>
+      <pre>{{ run.body }}</pre>
+    </div>
+    <div>
+      {% if run.request_json %}<h3>What the AI extracted</h3><pre>{{ run.request_json | pretty }}</pre>{% endif %}
+      {% if run.problems_json %}<h3>Missing or invalid</h3>
+        <ul>{% for p in run.problems_json %}<li>{{ p }}</li>{% endfor %}</ul>{% endif %}
+    </div>
+  </div>
+
+  {% if run.status == "needs_info" and run.reply_draft %}
+    <h3>Drafted reply (not sent)</h3><pre>{{ run.reply_draft }}</pre>
+    <form method="post" action="/runs/{{ run.run_id }}/send_reply">
+      <input name="approver" placeholder="your name" required>
+      <button>Send this reply to {{ run.sender }}</button>
+    </form>
+  {% endif %}
+
+  {% if run.resolution_json %}
+    {% set v = run.resolution_json.vendor %}
+    <h3>Vendor in Odoo</h3>
+    <p>{% if v.status == "matched" %}Matched <b>{{ v.name }}</b> (id {{ v.partner_id }}{% if v.score %}, score {{ v.score }}{% endif %})
+       {% elif v.status == "new" %}<b>No match. Approving will create a NEW vendor.</b> {{ v.reason }}
+       {% else %}<b>Not sure which vendor:</b> {{ v.reason }}{% endif %}</p>
+    {% if run.status == "needs_human" %}
+      <form method="post" action="/runs/{{ run.run_id }}/choose_vendor">
+        {% for c in v.candidates %}
+          <label><input type="radio" name="partner" value="{{ c.id }}|{{ c.name }}" required> {{ c.name }} (score {{ c.score }})</label><br>
+        {% endfor %}
+        {% if v.status == "matched" %}
+          <label><input type="radio" name="partner" value="keep" required> Yes, this is a new order, keep {{ v.name }}</label><br>
+        {% else %}
+          <label><input type="radio" name="partner" value="new" required> None of these: create a new vendor</label><br>
+        {% endif %}
+        <button>Use this choice</button>
+      </form>
+    {% endif %}
+  {% endif %}
+
+  {% if run.plan_json %}
+    <h3>Exact write plan (sent to Odoo only if approved)</h3>
+    <pre>{{ run.plan_json | pretty }}</pre>
+  {% endif %}
+
+  {% if run.status in ["pending_approval", "write_failed"] %}
+    <form method="post" action="/runs/{{ run.run_id }}/approve">
+      <input name="approver" placeholder="your name" required>
+      <button>{% if run.status == "write_failed" %}Retry{% else %}Approve{% endif %}</button>
+    </form>
+  {% endif %}
+  {% if run.status in ["pending_approval", "needs_human", "needs_info"] %}
+    <form method="post" action="/runs/{{ run.run_id }}/reject">
+      <input name="approver" placeholder="your name" required>
+      <button>Reject</button>
+    </form>
+  {% endif %}
+</div>
+{% endfor %}
+</body>
+</html>
