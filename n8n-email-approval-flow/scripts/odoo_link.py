@@ -106,8 +106,8 @@ def link_off():
 
 def status():
     print("odoo_sync =", psql("SELECT value FROM app_settings WHERE key = 'odoo_sync'")[0][0])
-    for row in psql("SELECT id, item, odoo_sync, coalesce(odoo_activity_id::text, ''), coalesce(odoo_error, '') "
-                    "FROM bookings ORDER BY id"):
+    for row in psql("SELECT id, item, odoo_sync, coalesce(odoo_activity_id::text, ''), "
+                    "coalesce(replace(odoo_error, chr(10), ' '), '') FROM bookings ORDER BY id"):
         print("booking " + " | ".join(row))
 
 
