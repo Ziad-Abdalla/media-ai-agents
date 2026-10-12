@@ -34,7 +34,11 @@ CATEGORIES (pick one; if several fit use this order: suspicious > spam > legal_c
 - urgent_action: an operational action needed within about 48 hours that is not one of the above.
 - info: FYI, status updates, thanks, announcements; no action needed.
 
-PRIORITY: urgent = must be handled today / within 24 hours; high = this week; normal = later; low = newsletters, FYI, spam.
+PRIORITY, measured from the date the email was received (not from how strongly it is worded):
+- urgent: the company must act within about 24 hours (a shoot tomorrow, a deadline today or tomorrow).
+- high: action needed within the next 7 days.
+- normal: action needed but the deadline is more than 7 days away or not stated (routine invoices, contract questions with no near date).
+- low: no action needed (FYI, thanks/acknowledgements, newsletters, spam).
 
 TASKS: one per concrete action the company must take (usually 0-2). For each:
 - what_ar: short Arabic sentence.
