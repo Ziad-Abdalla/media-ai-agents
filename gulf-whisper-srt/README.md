@@ -1,22 +1,42 @@
 # gulf-whisper-srt
 
+> **ملخص بالعربي:** أداة تعمل على جهازك بدون أي خدمة مدفوعة، تحوّل الكلام العربي (ومنه اللهجة
+> السعودية والخليجية) في ملف صوت أو فيديو إلى ترجمة عربية مبدئية بصيغة SRT وWebVTT، ونص حوار
+> بتوقيتات، وفهرس حوار تقدر تبحث فيه عن أي اسم أو كلمة وتعرف متى قيلت، وتقرير مراجعة (QC)
+> يقول للمحرر من أي سطر يبدأ. هي مسودة يصححها محرر، وليست ترجمة جاهزة للبث. الأمثلة في هذا
+> المستودع من بيانات عامة مرخّصة (SADA وFLEURS)، وليست من بيانات أي شركة.
+> دليل الموظفين: [`docs/دليل-المستخدم.md`](docs/دليل-المستخدم.md).
+
 Turn Arabic speech, including Saudi/Gulf dialect, from an audio or video file into a clean
 Arabic `.srt` subtitle file, on your own machine with no paid API. It runs Whisper
 (`large-v3-turbo` through [faster-whisper](https://github.com/SYSTRAN/faster-whisper)) to get
 every word with its timing, then cuts the words into subtitles that follow broadcast-style rules
 (two lines of at most 42 characters, no overlaps, and it aims for 1 to 6 seconds on screen at no
 more than 17 characters a second; when speech is too fast or back-to-back it keeps the spoken
-timing and lists those cues for the editor to check), and writes them with the invisible right-to-left marks Arabic lines need to display correctly.
-It also includes a small WER/CER evaluation, so accuracy claims come with numbers and say
-what they were measured on.
+timing and flags those cues for the editor), and writes them with the invisible right-to-left marks Arabic lines need to display correctly.
 
-## Why this is useful for a drama production house
+From the same run it also writes a WebVTT file, a timecoded dialogue transcript, a searchable
+dialogue index, a QC report that ranks where an editor should look first, and an HTML review
+page. It includes a small WER/CER evaluation, so accuracy claims come with numbers and say
+what they were measured on, including a measured (not assumed) test of the `--hotwords` option.
+
+![Review page: the draft subtitles under the player, every line clickable, and the QC flags on the left](docs/screenshots/review-page.png)
+
+## Why this matters for a production house
 
 - **Subtitle drafts for editors.** An editor gets a timed first draft to correct in their usual
   tool (Premiere, DaVinci Resolve, Subtitle Edit) instead of typing every line from zero.
-  Correcting a draft is much faster than writing one.
-- **Searchable dialogue for the archive.** Every episode, rush or interview becomes text with
-  timecodes, so "find the scene where he says «الديرة»" is a text search.
+- **They know where to look first.** The QC report lists the words Whisper itself was unsure of,
+  the lines that are too fast or too long to read, and long gaps where dialogue may have been
+  missed. On the dialect clips, a flagged word was wrong 76% of the time against 31% for the rest
+  (measured below), so the editor's first pass goes where the mistakes are.
+- **A searchable archive.** Every episode becomes a dialogue index: "find every scene where
+  «أبو حمد» is mentioned" returns file, timecode and line. A back catalogue's delivered subtitles
+  can be indexed the same way with no transcription at all.
+- **Vendor QC.** `python -m gulf_srt.qc` checks any SRT, including a subtitling vendor's
+  delivery, against the same reading-speed and line-length rules.
+- **Measurable.** Accuracy (WER/CER per variety), speed (real-time factor) and the share of lines
+  flagged are all printed, so time saved and accuracy can be tracked per show.
 - **Private and cheap.** Unreleased footage never leaves the machine, and there's no per-minute cost.
 
 ## Quickstart
@@ -49,41 +69,115 @@ the audio track is decoded with PyAV, so ffmpeg doesn't need to be installed.
 
 Options: `--device auto|cuda|cpu` (auto loads the model on the GPU and does a one-second test
 run; if either fails, for example because the CUDA libraries are missing, it falls back to CPU int8),
-`--max-line-chars 42`, `--no-rtl-marks`. The output folder is created if it doesn't exist.
+`--hotwords "عبود أبو حمد"` or `--hotwords-file cast.txt` (read the measured results below before
+turning this on), `--max-line-chars 42`, `--no-rtl-marks`, and `--from-json out/episode01.words.json`
+to rebuild every output with different rules without running Whisper again. The output folder is
+created if it doesn't exist.
+
+### What one run writes
+
+| File | For whom | What it is |
+|---|---|---|
+| `episode01.srt` | Editors | Subtitles for Premiere, DaVinci Resolve, Subtitle Edit. |
+| `episode01.vtt` | Web / streaming | The same subtitles as WebVTT (dot before milliseconds, `&` and `<` escaped). |
+| `episode01.transcript.txt` | Archive, producers | The dialogue, one line per subtitle, with a `[HH:MM:SS]` timecode. |
+| `episode01.index.json` | Archive search | The dialogue index read by `python -m gulf_srt.archive search`. |
+| `episode01.qc.md` / `.qc.json` | Editors, QC lead | Where to look first: unsure words, readability, gaps. |
+| `episode01.review.html` | Anyone | Play the file with the subtitles under it and click any flag or line to jump there. Adding `#t=26` to the link opens it at 26 seconds. |
+| `episode01.words.json` | The tool | Whisper's raw words, times and confidence scores. |
+
+### Searching the dialogue archive
+
+```
+python -m gulf_srt.archive search examples/ "عبود"
+sada_scene_b_cast.srt  00:00:33,560  #3  خلنا نصلح شاهي العبود بهذا اللي مديوش
+sada_scene_b_cast.srt  00:00:39,080  #4  يسمونها بق معدبوهم منه هذا اللي يصبوه خلنا نصلح له العبود
+sada_scene_b_cast.srt  00:00:50,000  #6  هالوزارة ما أشى الله عليه أول واحد يجي للدوام عبود بصراحة
+sada_demo_scene.srt  00:00:32,760  #8  خليت، كذا عبود، تراك صدقت نفسك ومسوي عمرك أجنبي
+4 lines in 2 files
+
+python -m gulf_srt.archive build old_subtitles/ out/ -o archive.json   # any folders of SRTs
+python -m gulf_srt.archive search archive.json "ابن الحلال" --word
+```
+
+Search uses the same Arabic normalization as the WER score (no diacritics or punctuation,
+أ/إ/ا, ة/ه and ى/ي treated as equal), and matches inside words by default because Arabic
+attaches و/ب/ل/ال to the front («عبود» also finds «العبود»); `--word` matches whole words only.
+It only finds what Whisper wrote, so a name Whisper misheard is missed. For the back catalogue,
+indexing the delivered (human) subtitles avoids that problem completely.
+
+### The QC report
+
+```
+python -m gulf_srt.qc out/episode01.srt --words out/episode01.words.json   # our own draft
+python -m gulf_srt.qc delivered/episode01.srt                              # any SRT, e.g. a vendor's
+```
+
+From `examples/sada_demo_scene/sada_demo_scene.qc.md`:
+
+| Check | Time | Cue | Problem | Detail |
+|---|---|---|---|---|
+| 1 | 00:00:00,000 | 1 | words may be wrong: unsure-words | Whisper was unsure of: «بدري» 0.47 |
+| 2 | 00:00:14,260 | 4 | words may be wrong: unsure-words | Whisper was unsure of: «لا» 0.30, «أسمع» 0.38 |
+
+The checks, in the order an editor should do them:
+
+1. **Words may be wrong.** A word Whisper gave a probability under 0.5; a segment whose average
+   log-probability is under -1.0, whose no-speech probability is over 0.6 (music or noise written
+   as words), or whose compression ratio is over 2.4 (repeated text, Whisper looping). The last
+   three are Whisper's own internal thresholds.
+2. **Hard to read.** Under 1 s on screen, over 17 characters a second, over 6 s, a line over the
+   length limit, or more than two lines.
+3. **Possible missed dialogue.** 10 s or more with no subtitle, at the start, between lines or at the end.
+
+If the SRT was edited after it was made, its words no longer match `words.json`, so the
+word-level check is switched off (it says so) and the rest still runs.
 
 Evaluate and test:
 
 ```bash
-pytest                                            # 32 unit tests, no model download
+pytest                                            # 58 unit tests, no model download
 python scripts/fetch_samples.py                   # downloads the licensed clips (data/sources.md)
 python scripts/run_eval.py --model large-v3-turbo # SRTs + WER/CER table in results/<model>-<device>/
+python scripts/run_eval.py --hotwords-file data/hotwords/aldeerah_net_cast.txt --tag cast
+python scripts/compare_runs.py results/large-v3-turbo-cuda results/large-v3-turbo-cuda-cast --names data/hotwords/aldeerah_net_cast.txt
+python scripts/confidence_check.py results/large-v3-turbo-cuda   # are low-confidence words really wrong?
 python -m gulf_srt.evaluate reference.txt hypothesis.srt
 python scripts/noise_check.py                     # Whisper on 20 s of noise, VAD off vs on
 ```
 
-`run_eval.py` names its folder after the device that actually ran (`-cuda` or `-cpu`), so a GPU
-run can be compared directly with the committed `results/large-v3-turbo-cuda/`.
+`run_eval.py` names its folder after the device that actually ran (`-cuda` or `-cpu`, plus the
+`--tag`), so a GPU run can be compared directly with the committed `results/large-v3-turbo-cuda/`.
 
 ## Pipeline
 
 ```mermaid
 flowchart LR
-    A[audio / video file] --> B[transcribe.py<br/>Whisper, language=ar<br/>VAD filter<br/>word timestamps]
-    B -->|words + times| C[segment.py<br/>group words into cues<br/>merge tiny cues<br/>fix timing]
-    C -->|cues| D[srt.py<br/>numbering, timestamps<br/>RLM marks]
-    D --> E[subtitles.srt]
-    E -.-> F[evaluate.py<br/>WER / CER vs reference]
+    A[audio / video file] --> B[transcribe.py<br/>Whisper, language=ar<br/>VAD filter, hotwords<br/>word timestamps + confidence]
+    B -->|words.json| C[segment.py<br/>group words into cues<br/>merge tiny cues<br/>fix timing]
+    C -->|cues| D[srt.py / formats.py<br/>SRT, WebVTT, transcript]
+    C -->|cues| G[archive.py<br/>dialogue index + search]
+    C -->|cues + confidence| H[qc.py<br/>QC report]
+    H --> I[review.py<br/>HTML review page]
+    D -.-> F[evaluate.py<br/>WER / CER vs reference]
 ```
 
 | File | What it does |
 |---|---|
-| `gulf_srt/transcribe.py` | Loads the model (GPU float16, or CPU int8) and returns every word with its start/end time. Forces `language="ar"`, turns on the VAD filter (skips stretches with no speech, like silence and most noise, where Whisper tends to invent text; songs and dialogue over music still go to Whisper), and turns off "condition on previous text" so one mistake doesn't repeat down the file. |
+| `gulf_srt/transcribe.py` | Loads the model (GPU float16, or CPU int8) and returns every word with its start/end time and probability, plus each segment's confidence numbers. Forces `language="ar"`, turns on the VAD filter (skips stretches with no speech, like silence and most noise, where Whisper tends to invent text; songs and dialogue over music still go to Whisper), turns off "condition on previous text" so one mistake doesn't repeat down the file, and passes `hotwords` if given. |
+| `gulf_srt/transcript.py` | The saved transcript (`words.json`) and reading hotwords files. |
 | `gulf_srt/segment.py` | The subtitle rules (below). Pure Python, fully unit-tested. |
-| `gulf_srt/srt.py` | Writes the SRT file and adds U+200F marks to Arabic lines. |
-| `gulf_srt/cli.py` | The `python -m gulf_srt` command. Prints the numbers of any cues that miss the reading-speed or minimum-duration target. |
-| `gulf_srt/evaluate.py` | Arabic normalization, WER and CER. |
+| `gulf_srt/srt.py` | Writes the SRT file with U+200F marks on Arabic lines, and reads SRT/WebVTT files back. |
+| `gulf_srt/formats.py` | WebVTT and the timecoded dialogue transcript. |
+| `gulf_srt/archive.py` | The dialogue index and the `build` / `search` command. |
+| `gulf_srt/qc.py` | The QC report, and `python -m gulf_srt.qc` for any SRT. |
+| `gulf_srt/review.py` | The one-file HTML review page (no server, nothing loaded from the internet). |
+| `gulf_srt/cli.py` | The `python -m gulf_srt` command. |
+| `gulf_srt/evaluate.py` | Arabic normalization, WER and CER, and word alignment for the confidence check. |
 | `scripts/fetch_samples.py` | Downloads the evaluation clips from their original sources. |
-| `scripts/run_eval.py` | Runs the pipeline on every clip and writes the results table. |
+| `scripts/run_eval.py` | Runs the pipeline on every clip and writes the results table (optionally with hotwords). |
+| `scripts/compare_runs.py` | Before/after WER/CER of two runs, and how often each name was written right. |
+| `scripts/confidence_check.py` | Checks whether the words QC flags are really the wrong ones. |
 | `scripts/noise_check.py` | Reproduces the noise hallucination check in the hardware notes. |
 
 ## Subtitle rules, and why
@@ -94,7 +188,7 @@ flowchart LR
 | Max lines per cue | 2 | A third line covers the picture. |
 | Line break | after punctuation if it fits, otherwise the most balanced split | Two even lines are easier to read than one long and one short. |
 | Duration | at most 6.0 s; aims for at least 1.0 s | Under a second is a flash nobody can read; over six seconds people re-read the line. |
-| Reading speed | aims for ≤ 17 characters per second | Adult reading-speed guideline. If a cue is too fast, its end time is stretched into the silence after it. If the next cue starts too soon to stretch, the cue keeps its timing and `python -m gulf_srt` lists it as one to check. |
+| Reading speed | aims for ≤ 17 characters per second | Adult reading-speed guideline. If a cue is too fast, its end time is stretched into the silence after it. If the next cue starts too soon to stretch, the cue keeps its timing and the QC report lists it as one to check. |
 | Where to cut | end of sentence, a pause ≥ 0.6 s, or a comma once the cue is a full line | Subtitles should follow the speaker's phrasing. When a hard limit (length or 6 s) forces a cut, the code looks back for the last comma or pause instead of cutting mid-phrase. |
 | Tiny cues | under 8 characters or under 1 s get merged into a neighbour, if they are less than 1 s apart and the result still fits | One-word cues like «ايه.» flicker on screen. |
 | Overlaps | never | Each cue ends at or before the next one starts. |
@@ -181,14 +275,73 @@ lists clips a native speaker could transcribe to widen the test.
 **What it would take for production.**
 - **Measure on the client's own shows.** A native speaker transcribes 10-15 minutes per show, and
   CER/WER is tracked per show and per dialect against an agreed acceptance threshold.
-- **Custom vocabulary.** Character names, places and recurring slang go into faster-whisper's
-  `hotwords`, which is added to every 30-second window (`initial_prompt` would only reach the first
-  window here, because `condition_on_previous_text` is off), plus a find-and-replace pass for known
-  spellings.
+- **Custom vocabulary, tested per show.** `--hotwords` is built in, but on these clips it didn't
+  help and one list made Whisper skip 20 seconds (see "Hotwords: measured, not assumed"). So:
+  test a show's cast list against a reference before switching it on, and add a find-and-replace
+  pass for known spellings.
 - **Fine-tuning on licensed Gulf audio**, for example the client's own subtitled back catalogue,
   where the delivered subtitles are ready-made labels. SADA can't be used for this commercially.
-- **An editor in the loop.** Editors correct the draft in Subtitle Edit or Premiere; their
-  corrections are logged and fed back as new hotwords and training data.
+- **An editor in the loop.** Editors start from the QC report and correct the draft in Subtitle
+  Edit or Premiere; their corrections are logged (the corrected SRT against `words.json`) and fed
+  back as find-and-replace rules and training data, and the share of lines changed per episode
+  becomes the accuracy KPI that is reported upward.
+
+## Hotwords: measured, not assumed
+
+`--hotwords` gives Whisper a list of names and words to favour, added to every 30-second window
+(unlike `initial_prompt`, which only reaches the first window here because
+`condition_on_previous_text` is off). Two lists were tested on the same clips, same GPU, same
+settings, against a fresh baseline run that reproduced the committed results exactly:
+
+- `data/hotwords/aldeerah_net_cast.txt`: the two character names spoken in the clips, «عبود» and
+  «أبو حمد». A production house has its cast list in advance; here the names were taken from the
+  reference transcript, so this is a best case.
+- the cast list plus `data/hotwords/gulf_common.txt`: 15 common Gulf words (علشان، للحين، وش، ترى ...),
+  written by hand, not copied from the references, but some of them do appear in the clips.
+
+Arabic normalization, `results/large-v3-turbo-cuda*/`:
+
+| Run | MSA WER | MSA CER | Dialect WER | Dialect CER | «عبود» written right (of 5) | «أبو حمد» (of 1) |
+|---|---|---|---|---|---|---|
+| No hotwords | 13.3% | 3.2% | 42.1% | 17.8% | 3 | 1 |
+| Cast names | 14.2% | 3.3% | **51.1%** | **33.4%** | 3 | 1 |
+| Cast names + Gulf words | 14.2% | 3.3% | 41.1% | 17.1% | 2 | 1 |
+
+**What happened.** With only the cast names, Whisper **skipped the first 20 seconds of speech**
+in `sada_scene_b` (its first segment starts at 20.1 s), which is why dialect CER jumped from
+21.6% to 51.8% on that clip. Its confidence scores didn't show it: the segment it did write
+had an average log-probability of -0.77, above the -1.0 line. The QC report's gap check did catch
+it ("20 s with no subtitle: check for missed dialogue"), see `examples/hotwords_dropped_start/` and
+the screenshot below. With the longer list the skip didn't happen, and dialect WER moved
+1 point (42.1% to 41.1%), which is within the ~1 point run-to-run variation noted below. The
+names themselves were not written right more often. On MSA, one clip lost one word either way.
+
+**Conclusion.** On these clips, hotwords did not help, and one list caused a serious deletion.
+That doesn't mean they never help (6 clips, one episode, 2 names), but it does mean they should
+be tested per show on a reference transcript before being switched on, and the QC gap check
+should stay on when they are. A find-and-replace pass for known names after transcription is
+the safer first step.
+
+![The gap check catching the 20 seconds Whisper skipped with the cast hotwords](docs/screenshots/review-page-dropped-start.png)
+
+## Do the QC flags point at the real mistakes?
+
+`python scripts/confidence_check.py results/large-v3-turbo-cuda` aligns Whisper's words with the
+reference and asks: are the words Whisper scored low really the wrong ones?
+
+| Variety | Flag words below | Words flagged | Wrong among flagged | Wrong among the rest | Share of all wrong words caught |
+|---|---|---|---|---|---|
+| MSA (read) | 0.5 | 2/114 (2%) | 50% | 12% | 1/14 (7%) |
+| Saudi dialect (TV show) | 0.3 | 10/186 (5%) | 80% | 32% | 8/65 (12%) |
+| Saudi dialect (TV show) | **0.5 (default)** | 17/186 (9%) | **76%** | 31% | 13/65 (20%) |
+| Saudi dialect (TV show) | 0.7 | 49/186 (26%) | 57% | 27% | 28/65 (43%) |
+
+On dialect, a flagged word is wrong about 2.5 times as often as an unflagged one, so the flags are
+the right place to start. But at the default they catch only 1 in 5 of the wrong words, and
+missing words can't be flagged at all (there's no word to score). The QC report says where to
+look first, not where to stop looking. Raising the threshold to 0.7 catches 43% of mistakes but
+flags a quarter of all words. This is 17 flagged words on one episode, so the exact numbers
+are rough.
 
 ## Data licensing
 
@@ -216,6 +369,10 @@ driver 616.92), Python 3.13.7.
 - **CPU fallback** (`--device cpu`, or `auto` when the GPU fails its one-second test run; int8) also works with the same model, at an RTF of about 0.4-0.8
   (a 45-minute episode in roughly 20-35 minutes) instead of about 0.03 on the GPU.
 - **No ffmpeg needed.** Audio and video are decoded with PyAV, which bundles its own ffmpeg libraries.
+- **No burned-in preview clip.** PyAV's bundled ffmpeg has no `subtitles` or `drawtext` filter,
+  and burning in Arabic properly needs libass with text shaping, so it would mean requiring a full
+  ffmpeg install. The HTML review page does the same job (watch the draft under the picture)
+  without re-encoding anything. With ffmpeg installed, `ffmpeg -i ep.mp4 -vf subtitles=ep.srt preview.mp4` works on our SRT.
 - **Hallucination check** (`python scripts/noise_check.py`). Fed 20 s of random noise without the
   VAD filter, Whisper produced «اشتركوا في القناة» ("subscribe to the channel"), a well-known
   Whisper failure picked up from YouTube training data. With VAD on it produced nothing. That's
