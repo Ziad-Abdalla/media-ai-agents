@@ -18,9 +18,11 @@ import sys
 import unicodedata
 from pathlib import Path
 
-from gulf_srt.srt import srt_to_text
+from gulf_srt.srt import RLM, srt_to_text
 
-_TASHKEEL = re.compile(r"[ً-ْٰ]")  # short-vowel marks, shadda, sukun, dagger alef
+LRM = "\u200e"  # LEFT-TO-RIGHT MARK, the other invisible direction mark
+
+_TASHKEEL = re.compile("[\u064b-\u0652\u0670]")  # short-vowel marks, shadda, sukun, dagger alef
 _TATWEEL = "ـ"  # the stretching line in "مـــرحبا"
 _ARABIC_DIGITS = str.maketrans("٠١٢٣٤٥٦٧٨٩", "0123456789")
 
@@ -32,7 +34,7 @@ def _strip_punctuation(text: str) -> str:
 def normalize(text: str, arabic: bool = True) -> str:
     """Light normalization always: no punctuation, lower case, single spaces.
     Arabic normalization (default on): also drop diacritics/tatweel and unify letter variants."""
-    text = text.replace("‏", "").replace("‎", "")
+    text = text.replace(RLM, "").replace(LRM, "")
     if arabic:
         text = _TASHKEEL.sub("", text)
         text = text.replace(_TATWEEL, "")
