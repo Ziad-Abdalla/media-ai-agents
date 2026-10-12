@@ -21,7 +21,8 @@ from .normalize import normalize_arabic, same_place, same_prop
 # v1: props matched by containment. v2: props matched by main noun + synonym list.
 # v3: locations matched by words (every gold word present), not by substring; gold names not aliased.
 # v4: hard-set checks can cover every field ("*") and count items (must_count). Field scores are the same as v3.
-SCORER_VERSION = "v4"
+# v5: "must not contain" ignores upper and lower case, so a Latin "FERRARI" is caught too. Field scores as v3.
+SCORER_VERSION = "v5"
 
 EXACT_FIELDS = ["int_ext", "time_of_day"]
 LOCATION_FIELDS = ["location"]
@@ -164,7 +165,7 @@ def critical_failures(scored_scene: dict, pred: dict | None, gold: dict,
     for field, words in gold.get("must_exclude", {}).items():
         where = "any field" if field == "*" else field
         for word in words:
-            if any(same_place(item, word) for item in items(field)):
+            if any(same_place(item.casefold(), word.casefold()) for item in items(field)):
                 failures.append(f"{where} must not contain {word}")
     for field, words in gold.get("must_include", {}).items():
         for word in words:
