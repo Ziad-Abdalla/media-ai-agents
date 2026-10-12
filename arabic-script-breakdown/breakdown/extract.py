@@ -56,9 +56,12 @@ class ExtractionError(RuntimeError):
 
 def build_messages(scene: Scene, previous_heading: str | None) -> list[dict]:
     context = previous_heading or "(this is the first scene)"
+    # The scene text must not be able to close the <scene> tag early and write
+    # "outside" it, so any <scene> or </scene> inside the text is broken up.
+    text = scene.text.replace("<scene>", "< scene>").replace("</scene>", "< /scene>")
     return [{
         "role": "user",
-        "content": f"Previous scene heading, for context only: {context}\n\n<scene>\n{scene.text}\n</scene>",
+        "content": f"Previous scene heading, for context only: {context}\n\n<scene>\n{text}\n</scene>",
     }]
 
 

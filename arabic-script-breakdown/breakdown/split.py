@@ -51,6 +51,21 @@ def heading_number(line: str) -> int | None:
     return int(match.group(1)) if match else None
 
 
+# Time words in a heading. "آخر الليل" is still night.
+_TIMES = {"نهار": "نهار", "ليل": "ليل", "آخر الليل": "ليل", "فجر": "فجر", "غروب": "غروب"}
+
+
+def heading_time(heading: str) -> str | None:
+    """The time of day written in a heading, or None (for example when it only says متصل).
+
+    A heading is split on its dashes: "م/9 - داخلي - ليل - غرفة فهد" -> [..., "ليل", ...].
+    """
+    for part in re.split(r"\s[-–]\s|:", heading):
+        if part.strip() in _TIMES:
+            return _TIMES[part.strip()]
+    return None
+
+
 def split_script(script: str) -> tuple[str, list[Scene]]:
     """Return (preamble, scenes). The preamble is everything before scene 1 (title, cast list)."""
     preamble: list[str] = []
