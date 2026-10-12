@@ -9,9 +9,11 @@ shot, and you price props, cars and extras from the list. This repo does the fir
 more importantly, comes with an **Arabic evaluation set and a regression gate** so you can tell whether
 a new model or prompt is better or worse before you trust it.
 
-> **Data note:** the screenplay in `data/` is **synthetic**, written for this project (a high-school
-> drama set in Riyadh: MSA headings and action lines, Saudi/Gulf dialect dialogue). It is not from any
-> real production. **Gold labels: drafted, pending native-speaker review.**
+> **Data note:** the screenplay in `data/` is **synthetic**: drafted with Claude to my list of hard
+> cases (a high-school drama set in Riyadh: MSA headings and action lines, Saudi/Gulf dialect dialogue).
+> It is not from any real production. The first draft of the gold labels was also made with Claude.
+> **Gold labels: drafted, pending native-speaker review.** See [Limits](#limits) for what this means
+> for the scores.
 
 ## How it works
 
@@ -31,7 +33,9 @@ flowchart LR
 | `breakdown/split.py` | Finds scene headings with plain rules (`مشهد ١`, `م/2`, `م.13`, `مشهد (3)`, `٥ -`, or no number at all) and gives each scene a number. Also counts length in eighths of a page. |
 | `breakdown/schema.py` | The Pydantic model of one scene's breakdown. |
 | `breakdown/extract.py` | The prompt and the API call. Structured output means the answer is always valid JSON in the schema. The scene text is treated as data, and the previous scene's heading is passed so `متصل` (continuous) scenes get the right time of day. |
-| `breakdown/normalize.py` | Arabic normalization (tashkeel, tatweel, alef/ya/ta marbuta forms, Arabic-Indic digits) and the character alias map. |
+| `breakdown/pipeline.py` | Splits the script, sends 4 scenes at a time, and collects the results. A scene that fails (bad answer, API error, budget used up) is reported as failed; the other scenes still finish. For two `متصل` scenes in a row it adds the last written time to the context. |
+| `breakdown/normalize.py` | Arabic normalization (tashkeel, tatweel, alef/ya/ta marbuta forms, Arabic-Indic digits) and the prop/location matching rules. |
+| `breakdown/cast_aliases.py` | The character alias map. Written by hand for this script's cast only. |
 | `breakdown/report.py` | The CSV (UTF-8 with BOM so Excel shows Arabic) and the per-actor / per-location schedule view. |
 | `breakdown/score.py` | Per-field scoring and the regression check. |
 | `breakdown/eval.py` | The eval command: run, score, log to `eval/history.csv`, gate. |
@@ -41,21 +45,38 @@ flowchart LR
 A scheduler needs exactly one row per actor, or the same actor gets booked twice. The prompt asks for
 cast-list names; the alias map is the safety net that turns every variant into one canonical name, and each
 scene records what it changed (`alias_fixes`). In the sample run, 24 of 26 scenes needed at least one fix.
+Most of those are not model mistakes: the cast list writes `فهد العتيبي` and `سعد العتيبي (أبو فهد)`, the
+model copies that as told, and the gold uses the short names `فهد` and `أبو فهد`. With the cast list
+removed (the experiment below), only 6 scenes needed a fix. The cleaner fix is to give the model the exact
+allowed names (for example as an enum in the schema); that changes the prompt, so it needs a new eval run.
+
+The map is **written for this script** (`breakdown/cast_aliases.py`). A new script needs its own map,
+built from its cast list. Short keys like `خالد` are only safe because this cast has one Khalid. The
+scorer runs the map on the model's answer only, not on the gold (which uses cast names, checked by a test),
+so if the map ever merged two different people, the eval would show it as an error.
 
 ## Quickstart
 
-```powershell
-py -3.13 -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt        # includes the sibling ../agent-cost-tracker
-copy .env.example .env                 # put ANTHROPIC_API_KEY in it (a .env in a parent folder also works)
-python -m pytest                       # 37 tests, no API calls
-python -m breakdown data/kamera_jaddi.txt --out output
-python -m breakdown.eval --model claude-haiku-5-5 --effort low --baseline
+This repo uses my separate `agent-cost-tracker` repo, installed from a folder next to this one:
+
+```
+some-folder/
+    agent-cost-tracker/        <- clone this first
+    arabic-script-breakdown/   <- this repo
 ```
 
-All API calls go through `tracked_call` from [agent-cost-tracker](../agent-cost-tracker), which records
-the cost of each call in a shared SQLite ledger and refuses to call once the budget is used up.
+```powershell
+py -3.13 -m venv .venv
+.venv\Scripts\activate                 # if PowerShell blocks it: Set-ExecutionPolicy -Scope Process Bypass
+pip install -r requirements.txt        # installs ../agent-cost-tracker too; this is the only install path
+copy .env.example .env                 # put ANTHROPIC_API_KEY in it (a .env in a parent folder also works)
+python -m pytest                       # 48 tests, no API calls
+python -m breakdown data/kamera_jaddi.txt --out output
+python -m breakdown.eval --model claude-haiku-5-5 --effort low --gate
+```
+
+All API calls go through `tracked_call` from `agent-cost-tracker`, which records the cost of each call in
+a shared SQLite ledger and refuses to call once the budget is used up.
 `python -m agent_cost_tracker report` shows the spend.
 
 ## Sample output
@@ -74,14 +95,17 @@ the father only appears silently at the door, and he is still listed, because he
 
 `examples/schedule.md` turns this into what a scheduler wants: which scenes each actor is needed for
 (فهد: 21 scenes, الجدة لطيفة: only scene 8, so she can be booked for one day) and which scenes share a
-location (غرفة فهد: scenes 9, 12, 19, 20, shoot them together).
+location (غرفة فهد: scenes 9, 12, 19, 20, shoot them together). This view is simplified: it groups by
+location only, while a real stripboard also splits by day and night (scenes 9, 12 and 19 are night, 20 is
+dawn), and scene 8, shot in two places, gets its own row.
 
 ## The evaluation
 
 ### How the set was built
 
-One synthetic 26-scene episode (`data/kamera_jaddi.txt`), written on purpose to contain the cases that
-break a naive breakdown, and one gold record per scene in `eval/gold.jsonl`. `eval/GOLD_REVIEW.md` is
+One synthetic 26-scene episode (`data/kamera_jaddi.txt`), drafted with Claude to my list of the cases
+that break a naive breakdown, and one gold record per scene in `eval/gold.jsonl` (first draft also made
+with Claude). `eval/GOLD_REVIEW.md` is
 the review sheet for the native-speaker check (status: drafted, pending review). Hard cases covered:
 
 | Hard case | Scenes |
@@ -93,7 +117,7 @@ the review sheet for the native-speaker check (status: drafted, pending review).
 | Prop mentioned only in dialogue (not a prop) | 7, 8, 18, 22 |
 | Flashback with a younger actor (`فهد الصغير`) | 11 |
 | Phone call cut between Riyadh and Jeddah (both actors needed) | 8 |
-| `متصل` (continuous) scenes: time comes from the previous scene | 9, 16, 25 |
+| `متصل` (continuous) scenes: time comes from the previous scene (each one follows a heading with a written time; two `متصل` in a row is only covered by a unit test) | 9, 16, 25 |
 | Night / dawn / sunset edges: `فجر`, `غروب`, `آخر الليل` (= ليل) | 13, 17, 19, 20 |
 | Animals, vehicles and extras that are not cast | 1, 6, 15, 17, 24 |
 
@@ -102,8 +126,8 @@ the review sheet for the native-speaker check (status: drafted, pending review).
 | Field | How it is scored |
 |---|---|
 | `int_ext`, `time_of_day` | Exact match (fixed list of values). Accuracy. |
-| `location` | Normalized match: same after Arabic normalization, or one contains the other. Accuracy. |
-| `characters` | Set precision / recall / F1, after the alias map. |
+| `location` | After Arabic normalization, every word of the gold location must be in the answer (extra words are allowed, missing words are not: `المدرسة` is wrong for `ممر المدرسة`). Accuracy. |
+| `characters` | Set precision / recall / F1. The model's names go through the alias map; the gold already uses cast names. |
 | `props` | Set precision / recall / F1. Two props match if their main noun (the first word of the Arabic noun phrase) is the same after normalization, with a short synonym list for MSA vs Gulf words (`هاتف` / `جوال`) and spelling variants (`فنجان` / `فنجال`). |
 | overall | Plain average of the five field scores. |
 
@@ -111,19 +135,23 @@ Precision answers "of what the agent listed, how much was really there?" Recall 
 there, how much did the agent list?" F1 is one number that is only high when both are.
 
 Every run prints a per-scene error list, saves the raw outputs to `eval/runs/`, and appends a row to
-`eval/history.csv` with: date, git commit, model, effort, prompt version (a hash of the prompt and schema),
-scorer version, per-field scores, and the cost of the run from the cost ledger.
+`eval/history.csv` with: date, git commit, model, effort, prompt version (a hash of the system prompt and
+schema), scorer version, per-field scores, and the cost of the run from the cost ledger. Re-scoring a saved
+run adds a row only the first time it is scored with a given scorer version.
 
 ### The regression gate (before launch and after every update)
 
-`eval/baseline.json` holds the scores of the last accepted run. `--baseline` compares a new run with it and
-**exits non-zero if any field drops by more than 0.05** (`--threshold`), so it can sit in CI and block a
-merge. The routine:
+`eval/baseline.json` holds the scores of the last accepted run. `--gate` compares a new run with it and
+**exits non-zero if any field drops by more than 0.05** (`--threshold`), **or if any scene failed or has
+no answer**, so it can sit in CI and block a merge. The second rule is needed because on 26 scenes one
+whole missing scene only costs about 0.04 per field, which is under the threshold. The threshold also
+cannot see one small mistake: dropping the silent father from scene 13 only moves characters from 1.000
+to 0.993. Those single-scene errors show up in the per-scene error list, not in the gate. The routine:
 
 1. **Before launch:** run the eval, read every per-scene error, fix the prompt or the labels, and accept the
    cheapest configuration that is good enough with `--accept`.
 2. **After every change** (new prompt, new model, new SDK version, changed normalization): run with
-   `--baseline`. Green means ship. Red names the field that dropped and the scenes that broke.
+   `--gate`. Green means ship. Red names the field that dropped and the scenes that broke.
 3. **Re-scoring is free:** if the scorer or the gold labels change, `--from-run eval/runs/<run>.jsonl`
    re-scores saved outputs without calling the API, and `tests/test_recorded_run.py` does this in pytest so
    an accidental scorer change is caught too.
@@ -140,8 +168,8 @@ merge. The routine:
 
 ## Results
 
-All runs on the same 26 scenes, prompt version `9eb1d255`, scorer v2. Costs come from the cost ledger
-(one full script = 26 calls).
+All runs on the same 26 scenes, prompt version `9eb1d255`, scored with scorer v3 (the scores are the same
+as under v2). Costs come from the cost ledger (one full script = 26 calls).
 
 | Model | Effort | INT/EXT | Time | Location | Characters F1 | Props F1 (P / R) | Overall | Cost per script |
 |---|---|---|---|---|---|---|---|---|
@@ -166,7 +194,9 @@ model being wrong: `هاتف` vs `جوال`, `فنجان` vs `فنجال`, `كا
 scorer (v2), not the prompt, and re-scored the saved runs for free. Removing the cast list from the prompt
 (the experiment row) barely moved the score, but only because the alias map fixed 7 names such as
 `سعد`, `خالد` and `بندر`; without the alias map that run's character F1 would have been 0.88, a drop the
-gate would block.
+gate would block. How it was run: the experiment run sent an empty cast list to the model; the
+`--no-cast-list` flag of `breakdown.eval` now does exactly that. The 0.88 was a one-off calculation: undo
+the `alias_fixes` recorded in `eval/runs/experiment-no-cast-list-haiku-low.jsonl` and score the raw names.
 
 **Dialect-related errors seen:** in scene 9 one Haiku run listed the grandmother as present because Sara
 says `سمعتك تكلم يمه لطيفة` right after the phone call (`يمه` is a Gulf word for grandmother here, and she
@@ -180,7 +210,14 @@ schema repeated 26 times). Prompt caching or sending a few scenes per call are t
 
 - One synthetic script in one writing style, 26 scenes. This is a test harness for the pipeline and for
   comparing configurations, **not a general accuracy claim** about Arabic screenplays.
+- The script and the first-draft gold labels were generated with Claude, and only Claude models were
+  evaluated. The text is probably easier for these models than a real script, and the labels reflect one
+  reviewer. Read 0.99 as "the pipeline and the gate work", not as accuracy on real Saudi scripts.
 - Gold labels are drafted and still need the native-speaker review in `eval/GOLD_REVIEW.md`.
+- The alias map in `breakdown/cast_aliases.py` only fits this cast. A new script needs its own map.
+- The set has no prompt-injection scene and no two `متصل` scenes in a row yet; both are covered only by
+  unit tests (`tests/test_pipeline.py`). A heading without `داخلي` or `خارجي` is not found by the splitter,
+  so its text joins the scene before it.
 - Costume, effects, extras, vehicles and animals are extracted but not scored yet; props and characters
   were the priority because they are what schedules and budgets break on.
 - Length in eighths of a page is counted from line numbers, so it is a rough estimate.
