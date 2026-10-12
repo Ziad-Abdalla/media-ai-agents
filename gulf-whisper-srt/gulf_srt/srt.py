@@ -65,3 +65,31 @@ def srt_to_text(srt: str) -> str:
         if line_in_block > 2:
             text_lines.append(line)
     return " ".join(text_lines)
+
+
+_TIMING = re.compile(r"(\d+):(\d{2}):(\d{2})[,.](\d{3})\s*-->\s*(\d+):(\d{2}):(\d{2})[,.](\d{3})")
+
+
+def parse_srt(srt: str) -> list[Cue]:
+    """Read an SRT (ours or anyone's, for example a delivered subtitle file) back into cues.
+
+    Blocks are separated by empty lines; in each block we look for the timing line and keep
+    the lines after it as text, without the RLM marks. Blocks with no timing line are skipped."""
+    cues = []
+    for block in re.split(r"\n\s*\n", srt.replace("\r\n", "\n").lstrip("﻿")):
+        lines = [line.replace(RLM, "").strip() for line in block.strip().split("\n")]
+        for i, line in enumerate(lines):
+            match = _TIMING.search(line)
+            if match:
+                h1, m1, s1, ms1, h2, m2, s2, ms2 = map(int, match.groups())
+                start = h1 * 3600 + m1 * 60 + s1 + ms1 / 1000
+                end = h2 * 3600 + m2 * 60 + s2 + ms2 / 1000
+                text = [t for t in lines[i + 1 :] if t]
+                if text:
+                    cues.append(Cue(start, end, text))
+                break
+    return cues
+
+
+def read_srt(path: str | Path) -> list[Cue]:
+    return parse_srt(Path(path).read_text(encoding="utf-8-sig"))

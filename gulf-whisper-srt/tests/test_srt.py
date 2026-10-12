@@ -1,7 +1,7 @@
 import unicodedata
 
 from gulf_srt.segment import Cue
-from gulf_srt.srt import RLM, format_timestamp, rtl_line, srt_to_text, to_srt
+from gulf_srt.srt import RLM, format_timestamp, parse_srt, rtl_line, srt_to_text, to_srt
 
 
 def first_strong_direction(line: str) -> str:
@@ -60,3 +60,14 @@ def test_srt_to_text_round_trip():
 def test_srt_to_text_keeps_a_line_that_is_only_a_number():
     cues = [Cue(0.0, 2.0, ["في سنة", "2024"]), Cue(3.0, 4.0, ["تمام"])]
     assert srt_to_text(to_srt(cues)) == "في سنة 2024 تمام"
+
+
+def test_parse_srt_round_trip_with_marks():
+    cues = [Cue(0.0, 2.0, ["هلا والله", "كيفك؟"]), Cue(3.5, 4.25, ["2024"])]
+    back = parse_srt(to_srt(cues))
+    assert [(c.start, c.end, c.lines) for c in back] == [(c.start, c.end, c.lines) for c in cues]
+
+
+def test_parse_srt_handles_windows_line_endings_and_bom():
+    text = "﻿1\r\n00:00:01,000 --> 00:00:02,500\r\nتمام\r\n\r\n2\r\n00:00:03,000 --> 00:00:04,000\r\nزين\r\n"
+    assert [c.text for c in parse_srt(text)] == ["تمام", "زين"]
