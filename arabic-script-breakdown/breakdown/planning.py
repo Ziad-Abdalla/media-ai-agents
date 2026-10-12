@@ -555,7 +555,7 @@ def call_times(day: ShootDay, rules: TimeRules | None = None) -> CallTimes:
 class ActorDays:
     name: str
     days: list[int]          # shoot-day numbers worked
-    hold_days: int           # shoot days between the first and last work day with no scene for this actor
+    hold_days: int           # working dates (not days off) between the actor's first and last day with no scene
 
 
 @dataclass
@@ -569,6 +569,9 @@ class BudgetSummary:
     company_moves: int
     night_to_day_turnarounds: int    # a night shift, then a day shift on the next calendar date: check crew rest
     site_days: dict[str, int]
+    first_date: date | None
+    last_date: date | None
+    idle_dates: list[date]           # working dates between the first and last shoot date with no shooting
     actors: list[ActorDays]
     extras_days: list[tuple[int, list[str]]]
     vehicle_days: list[tuple[int, list[str]]]
@@ -579,18 +582,29 @@ class BudgetSummary:
 
 def budget_summary(schedule: Schedule) -> BudgetSummary:
     days = schedule.days
+    working = set(working_dates(schedule.settings)) | {d.date for d in days}
     worked: dict[str, list[int]] = defaultdict(list)
+    worked_on: dict[str, set[date]] = defaultdict(set)
     scene_count: dict[str, int] = defaultdict(int)
     site_days: dict[str, int] = defaultdict(int)
     for d in days:
         for name in d.cast:
             worked[name].append(d.number)
+            worked_on[name].add(d.date)
         for strip in d.strips:
             for name in strip.scene.characters:
                 scene_count[name] += 1
         for site in d.sites:
             site_days[site] += 1
-    actors = [ActorDays(n, ds, (ds[-1] - ds[0] + 1) - len(ds)) for n, ds in worked.items()]
+    def waiting(dates: set[date]) -> list[date]:
+        """Working dates between the first and last of these dates that are not among them.
+        Counted on the calendar, not in shoot-day numbers: an empty working date in between is paid too."""
+        if not dates:
+            return []
+        return sorted(w for w in working if min(dates) < w < max(dates) and w not in dates)
+
+    shoot_dates = {d.date for d in days}
+    actors = [ActorDays(n, ds, len(waiting(worked_on[n]))) for n, ds in worked.items()]
     # Most shoot days first, then most scenes: the lead gets cast number 1.
     actors.sort(key=lambda a: (-len(a.days), -scene_count[a.name], a.name))
 
@@ -616,6 +630,9 @@ def budget_summary(schedule: Schedule) -> BudgetSummary:
         night_to_day_turnarounds=sum(a.shift == NIGHT_SHIFT and b.shift == DAY_SHIFT
                                      and b.date - a.date == timedelta(days=1) for a, b in pairwise(days)),
         site_days=dict(sorted(site_days.items(), key=lambda kv: -kv[1])),
+        first_date=min(shoot_dates, default=None),
+        last_date=max(shoot_dates, default=None),
+        idle_dates=waiting(shoot_dates),
         actors=actors,
         extras_days=per_day("extras"),
         vehicle_days=per_day("vehicles"),

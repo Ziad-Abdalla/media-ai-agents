@@ -322,9 +322,19 @@ def test_budget_summary_on_the_example(schedule):
     assert (b.night_scenes, b.dawn_scenes, b.sunset_scenes) == (10, 2, 1)   # ليل, فجر and غروب counted apart
     assert b.company_moves == sum(d.moves for d in schedule.days)
     assert b.actors[0].name == "فهد"                       # the lead is cast number 1
-    adel = next(a for a in b.actors if a.name == "الأستاذ عادل")
-    assert adel.hold_days == (adel.days[-1] - adel.days[0] + 1) - len(adel.days)
     assert "خيل عربي" in [x for _, items in b.animal_days for x in items]
+
+
+def test_hold_days_and_idle_dates_are_counted_on_the_calendar(schedule):
+    # The example shoots 31 Oct, 2, 3, 5 and 7 Nov: 1 and 4 Nov are working dates with no shooting.
+    b = budget_summary(schedule)
+    assert [d.date for d in schedule.days] == [date(2026, 10, 31), date(2026, 11, 2), date(2026, 11, 3),
+                                               date(2026, 11, 5), date(2026, 11, 7)]
+    assert (b.first_date, b.last_date) == (date(2026, 10, 31), date(2026, 11, 7))
+    assert b.idle_dates == [date(2026, 11, 1), date(2026, 11, 4)]
+    adel = next(a for a in b.actors if a.name == "الأستاذ عادل")
+    # Shoot days 1, 4, 5 = 31 Oct, 5 Nov, 7 Nov. He waits through 1, 2, 3 and 4 Nov (6 Nov is Friday, off).
+    assert adel.days == [1, 4, 5] and adel.hold_days == 4
 
 
 def test_hold_days_count_the_gaps():

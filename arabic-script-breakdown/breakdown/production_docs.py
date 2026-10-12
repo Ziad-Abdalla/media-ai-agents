@@ -38,8 +38,20 @@ def open_problems(day: ShootDay, rules: TimeRules | None = None) -> list[str]:
     return problems + call_times(day, rules).warnings
 
 DRAFT_NOTE = "مسودة آلية: يراجعها مساعد المخرج ويعدّلها قبل الاعتماد. لا تُرسل للممثلين قبل الاعتماد."
-HOLD_DAYS_NOTE = ('<p class="sub">أيام الانتظار: أيام تصوير بين أول وآخر يوم للممثل لا يصوّر فيها.'
-                  " إذا كان عقده أسبوعياً تُدفع، فيُفضّل تقليلها.</p>")
+HOLD_DAYS_NOTE = ('<p class="sub">أيام الانتظار: أيام عمل في التقويم (غير العطلة) بين أول وآخر يوم للممثل لا يصوّر فيها،'
+                  " ومنها الأيام التي لا تصوير فيها أصلاً. إذا كان عقده أسبوعياً تُدفع، فيُفضّل تقليلها.</p>")
+
+
+def idle_text(summary: BudgetSummary, fmt=date.isoformat) -> str:
+    """The calendar span and the working dates inside it with no shooting (the crew may still be paid)."""
+    if summary.first_date is None:
+        return "لا توجد أيام تصوير."
+    text = f"من {fmt(summary.first_date)} إلى {fmt(summary.last_date)}"
+    if not summary.idle_dates:
+        return text + "، بلا أيام عمل فارغة بينها."
+    return (text + f"، وفيها {len(summary.idle_dates)} أيام عمل بلا تصوير ("
+            + "، ".join(fmt(d) for d in summary.idle_dates)
+            + "): الطاقم والممثلون بعقد أسبوعي يُدفع لهم عنها. جرّب نقل يوم إليها يدوياً.")
 LEGEND = ('<p class="legend"><span style="background:#fff">داخلي نهار</span>'
           '<span style="background:#fff3a8">خارجي نهار</span>'
           '<span style="background:#cfe0ff">داخلي ليل</span>'
@@ -94,6 +106,10 @@ def pages(eighths: int) -> str:
 def date_ar(d) -> str:
     # The date is wrapped left-to-right so 2026-11-01 is not shown reversed inside Arabic text.
     return f'{WEEKDAY_AR[d.weekday()]} <span dir="ltr">{d.isoformat()}</span>'
+
+
+def ltr_date(d: date) -> str:
+    return f'<span dir="ltr">{d.isoformat()}</span>'
 
 
 def hhmm(t: datetime, day: date | None = None) -> str:
@@ -187,6 +203,7 @@ def budget_html(summary: BudgetSummary) -> str:
               f" ({summary.night_scenes} مشهد ليل، {summary.dawn_scenes} فجر، {summary.sunset_scenes} غروب)."
               f" تنقلات الطاقم بين المواقع داخل اليوم: {summary.company_moves}."
               f" وردية ليلية تليها وردية نهارية في اليوم التالي مباشرة: {summary.night_to_day_turnarounds}.</p>"),
+             f"<p>فترة التصوير: {idle_text(summary, ltr_date)}</p>",
              "<h2>أيام عمل كل ممثل</h2>",
              _table(["رقم", "الشخصية", "أيام العمل", "الأيام", "أيام انتظار"],
                     [[str(ids[a.name]), escape(a.name), str(len(a.days)), "، ".join(map(str, a.days)),
@@ -229,10 +246,12 @@ def budget_markdown(summary: BudgetSummary) -> str:
              f"| مشاهد ليل | {summary.night_scenes} |",
              f"| مشاهد فجر | {summary.dawn_scenes} |",
              f"| مشاهد غروب | {summary.sunset_scenes} |",
+             f"| أيام عمل بلا تصوير داخل الفترة | {len(summary.idle_dates)} |",
              f"| تنقلات الطاقم بين المواقع | {summary.company_moves} |",
              f"| وردية ليلية تليها نهارية في اليوم التالي | {summary.night_to_day_turnarounds} |",
              f"| مشاهد لم تُجدول | {summary.unscheduled} |",
              f"| مشاهد تحتاج مراجعة | {len(summary.flagged_scenes)} |",
+             "", f"فترة التصوير: {idle_text(summary)}",
              "", "## أيام عمل كل ممثل", "",
              "| رقم | الشخصية | أيام العمل | الأيام | أيام انتظار |", "|---|---|---|---|---|"]
     lines += [f"| {ids[a.name]} | {a.name} | {len(a.days)} | {', '.join(map(str, a.days))} | {a.hold_days} |"
