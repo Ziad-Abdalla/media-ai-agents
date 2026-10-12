@@ -12,7 +12,7 @@ import anthropic
 import pydantic
 from agent_cost_tracker import BudgetExceeded
 
-from . import resolve
+from . import config, resolve
 from .extract import ExtractionFailed, extract_request
 from .models import Email, PurchaseRequest
 from .permissions import ForbiddenAction, WritesDisabled, execute
@@ -27,14 +27,22 @@ INJECTION_HINTS = re.compile(
 
 
 def process_email(email: Email, *, client, odoo, store) -> str | None:
-    """Returns the run_id, or None if we've already seen this email."""
-    if store.find_run(message_id=email.message_id):
+    """Returns the run_id, or None if there is nothing to do."""
+    if email.sender == config.AGENT_EMAIL.lower():
+        return None  # our own reply landed in the same inbox: never treat it as a request
+
+    earlier = store.find_run(message_id=email.message_id)
+    if earlier and earlier["status"] != "failed":
         return None  # same email fetched again: nothing to do, no model call
 
-    run_id = "run-" + uuid.uuid4().hex[:8]
-    store.add_run(run_id=run_id, message_id=email.message_id, sender=email.sender,
-                  subject=email.subject, body=email.body, received_at=email.received_at,
-                  status="received")
+    if earlier:  # the last try failed (rate limit, network...): try again on the same run
+        run_id = earlier["run_id"]
+        store.update_run(run_id, status="received", error=None)
+    else:
+        run_id = "run-" + uuid.uuid4().hex[:8]
+        store.add_run(run_id=run_id, message_id=email.message_id, sender=email.sender,
+                      subject=email.subject, body=email.body, received_at=email.received_at,
+                      status="received")
 
     if not sender_allowed(email):
         store.update_run(run_id, status="blocked_sender",

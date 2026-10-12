@@ -156,3 +156,17 @@ def test_unexpected_error_leaves_the_run_retryable(store, odoo, monkeypatch):
     with pytest.raises(KeyError):
         approve_run(store, odoo, r["run_id"], "Ziad")
     assert store.get_run(r["run_id"])["status"] == "write_failed"  # not stuck in 'writing'
+
+
+def test_a_failed_email_is_tried_again_on_the_next_poll(store, odoo):
+    first = run(store, odoo, client=FakeAnthropic(stop_reason="refusal"))
+    assert first["status"] == "failed"
+    second = run(store, odoo)  # same email, next poll
+    assert second["run_id"] == first["run_id"]  # same run, not a new one
+    assert second["status"] == "pending_approval"
+
+
+def test_the_agents_own_reply_is_not_read_as_a_request(store, odoo):
+    client = FakeAnthropic()
+    assert run(store, odoo, client=client, sender="procurement-agent@sadaf.example") is None
+    assert client.sent == []
