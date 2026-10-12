@@ -19,6 +19,7 @@ class Word:
     start: float  # seconds
     end: float  # seconds
     text: str
+    probability: float = 1.0  # Whisper's own confidence in this word, 0 to 1
 
 
 @dataclass

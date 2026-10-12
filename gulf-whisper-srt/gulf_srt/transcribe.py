@@ -7,6 +7,7 @@ import sys
 import numpy as np
 
 from gulf_srt.segment import Word
+from gulf_srt.transcript import SpeechSegment, Transcript
 
 
 def _add_cuda_dll_paths() -> None:
@@ -41,10 +42,15 @@ def load_model(name: str = "large-v3-turbo", device: str = "auto"):
     return WhisperModel(name, device="cpu", compute_type="int8"), "cpu"
 
 
-def transcribe(model, audio) -> tuple[list[Word], float]:
+def transcribe(model, audio, hotwords: str | None = None) -> Transcript:
     """Transcribe Arabic audio (a file path or 16 kHz numpy array).
 
-    Returns the words with their timings, and the audio length in seconds.
+    hotwords: names and words to favour (cast, characters, places), for example
+    "عبود أبو حمد". faster-whisper adds them to every 30-second window. It is a hint,
+    not a guarantee, so measure it on your own clips before trusting it.
+
+    Returns the words with their timings and confidence, Whisper's per-segment
+    confidence numbers (used by the QC report), and the audio length in seconds.
     """
     segments, info = model.transcribe(
         audio,
@@ -53,11 +59,19 @@ def transcribe(model, audio) -> tuple[list[Word], float]:
         word_timestamps=True,  # we need per-word times to cut subtitles well
         beam_size=5,
         condition_on_previous_text=False,  # stops one mistake repeating down the file
+        hotwords=hotwords or None,  # unlike initial_prompt, this reaches every window
     )
-    words = []
+    words, speech = [], []
     for segment in segments:  # segments is a generator; the work happens here
+        speech.append(
+            SpeechSegment(
+                segment.start, segment.end, segment.text.strip(),
+                segment.avg_logprob, segment.no_speech_prob, segment.compression_ratio,
+            )
+        )
         for w in segment.words or []:
             text = w.word.strip()
             if text:
-                words.append(Word(w.start, w.end, text))
-    return words, info.duration
+                words.append(Word(w.start, w.end, text, w.probability))
+    source = audio if isinstance(audio, str) else ""
+    return Transcript(words, info.duration, speech, source=source, hotwords=hotwords or "")
