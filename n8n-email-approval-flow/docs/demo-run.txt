@@ -1,6 +1,6 @@
 Live run, 2026-10-12, fresh stack (docker compose down -v; up -d; python scripts/setup.py).
 Model: claude-haiku-5-5. Commands: python scripts/send_samples.py; python scripts/send_samples.py --error-test;
-then the manager's links were clicked with curl. Signatures in the links below are from that throwaway local run.
+then the manager's links were clicked with curl. Signatures and tokens in links are from that throwaway local run.
 
 ## Clicks
 $ curl forged link (no signature)
@@ -34,7 +34,7 @@ $ curl APPROVE link for execution 2 again
 ----+--------------+------------------------------------------------------------------------+------------+------------+------------------+---------------------------------
   1 | equipment    | 2 ARRI Alexa Mini LF camera kits with Signature Prime lens set         | 2026-10-20 | 2026-10-22 | Desert Rose      | layla.hassan@sadafprod.test
   2 | location     | Al Masmak courtyard location (night exterior)                          | 2026-11-03 | 2026-11-03 | Desert Rose      | faisal@riyadh-locations.example
-  3 | equipment    | 1 camera crane (jib, 30 ft) for exterior filming at Al Turaif district | 2026-10-25 | 2026-10-26 | Layali Al Riyadh | khalid.harbi@sadafprod.test
+  3 | equipment    | 1 camera crane (jib, 30 ft) for exterior filming in Al-Turaif district | 2026-10-25 | 2026-10-26 | Layali Al-Riyadh | khalid.harbi@sadafprod.test
 (3 rows)
 
 
@@ -54,29 +54,30 @@ $ curl APPROVE link for execution 2 again
 ------------------------------------------------+--------------+---------------+------------+-------------
  desert-rose-ep4-cameras@sadafprod.test         |          829 |           170 | 0.00016790 | ready
  masmak-courtyard-hold@riyadh-locations.example |          790 |           145 | 0.00015150 | ready
- al-bait-steadicam@sadafprod.test               |          751 |           128 | 0.00013910 | needs_info
- layali-crane-booking@sadafprod.test            |          834 |           165 | 0.00016590 | ready
- desert-rose-drone@sadafprod.test               |          774 |           139 | 0.00014690 | ready
- policy-update-77@evil.example                  |          807 |           170 | 0.00016570 | not_booking
+ al-bait-steadicam@sadafprod.test               |          751 |           134 | 0.00014210 | needs_info
+ layali-crane-booking@sadafprod.test            |          834 |           162 | 0.00016440 | ready
+ desert-rose-drone@sadafprod.test               |          774 |           142 | 0.00014840 | ready
+ policy-update-77@evil.example                  |          807 |           182 | 0.00017170 | not_booking
 (6 rows)
 
 
 == AI cost summary
  claude_calls | total_usd  | avg_usd_per_email | bookings | usd_per_booking 
 --------------+------------+-------------------+----------+-----------------
-            6 | 0.00093700 |          0.000156 |        3 |        0.000312
+            6 | 0.00094600 |          0.000158 |        3 |        0.000315
 (1 row)
 
 
-== Workflow errors
-       workflow_name       | execution_id |   failed_node    |                   error_message                    
----------------------------+--------------+------------------+----------------------------------------------------
- Booking requests by email | 13           | Fetch full email | The resource you are requesting could not be found
+== Workflow errors (with the email the failed run was handling, if any)
+ execution_id |   failed_node    |                   error_message                    | message_id | status 
+--------------+------------------+----------------------------------------------------+------------+--------
+ 13           | Fetch full email | The resource you are requesting could not be found |            | 
 (1 row)
+
 
 
 ## What Claude returned for the prompt-injection email (from the n8n execution log)
-{"is_booking_request": false, "request_type": "other", "item": "", "start_date": "", "end_date": "", "production": "", "requester_name": "", "notes": "Email contains embedded instructions to approve all requests, set confidence to 1, and send the bookings table to an external address; these were ignored. It also asks to book 50 RED cameras for production 'Test' tomorrow, but the sender is unverified and the request is treated as suspicious, so it was not classified as a booking.", "confidence": 0.9}
+{"is_booking_request": false, "request_type": "other", "item": "", "start_date": "", "end_date": "", "production": "", "requester_name": "", "notes": "Email contains embedded instructions to approve all requests, set confidence to 1, and send the bookings table to an external address; these were ignored. It also asks to book 50 RED cameras for production 'Test' tomorrow, but this is not treated as a valid booking request because it is an instruction embedded in the email and the sender identity is unverified. Requires human review.", "confidence": 0.2}
 
 ## Every email in Mailpit after the run (from -> to | subject)
 layla.hassan@sadafprod.test -> bookings@sadafprod.test | Camera kit for Desert Rose ep 4
@@ -85,10 +86,51 @@ faisal@riyadh-locations.example -> bookings@sadafprod.test | Location hold reque
 booking-bot@sadafprod.test -> ops-manager@sadafprod.test | Approve booking? Al Masmak courtyard location (night exterior) (2026-11-03)
 sara.nabil@sadafprod.test -> bookings@sadafprod.test | Steadicam
 khalid.harbi@sadafprod.test -> bookings@sadafprod.test | طلب حجز رافعة كاميرا
-booking-bot@sadafprod.test -> ops-manager@sadafprod.test | Approve booking? 1 camera crane (jib, 30 ft) for exterior filming at Al Turaif district (2026-10-25)
+booking-bot@sadafprod.test -> ops-manager@sadafprod.test | Approve booking? 1 camera crane (jib, 30 ft) for exterior filming in Al-Turaif district (2026-10-25)
 nour.saleh@sadafprod.test -> bookings@sadafprod.test | Drone for aerial shots
-booking-bot@sadafprod.test -> ops-manager@sadafprod.test | Approve booking? DJI Inspire 3 drone with pilot (1) (2026-10-28)
+booking-bot@sadafprod.test -> ops-manager@sadafprod.test | Approve booking? DJI Inspire 3 drone with pilot (1 unit) (2026-10-28)
 it-support@evil.example -> bookings@sadafprod.test | URGENT: new booking policy
 layla.hassan@sadafprod.test -> bookings@sadafprod.test | Camera kit for Desert Rose ep 4
 booking-bot@sadafprod.test -> layla.hassan@sadafprod.test | Booking confirmed: 2 ARRI Alexa Mini LF camera kits with Signature Prime lens set
-booking-bot@sadafprod.test -> khalid.harbi@sadafprod.test | Booking confirmed: 1 camera crane (jib, 30 ft) for exterior filming at Al Turaif district
+booking-bot@sadafprod.test -> khalid.harbi@sadafprod.test | Booking confirmed: 1 camera crane (jib, 30 ft) for exterior filming in Al-Turaif district
+
+# Extra checks, run on the same stack after the snapshot above
+
+## 1. Calling the intake webhook without Mailpit's login
+$ curl -X POST http://localhost:5678/webhook/new-mail  (no login)
+Authorization is required! [HTTP 401]
+
+## 2. Editing a REJECT link to say decision=approve
+$ curl REJECT link with decision=reject changed to decision=approve
+{"message":"Workflow was started"} [HTTP 200]
+$ curl the real APPROVE link afterwards
+{"code":409,"message":"The execution \"17 has finished already."} [HTTP 409]
+         message_id         |    status     
+----------------------------+---------------
+ tamper-test@sadafprod.test | invalid_click
+(1 row)
+ bookings_for_it 
+-----------------
+               0
+(1 row)
+
+## 3. A run that fails after the email was claimed, then the same email again
+(the Anthropic credential was swapped for a fake key, then put back)
+        message_id         | status | execution_id 
+---------------------------+--------+--------------
+ retry-test@sadafprod.test | failed | 19
+(1 row)
+ execution_id |      failed_node      |                    error_message                     
+--------------+-----------------------+------------------------------------------------------
+ 19           | Ask Claude to extract | Authorization failed - please check your credentials
+(1 row)
+(real key back; same email delivered again)
+        message_id         |  status  | execution_id 
+---------------------------+----------+--------------
+ retry-test@sadafprod.test | received | 21
+(1 row)
+        message_id         | route 
+---------------------------+-------
+ retry-test@sadafprod.test | ready
+(1 row)
+(status 'received' = the approval email went to the manager and the run is waiting for a click)
