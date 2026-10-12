@@ -41,7 +41,9 @@ what they were measured on, including a measured (not assumed) test of the `--ho
   «أبو حمد» is mentioned" returns file, timecode and line. A back catalogue's delivered subtitles
   can be indexed the same way with no transcription at all.
 - **Vendor QC.** `python -m gulf_srt.qc` checks any SRT, including a subtitling vendor's
-  delivery, against the same reading-speed and line-length rules.
+  delivery, against the same reading-speed and line-length rules. It reads UTF-8 and older
+  Windows-1256 Arabic files, ignores formatting tags like `<i>` and `{\an8}` when counting
+  characters, and with `--duration` it also checks that the last act isn't missing.
 - **Measurable.** The tool prints speed (real-time factor) and the share of lines flagged.
   `python -m gulf_srt.edits` compares each draft with the editor's final SRT and reports the share
   of lines changed and the word edit rate per episode, as a table for a monthly report. Editing
@@ -112,8 +114,12 @@ python -m gulf_srt.archive search examples/archive.json "عبود"
 Searching for names needs different normalization from the WER score. Search ignores diacritics,
 punctuation and the أ/إ/ا and ة/ه variants, but keeps ى and ي apart, because «على» ("on") and
 «علي» (a name) are different words. It matches whole words, also with و/ف/ب/ل/ك attached to the
-front («لعبود», «وعبود»), so «حمد» doesn't find «محمد» or «الحمد لله». `--word` matches the exact
-word only, and `--anywhere` matches inside words. A folder holding both per-episode indexes and an
+front («لعبود», «وعبود»), so «عبود» doesn't find «معبود». A one-word search of 3 letters or fewer
+matches the exact word only, because a short word plus one of those letters is often a different
+word: «ريم» would otherwise find «كريم», «مال» «كمال», «ليد» «وليد», and «حمد» «بحمد الله».
+A longer name can still, now and then, match another word that starts with و/ف/ب/ل/ك, so a hit is
+a place to look, not proof. `--word` matches the exact word only, and `--anywhere` matches inside
+words. A folder holding both per-episode indexes and an
 archive built from the same files gives each line once, and paths keep their folders, so two
 seasons' `ep01.srt` stay apart.
 
@@ -126,8 +132,13 @@ subtitles avoids that problem completely.
 
 ```
 python -m gulf_srt.qc out/episode01.srt --words out/episode01.words.json   # our own draft
-python -m gulf_srt.qc delivered/episode01.srt                              # any SRT, e.g. a vendor's
+python -m gulf_srt.qc delivered/episode01.srt --duration 44:30              # any SRT, e.g. a vendor's
 ```
+
+A delivered SRT has no record of how long the episode is, so without `--duration` the stretch
+after the last subtitle isn't checked (a file missing its last five minutes would pass) and the
+report says so at the top. Files that aren't UTF-8 are read as Windows-1256 with a warning, and
+formatting tags and invisible direction marks don't count towards line length or reading speed.
 
 From `examples/hotwords_dropped_start/sada_scene_b_cast.qc.md`, the run where Whisper skipped 20 seconds:
 
@@ -146,7 +157,9 @@ The checks, most expensive first:
    faster-whisper) heard 3 s or more of speech in a stretch with no subtitle. Whisper's scores
    can't show this, because there is no word to score, so it goes first, longest first. Without
    speech data (a vendor's SRT), any 10 s with no subtitle goes here, because music and speech
-   can't be told apart. On all 21 saved runs this flagged only the real 20 s skip.
+   can't be told apart (the end of the file only with `--duration`). On all 21 saved runs (clips
+   of about one minute) this flagged only the real 20 s skip; the false-alarm rate on full
+   45-minute episodes with whispering, crowds or songs hasn't been measured.
 2. **Words may be wrong.** A word Whisper gave a probability under 0.5 (shown rounded down, so
    0.499 prints as 0.49). And Whisper's scores for a whole decode window: average
    log-probability under -1.0, no-speech probability over 0.6 (music or noise written as words), or
@@ -160,7 +173,10 @@ The checks, most expensive first:
    3 s of speech: probably music or silence, a quick check.
 
 If the SRT was edited after it was made, its words no longer match `words.json`, so the
-word-level check is switched off and the report says so at the top. The rest still runs. If the
+word-level check is switched off and the report says so at the top. The rest still runs.
+**Known limit:** this is all or nothing, so one edited word switches the word check off for the
+whole file. Keeping the scores of the words the editor didn't touch (by aligning the two texts)
+is the planned fix. If the
 SRT was made with `--replacements`, pass the same file to `python -m gulf_srt.qc` so the words line up.
 
 ### The show's correction list
@@ -170,8 +186,14 @@ python -m gulf_srt episode01.mp4 -o out/episode01.srt --replacements show_fixes.
 ```
 
 One rule per line, `wrong => right`, for example `على شأن => علشان` or `ابو حمد => أبو حمد`. Rules
-match whole words, keep an attached و/ف/ب/ل/ك/ال («وعلى شأن» becomes «وعلشان»), never match across
-the end of a sentence, and never match inside another word. They are applied before the subtitles
+match whole words, never match across the end of a sentence, and never match in the middle or at
+the end of another word («حمد» never touches «محمد»). An attached و/ف/ب/ل/ك/ال in front is kept
+(«وعلى شأن» becomes «وعلشان») when the rule has two or more words or its first word has 4 or more
+letters. A one-word rule of 3 letters or fewer matches the exact word only, because a short word
+plus an attached letter is often another word: with `ريم => ريما`, «كريم» would have become
+«كريما», and with `حمد => أحمد`, «بحمد الله» «بأحمد الله». Write a separate rule for an attached
+form you do want (`لريم => لريما`). A longer rule can still hit a different word that starts with
+one of those letters, so try a new rule on a full episode and read what changed. They are applied before the subtitles
 are cut, so the SRT, transcript, index and review page all get the fixed spelling. The `words.json`
 stays as Whisper wrote it.
 
@@ -185,7 +207,9 @@ It pairs each draft SRT with the editor's final SRT by file name and reports, pe
 share of lines the editor changed (a line only moved in time counts as "retimed"), and the word
 edit rate. Both ignore punctuation and spelling variants. It also lists the words editors replaced,
 as rules for the correction list, written commented out: nothing is used until a person approves
-it by removing the `#`.
+it by removing the `#`. A draft with no final of the same name (or a final saved under another
+name, like `ep01_final.srt`) is printed and listed under "Not counted" in the report, so an
+episode never drops out of the monthly figure unnoticed.
 
 There are no real editor files for the evaluation clips, so `examples/editor_loop/` stands in for
 one: `scripts/reference_as_final.py` lays the human reference transcript onto the draft's timings,
@@ -204,7 +228,7 @@ lines changed becomes the easier number for management to read.
 Evaluate and test:
 
 ```bash
-pytest                                            # 85 unit tests, no model download
+pytest                                            # 93 unit tests, no model download
 python scripts/fetch_samples.py                   # downloads the licensed clips (data/sources.md)
 python scripts/run_eval.py --model large-v3-turbo # SRTs + WER/CER table in results/<model>-<device>/
 python scripts/run_eval.py --hotwords-file data/hotwords/aldeerah_net_cast.txt --tag cast
@@ -235,7 +259,7 @@ flowchart LR
 
 | File | What it does |
 |---|---|
-| `gulf_srt/transcribe.py` | Loads the model (GPU float16, or CPU int8) and returns every word with its start/end time and probability, plus each segment's confidence numbers. Forces `language="ar"`, turns on the VAD filter (skips stretches with no speech, like silence and most noise, where Whisper tends to invent text; songs and dialogue over music still go to Whisper), turns off "condition on previous text" so one mistake doesn't repeat down the file, and passes `hotwords` if given (cut by whole words to Whisper's 223-token limit, with a warning). It also runs the VAD on its own, with a finer pause setting, to record where speech was heard for the QC report. |
+| `gulf_srt/transcribe.py` | Loads the model (GPU float16, or CPU int8) and returns every word with its start/end time and probability, plus each segment's confidence numbers. Forces `language="ar"`, turns on the VAD filter (skips stretches with no speech, like silence and most noise, where Whisper tends to invent text; songs and dialogue over music still go to Whisper), turns off "condition on previous text" so one mistake doesn't repeat down the file, and passes `hotwords` if given (an over-long list is cut by whole names, one line of the hotwords file each, to Whisper's 223-token limit, with a warning). It also runs the VAD on its own, with a finer pause setting, to record where speech was heard for the QC report. |
 | `gulf_srt/transcript.py` | The saved transcript (`words.json`) and reading hotwords files. |
 | `gulf_srt/replace.py` | The show's correction list (`--replacements`). |
 | `gulf_srt/edits.py` | Draft against the editor's final: lines changed, word edit rate, suggested rules. |
@@ -400,8 +424,10 @@ transcription is the safer first step.
 **Token limit.** faster-whisper keeps only the first 223 tokens of hotwords (half of Whisper's
 448-token context, minus one) and drops the rest without a word. Arabic names take several tokens
 each in Whisper's tokenizer: «عبود» is 3, «أبو حمد» 6, «عبدالعزيز» 7, and the 15 Gulf words above
-are 40. So roughly 30 to 40 full names fit. A longer cast list is cut by whole words from the end,
-with a warning, and the words actually sent and the words dropped are both saved in `words.json`.
+are 40. So roughly 30 to 40 full names fit. A longer cast list is cut by whole names from the end
+(each line of `--hotwords-file` is one name, so «أبو حمد» is never cut down to «أبو»; text typed
+with `--hotwords` is cut word by word), with a warning, and the names actually sent and the names
+dropped are both saved in `words.json`.
 
 ![The gap check catching the 20 seconds Whisper skipped with the cast hotwords](docs/screenshots/review-page-dropped-start.png)
 
@@ -410,7 +436,7 @@ with a warning, and the words actually sent and the words dropped are both saved
 `python scripts/confidence_check.py results/large-v3-turbo-cuda` aligns Whisper's words with the
 reference and asks: are the words Whisper scored low really the wrong ones?
 
-| Variety | Flag words below | Words flagged | Wrong among flagged | Wrong among the rest | Share of all wrong words caught |
+| Variety | Flag words below | Words flagged | Wrong among flagged | Wrong among the rest | Wrong words Whisper wrote that were flagged |
 |---|---|---|---|---|---|
 | MSA (read) | 0.5 | 2/114 (2%) | 50% | 12% | 1/14 (7%) |
 | Saudi dialect (TV show) | 0.3 | 10/186 (5%) | 80% | 32% | 8/65 (12%) |
@@ -418,8 +444,10 @@ reference and asks: are the words Whisper scored low really the wrong ones?
 | Saudi dialect (TV show) | 0.7 | 49/186 (26%) | 57% | 27% | 28/65 (43%) |
 
 On dialect, a flagged word is wrong about 2.5 times as often as an unflagged one, so the flags are
-the right place to start. But at the default they catch only 1 in 5 of the wrong words, and
-missing words can't be flagged at all (there's no word to score). The QC report says where to
+the right place to start. But at the default they flag only 13 of the 65 wrong words Whisper
+wrote. Counting the words Whisper left out too, the dialect clips have about 80 errors (42.1% of
+190 reference words), so the word flags point at about 16% of all errors: roughly one in six.
+Missing words can't be flagged at all (there's no word to score). The QC report says where to
 look first, not where to stop looking. Long deletions are now caught separately by the
 speech check (3 s or more of speech with no subtitle); a single missing word still isn't. Raising the threshold to 0.7 catches 43% of mistakes but
 flags a quarter of all words. This is 17 flagged words on one episode, so the exact numbers
@@ -454,7 +482,9 @@ driver 616.92), Python 3.13.7.
 - **No burned-in preview clip.** PyAV's bundled ffmpeg has no `subtitles` or `drawtext` filter,
   and burning in Arabic properly needs libass with text shaping, so it would mean requiring a full
   ffmpeg install. The HTML review page does the same job (watch the draft under the picture)
-  without re-encoding anything. With a full ffmpeg installed, the usual `ffmpeg -i ep.mp4 -vf subtitles=ep.srt preview.mp4` would do it (not tested here).
+  without re-encoding anything, as long as the browser can play the file: browsers can't play MXF
+  or ProRes `.mov` masters, so for those, make an H.264 proxy and point the page at it with
+  `--media`. Without the media file the tool skips the page and says so. With a full ffmpeg installed, the usual `ffmpeg -i ep.mp4 -vf subtitles=ep.srt preview.mp4` would do it (not tested here).
 - **Hallucination check** (`python scripts/noise_check.py`). Fed 20 s of random noise without the
   VAD filter, Whisper produced «اشتركوا في القناة» ("subscribe to the channel"), a well-known
   Whisper failure picked up from YouTube training data. With VAD on it produced nothing. That's

@@ -2,7 +2,7 @@
 
 Made with `python -m gulf_srt --from-json ...` from the saved Whisper words in `results/`, so
 no GPU was needed to build them. Both come from the SADA evaluation clips (one episode of the
-public Saudi series «الديرة نت», CC BY-NC-SA 4.0, see `data/sources.md`). This is not Sadaf data.
+public Saudi series «الديرة نت», CC BY-NC-SA 4.0, see `data/sources.md`). None of it comes from any company's data.
 
 - `sada_demo_scene/`: a 55-second continuous scene, every output file the tool writes.
 - `hotwords_dropped_start/`: `sada_scene_b` transcribed with the cast-name hotwords. Whisper
