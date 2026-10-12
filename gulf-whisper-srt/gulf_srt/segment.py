@@ -46,9 +46,9 @@ class Rules:
 def wrap_lines(text: str, max_chars: int = 42) -> list[str] | None:
     """Split text into one or two lines of at most max_chars.
 
-    Two-line cues are split where the two lines are closest in length,
-    because balanced lines are easier to read. Returns None if the text
-    cannot fit in two lines.
+    For two lines we prefer to break right after punctuation, and otherwise
+    where the two lines are closest in length, because balanced lines are
+    easier to read. Returns None if the text cannot fit in two lines.
     """
     if len(text) <= max_chars:
         return [text]
@@ -57,9 +57,10 @@ def wrap_lines(text: str, max_chars: int = 42) -> list[str] | None:
     for i in range(1, len(words)):
         first, second = " ".join(words[:i]), " ".join(words[i:])
         if len(first) <= max_chars and len(second) <= max_chars:
-            difference = abs(len(first) - len(second))
-            if best is None or difference < best[0]:
-                best = (difference, [first, second])
+            no_punctuation = not first.endswith(SENTENCE_END + SOFT_BREAK)
+            rank = (no_punctuation, abs(len(first) - len(second)))  # False sorts first
+            if best is None or rank < best[0]:
+                best = (rank, [first, second])
     return best[1] if best else None
 
 
@@ -84,29 +85,55 @@ def _make_cue(words: list[Word], rules: Rules) -> Cue:
     return Cue(words[0].start, words[-1].end, lines)
 
 
-def _should_break(current: list[Word], next_word: Word, rules: Rules) -> bool:
-    """Decide if next_word must start a new cue instead of joining the current one."""
+def _break_reason(current: list[Word], next_word: Word, rules: Rules) -> str | None:
+    """Should next_word start a new cue? Returns "limit", "natural" or None.
+
+    "limit" means a hard rule forces a cut (too long to fit or to stay on screen).
+    "natural" means there is a good place to cut (a pause or the end of a sentence).
+    """
     previous = current[-1]
     if wrap_lines(_join(current + [next_word]), rules.max_line_chars) is None:
-        return True  # it would not fit in two lines
+        return "limit"  # it would not fit in two lines
     if next_word.end - current[0].start > rules.max_duration:
-        return True  # the cue would stay on screen too long
+        return "limit"  # the cue would stay on screen too long
     if next_word.start - previous.end >= rules.pause_split:
-        return True  # the speaker paused
+        return "natural"  # the speaker paused
     if previous.text.endswith(SENTENCE_END):
-        return True  # the sentence ended
+        return "natural"  # the sentence ended
     if previous.text.endswith(SOFT_BREAK) and len(_join(current)) >= rules.max_line_chars:
-        return True  # a comma, and we already have a full line
-    return False
+        return "natural"  # a comma, and we already have a full line
+    return None
+
+
+def _best_cut(current: list[Word]) -> int:
+    """When a limit forces a cut, look back over the second half of the cue for a
+    better spot (after punctuation, or at the longest short pause), so we don't
+    cut in the middle of a phrase. Returns how many words stay in this cue."""
+    best_index, best_score = len(current), 0.0
+    for i in range(max(len(current) // 2, 1), len(current)):
+        score = current[i].start - current[i - 1].end  # the pause before word i
+        if current[i - 1].text.endswith(SENTENCE_END + SOFT_BREAK):
+            score += 1.0  # punctuation is a better place than any pause
+        if score > best_score:
+            best_index, best_score = i, score
+    return best_index if best_score >= 0.2 else len(current)
 
 
 def _group_words(words: list[Word], rules: Rules) -> list[list[Word]]:
     groups: list[list[Word]] = []
     current: list[Word] = []
     for word in words:
-        if current and _should_break(current, word, rules):
+        reason = _break_reason(current, word, rules) if current else None
+        if reason == "natural":
             groups.append(current)
             current = []
+        elif reason == "limit":
+            cut = _best_cut(current)
+            groups.append(current[:cut])
+            current = current[cut:]  # the words after the cut move to the next cue
+            if current and _break_reason(current, word, rules) == "limit":
+                groups.append(current)
+                current = []
         current.append(word)
     if current:
         groups.append(current)

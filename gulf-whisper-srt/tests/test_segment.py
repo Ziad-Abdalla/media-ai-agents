@@ -98,3 +98,17 @@ def test_overlapping_whisper_times_are_clamped():
 
     _fix_timing(cues, RULES)
     assert cues[0].end <= cues[1].start
+
+
+def test_wrap_prefers_break_after_punctuation():
+    lines = wrap_lines("يا ابن الحلال، انا اقوم بدري علشان الرياضة انت تعرفني", 42)
+    assert lines[0] == "يا ابن الحلال،"
+
+
+def test_forced_cut_moves_back_to_punctuation():
+    # 16 words at 0.4 s each = 6.4 s, so the 6 s limit forces a cut somewhere.
+    # It should land after the comma, not in the middle of the second phrase.
+    text = "قال لي امس انه بيجي بدري الصبح، بس للحين ما شفته ولا رد على جواله ابد"
+    cues = build_cues(words_from(text), RULES)
+    assert cues[0].text.endswith("الصبح،")
+    assert " ".join(c.text for c in cues) == text
