@@ -75,6 +75,7 @@ Production Department"""),
 
 
 def main():
+    sys.stdout.reconfigure(encoding="utf-8")  # so Arabic subjects print on Windows
     with smtplib.SMTP(config.SMTP_HOST, config.SMTP_PORT) as smtp:
         for sender, subject, body in SAMPLES:
             msg = EmailMessage()

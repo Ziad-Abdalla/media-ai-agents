@@ -10,6 +10,7 @@
 
 import argparse
 import pathlib
+import sys
 
 from . import config
 from .store import Store
@@ -27,6 +28,7 @@ def main() -> None:
     sub.add_parser("kill")
     sub.add_parser("unkill")
     args = parser.parse_args()
+    sys.stdout.reconfigure(encoding="utf-8")  # so Arabic subjects print on Windows
     store = Store()
 
     if args.command == "poll":
