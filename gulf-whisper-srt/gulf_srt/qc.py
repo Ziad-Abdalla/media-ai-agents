@@ -87,7 +87,7 @@ def check(
         # 1. The words may be wrong.
         unsure = [w for w in own_words if w.probability < qc.low_word_prob]
         if unsure:
-            listed = "، ".join(f"«{w.text}» {w.probability:.2f}" for w in unsure)
+            listed = ", ".join(f"«{w.text}» {w.probability:.2f}" for w in unsure)
             add(LOOK_FIRST, "unsure-words", f"Whisper was unsure of: {listed}")
         for s in _overlapping(segments or [], cue):
             if s.no_speech_prob > qc.high_no_speech:

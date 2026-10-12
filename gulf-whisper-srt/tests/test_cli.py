@@ -25,3 +25,9 @@ def test_from_json_writes_every_output(tmp_path):
     page = (tmp_path / "clip.review.html").read_text(encoding="utf-8")
     assert 'src="clip.wav"' in page
     assert page.count("</script>") == 1  # the subtitle text can't close the page's script
+
+
+def test_review_page_keeps_arabic_words_in_their_own_direction():
+    from gulf_srt.review import _isolate_quotes
+
+    assert _isolate_quotes("unsure of: «يا» 0.11") == "unsure of: «<bdi>يا</bdi>» 0.11"

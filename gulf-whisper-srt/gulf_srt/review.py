@@ -1,4 +1,4 @@
-"""A one-file HTML review page: play the episode with the draft subtitles under it,
+﻿"""A one-file HTML review page: play the episode with the draft subtitles under it,
 see the QC flags, and click any flag or line to jump to that moment.
 
 It is a plain .html file with no server and nothing loaded from the internet. The media
@@ -10,13 +10,17 @@ to load a subtitle track from a local file.
 import html
 import json
 import os
+import re
 from pathlib import Path
 
 from gulf_srt.formats import timecode
-from gulf_srt.qc import PRIORITY_NAMES, Issue, summary
+from gulf_srt.qc import LOOK_FIRST, MISSING, READABILITY, Issue, summary
 from gulf_srt.segment import Cue
 
 VIDEO_EXTENSIONS = {".mp4", ".mov", ".mkv", ".webm", ".m4v", ".mxf"}
+# The page is for Arabic-speaking staff, so its labels are Arabic. The QC details stay in
+# English (they are technical and also go into the .qc.md report).
+PRIORITY_AR = {LOOK_FIRST: "قد تكون الكلمات خاطئة", READABILITY: "صعبة القراءة", MISSING: "ربما فات حوار"}
 
 _STYLE = """
 body { font-family: "Segoe UI", Tahoma, sans-serif; margin: 0; background: #f4f1ea; color: #222; }
@@ -33,7 +37,7 @@ video, audio { width: 100%; }
 .stats { display: flex; gap: 10px; margin-bottom: 12px; }
 .stat { flex: 1; background: #f4f1ea; border-radius: 6px; padding: 8px; text-align: center; }
 .stat b { display: block; font-size: 22px; }
-ol { margin: 0; padding: 0 18px 0 0; max-height: 520px; overflow-y: auto; }
+ol { margin: 0; padding: 0 30px 0 0; max-height: 520px; overflow-y: auto; }
 li { margin: 0 0 6px; cursor: pointer; padding: 4px 6px; border-radius: 4px; }
 li:hover { background: #eef3f8; }
 li.now { background: #fff3c4; }
@@ -43,19 +47,28 @@ li.flag { border-right: 4px solid #c0392b; }
 .detail { font-size: 13px; color: #444; }
 """
 
-_SCRIPT = """
+_SCRIPT = r"""
 const media = document.getElementById('media');
 const screen = document.getElementById('screen');
 const lines = document.querySelectorAll('#dialogue li');
+function show(t) {
+  const i = CUES.findIndex(c => c.start <= t && t < c.end);
+  screen.textContent = i >= 0 ? CUES[i].lines.join('\n') : '';
+  lines.forEach((li, k) => li.classList.toggle('now', k === i));
+}
 function jump(t) { media.currentTime = Math.max(0, t - 0.5); media.play(); }
 document.querySelectorAll('[data-t]').forEach(el => el.addEventListener('click', () => jump(+el.dataset.t)));
-media.addEventListener('timeupdate', () => {
-  const t = media.currentTime;
-  const i = CUES.findIndex(c => c.start <= t && t < c.end);
-  screen.textContent = i >= 0 ? CUES[i].lines.join('\\n') : '';
-  lines.forEach((li, k) => li.classList.toggle('now', k === i));
-});
+media.addEventListener('timeupdate', () => show(media.currentTime));
+// page.html#t=26 opens at 26 seconds, so a link can point a colleague at one moment
+const start = parseFloat((location.hash.match(/t=([\d.]+)/) || [])[1]);
+if (!isNaN(start)) { show(start); media.currentTime = start; }
 """
+
+
+def _isolate_quotes(text: str) -> str:
+    """Keep each «Arabic word» in an English sentence in its own direction, so it doesn't
+    swap places with the numbers next to it."""
+    return re.sub("«([^»]*)»", lambda m: f"«<bdi>{m.group(1)}</bdi>»", text)
 
 
 def review_page(cues: list[Cue], issues: list[Issue], media: str | Path, output: str | Path, title: str) -> str:
@@ -68,10 +81,10 @@ def review_page(cues: list[Cue], issues: list[Issue], media: str | Path, output:
 
     issue_items = "\n".join(
         f'<li data-t="{i.start:.2f}"><span class="time">{timecode(i.start)}</span> '
-        f'<b class="p{i.priority}">{esc(PRIORITY_NAMES[i.priority])}</b> '
-        f'{"cue " + str(i.cue) if i.cue else "gap"}<div class="detail">{esc(i.detail)}</div></li>'
+        f'<b class="p{i.priority}">{PRIORITY_AR[i.priority]}</b> '
+        f'{"السطر " + str(i.cue) if i.cue else "فراغ"}<div class="detail" dir="ltr">{_isolate_quotes(esc(i.detail))}</div></li>'
         for i in issues
-    ) or "<li>Nothing to flag.</li>"
+    ) or "<li>لا توجد ملاحظات.</li>"
     dialogue_items = "\n".join(
         f'<li data-t="{c.start:.2f}" class="{"flag" if n in flagged else ""}">'
         f'<span class="time">{timecode(c.start)}</span> {esc(c.text)}</li>'
@@ -85,7 +98,7 @@ def review_page(cues: list[Cue], issues: list[Issue], media: str | Path, output:
 <head><meta charset="utf-8"><title>{esc(title)} - subtitle review</title><style>{_STYLE}</style></head>
 <body>
 <header><h1>{esc(title)}: مراجعة الترجمة المبدئية</h1>
-<p>Machine draft from gulf-whisper-srt. An editor must check it before anything is delivered.</p></header>
+<p>مسودة آلية من gulf-whisper-srt. لا تُسلَّم قبل أن يراجعها محرر.</p></header>
 <main>
 <section>
 <h2>المشاهدة</h2>
@@ -97,9 +110,9 @@ def review_page(cues: list[Cue], issues: list[Issue], media: str | Path, output:
 <section>
 <h2>ابدأ من هنا: نقاط المراجعة</h2>
 <div class="stats">
-<div class="stat"><b>{s['cues']}</b>subtitles</div>
-<div class="stat"><b>{s['cues_flagged']}</b>flagged</div>
-<div class="stat"><b>{s['share_flagged']:.0%}</b>to check</div>
+<div class="stat"><b>{s['cues']}</b>سطر ترجمة</div>
+<div class="stat"><b>{s['cues_flagged']}</b>عليها ملاحظة</div>
+<div class="stat"><b>{s['share_flagged']:.0%}</b>نسبة المراجعة</div>
 </div>
 <ol>{issue_items}</ol>
 </section>
