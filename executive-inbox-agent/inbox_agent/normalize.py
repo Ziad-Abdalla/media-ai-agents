@@ -19,7 +19,8 @@ TATWEEL = "ـ"
 ZERO_WIDTH = re.compile(r"[​-‏‪-‮⁠-⁤﻿]")
 ARABIC_DIGITS = str.maketrans("٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹", "01234567890123456789")
 LETTER_MAP = str.maketrans({"أ": "ا", "إ": "ا", "آ": "ا", "ٱ": "ا", "ى": "ي", "ة": "ه",
-                            "ؤ": "و", "ئ": "ي", "گ": "ك", "ڤ": "ف", "ی": "ي", "ک": "ك"})
+                            "ؤ": "و", "ئ": "ي", "گ": "ك", "ڤ": "ف", "ی": "ي", "ک": "ك",
+                            "\u2039": "<", "\u203a": ">"})  # brackets neutralized in prompts
 
 
 def normalize_ar(text: str) -> str:

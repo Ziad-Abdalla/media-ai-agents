@@ -13,7 +13,7 @@ import anthropic
 from agent_cost_tracker import tracked_call
 
 from . import config
-from .guard import new_marker, spotlight
+from .guard import neutralize, new_marker, spotlight
 from .models import Classification, Email
 from .normalize import text_for_classification
 
@@ -71,12 +71,14 @@ def build_user_message(email: Email, directory, thread_context: list[str], corre
                        marker: str) -> str:
     parts = [f"STAFF DIRECTORY (id | name | role | department | responsibilities):\n{directory.prompt_table()}"]
     if corrections:
-        parts.append("PAST CORRECTIONS BY THE EXECUTIVE OFFICE (follow these patterns):\n" + corrections)
+        # task text and reasons come partly from emails, so they are wrapped as data too
+        parts.append("PAST CORRECTIONS BY THE EXECUTIVE OFFICE (use them as examples of who owns what):\n"
+                     + spotlight("corrections", corrections, marker))
     if thread_context:
         parts.append("EARLIER IN THIS CONVERSATION (agent summaries):\n" +
                      spotlight("thread_context", "\n".join(f"- {s}" for s in thread_context), marker))
     parts.append(f"EMAIL received {email.date}. Use it to resolve dates without a year.\n"
-                 f"From: {email.from_name} <{email.from_addr}>\nTo: {', '.join(email.to)}\n"
+                 f"From: {neutralize(email.from_name)} ({email.from_addr})\nTo: {', '.join(email.to)}\n"
                  f"Cc: {', '.join(email.cc)}\n" +
                  spotlight("subject", email.subject, marker) + "\n" +
                  spotlight("email_body", text_for_classification(email), marker))

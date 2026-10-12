@@ -136,8 +136,14 @@ def new_marker() -> str:
     return secrets.token_hex(4)
 
 
+def neutralize(text: str) -> str:
+    """Make sure email text can't open or close ANY tag in the prompt: our own untrusted_* tags
+    are removed, and every remaining < > becomes a look-alike bracket (‹ ›). So "</email>",
+    "</untrusted_email_body_x>" or "<system>" inside an email are just characters."""
+    cleaned = re.sub(r"</?\s*untrusted_[^>]*>", "[removed tag]", text or "", flags=re.IGNORECASE)
+    return cleaned.replace("<", "\u2039").replace(">", "\u203a")
+
+
 def spotlight(label: str, text: str, marker: str) -> str:
     tag = f"untrusted_{label}_{marker}"
-    # Defence in depth: remove anything that looks like our own tags from the data.
-    cleaned = re.sub(r"</?\s*untrusted_[^>]*>", "[removed tag]", text or "", flags=re.IGNORECASE)
-    return f"<{tag}>\n{cleaned}\n</{tag}>"
+    return f"<{tag}>\n{neutralize(text)}\n</{tag}>"

@@ -8,7 +8,7 @@ person may approve comes from staff.yaml (can_approve) and is checked on the ser
 
 import json
 from pathlib import Path
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 
 from fastapi import Cookie, FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -32,6 +32,18 @@ STATUS_AR = {"pending": "بانتظار الاعتماد", "executed": "نُفّ
 templates.env.globals["STATUS_AR"] = STATUS_AR
 
 
+def safe_next(target: str | None) -> str:
+    """Only redirect to a path on this site. "//evil.example", "https://...", a backslash
+    trick and anything with a scheme or host fall back to "/" (no open redirect)."""
+    t = (target or "").strip()
+    if not t.startswith("/") or t.startswith("//") or t.startswith("/\\") or "\\" in t:
+        return "/"
+    parts = urlsplit(t)
+    if parts.scheme or parts.netloc or any(ord(c) < 32 for c in t):
+        return "/"
+    return t
+
+
 def create_app(ctx) -> FastAPI:
     app = FastAPI(title="Executive inbox agent")
     d = ctx.directory
@@ -43,12 +55,13 @@ def create_app(ctx) -> FastAPI:
             "directory": d, "pending_count": len(ctx.store.actions("status = 'pending'")), **data})
 
     def back(to: str, message: str) -> RedirectResponse:
+        to = safe_next(to)
         sep = "&" if "?" in to else "?"
         return RedirectResponse(f"{to}{sep}message={quote(message)}", status_code=303)
 
     @app.post("/login")
     def login(user: str = Form(...), next: str = Form("/")):
-        resp = RedirectResponse(next if next.startswith("/") else "/", status_code=303)
+        resp = RedirectResponse(safe_next(next), status_code=303)
         if d.get(user):
             resp.set_cookie("user", user, httponly=True, samesite="strict")
         return resp
