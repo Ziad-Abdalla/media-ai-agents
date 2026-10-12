@@ -1,31 +1,84 @@
--- Tables the n8n workflow reads and writes. Runs once, when the Postgres volume is first created.
+-- Tables the n8n workflows read and write. Runs once, when the Postgres volume is first created.
+-- All names, shows and equipment below are made up for the demo (synthetic data).
+
+-- What the production company can book: studios, equipment, crew and locations it controls.
+-- Claude picks one of these codes from the email; the clash check counts units per code.
+CREATE TABLE resources (
+    code             TEXT PRIMARY KEY,
+    kind             TEXT NOT NULL CHECK (kind IN ('studio', 'equipment', 'crew', 'location')),
+    name_en          TEXT NOT NULL,
+    name_ar          TEXT NOT NULL,
+    units            INTEGER NOT NULL CHECK (units > 0),   -- how many we own (or crew we have)
+    odoo_res_model_id INTEGER,                              -- filled by scripts/odoo_link.py, optional
+    odoo_res_id      INTEGER
+);
+
+INSERT INTO resources (code, kind, name_en, name_ar, units) VALUES
+    ('STUDIO-1',          'studio',    'Studio 1 (sound stage)',               'استوديو 1 (مسرح صوتي)',          1),
+    ('STUDIO-2',          'studio',    'Studio 2 (green screen)',              'استوديو 2 (شاشة خضراء)',         1),
+    ('CAM-ALEXA-LF',      'equipment', 'ARRI Alexa Mini LF camera kit',        'طقم كاميرا ARRI Alexa Mini LF',  3),
+    ('LENS-SIG-PRIME',    'equipment', 'ARRI Signature Prime lens set',        'طقم عدسات ARRI Signature Prime', 2),
+    ('CRANE-JIB-30',      'equipment', 'Camera crane (30 ft jib)',             'رافعة كاميرا (ذراع 30 قدم)',     1),
+    ('STEADICAM',         'equipment', 'Steadicam rig',                        'حامل ستيدي كام',                 1),
+    ('DRONE-INSPIRE-3',   'equipment', 'DJI Inspire 3 drone',                  'طائرة درون DJI Inspire 3',       1),
+    ('LIGHT-SKYPANEL',    'equipment', 'ARRI SkyPanel lighting kit',           'طقم إضاءة ARRI SkyPanel',        4),
+    ('CREW-DRONE-PILOT',  'crew',      'Licensed drone pilot',                 'طيار درون مرخّص',                1),
+    ('CREW-STEADICAM-OP', 'crew',      'Steadicam operator',                   'مشغّل ستيدي كام',                2),
+    ('LOC-TURAIF',        'location',  'Al-Turaif district exterior (Diriyah)', 'حي الطريف (الدرعية) - تصوير خارجي', 1);
+
+-- Switches a manager can flip with one SQL line, no restart needed.
+CREATE TABLE app_settings (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+INSERT INTO app_settings (key, value) VALUES
+    ('odoo_sync', 'off'),                 -- 'on' = also write approved bookings into Odoo
+    ('minutes_saved_per_request', '6');   -- assumption used for the "time saved" estimate in the weekly report
 
 -- One row per incoming email. The primary key on message_id is the duplicate guard:
 -- if the same email is delivered twice, the second insert does nothing
 -- (unless the first run failed: then the repeat gets a fresh try).
+-- The extracted fields are copied here too, so the clash check can see requests
+-- still waiting for the manager, and the KPIs can be counted with plain SQL.
 CREATE TABLE email_log (
-    message_id   TEXT PRIMARY KEY,
-    mailpit_id   TEXT,
-    from_address TEXT,
-    subject      TEXT,
-    status       TEXT NOT NULL DEFAULT 'received',  -- received | approved | rejected | expired | invalid_click | needs_info | ignored | failed
-    execution_id TEXT,                               -- the n8n run handling it, so the error workflow can mark it failed
-    received_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+    message_id    TEXT PRIMARY KEY,
+    mailpit_id    TEXT,
+    from_address  TEXT,
+    subject       TEXT,
+    status        TEXT NOT NULL DEFAULT 'received',  -- received | approved | rejected | expired | invalid_click | needs_info | ignored | failed
+    execution_id  TEXT,                               -- the n8n run handling it, so the error workflow can mark it failed
+    route         TEXT,                               -- ready | needs_info | not_booking (set after the AI check)
+    language      TEXT,                               -- ar | en, from the email text (code, not AI)
+    resource_code TEXT REFERENCES resources (code),
+    quantity      INTEGER,
+    start_date    DATE,
+    end_date      DATE,
+    production    TEXT,
+    clash         BOOLEAN NOT NULL DEFAULT false,     -- the clash check found a conflict
+    received_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    decided_at    TIMESTAMPTZ,                        -- when the manager clicked (or it expired)
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- Approved bookings only. UNIQUE(message_id) means one email can never become two bookings.
 CREATE TABLE bookings (
     id              SERIAL PRIMARY KEY,
     message_id      TEXT NOT NULL UNIQUE REFERENCES email_log (message_id),
-    request_type    TEXT NOT NULL,          -- equipment | location | other
+    request_type    TEXT NOT NULL,          -- studio | equipment | crew | location | other
+    resource_code   TEXT REFERENCES resources (code),   -- empty when the item is not in the catalogue
     item            TEXT NOT NULL,
+    quantity        INTEGER NOT NULL DEFAULT 1,
     start_date      DATE NOT NULL,
     end_date        DATE NOT NULL,
     production      TEXT NOT NULL,
     requester_name  TEXT,
     requester_email TEXT NOT NULL,
+    language        TEXT,
     notes           TEXT,
+    had_clash       BOOLEAN NOT NULL DEFAULT false,      -- approved even though the clash check warned
+    odoo_sync       TEXT NOT NULL DEFAULT 'not_sent',    -- not_sent | synced | failed | rolled_back
+    odoo_activity_id INTEGER,
+    odoo_error      TEXT,
     approved_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -52,7 +105,7 @@ CREATE TABLE ai_usage (
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Filled by the separate "Booking errors" workflow whenever the main workflow fails.
+-- Filled by the separate "Booking errors" workflow whenever a workflow fails.
 CREATE TABLE workflow_errors (
     id            SERIAL PRIMARY KEY,
     workflow_name TEXT,
@@ -61,3 +114,52 @@ CREATE TABLE workflow_errors (
     error_message TEXT,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Every weekly summary that was sent, with the numbers it showed.
+CREATE TABLE report_log (
+    id         SERIAL PRIMARY KEY,
+    sent_to    TEXT NOT NULL,
+    kpis       JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- The KPIs for the last 7 days, in one row. The weekly email and show_results.py both read this,
+-- so the numbers in the report and on screen always come from the same query.
+CREATE VIEW kpi_last_7_days AS
+WITH e AS (
+    SELECT * FROM email_log WHERE received_at >= now() - interval '7 days'
+), counts AS (
+    SELECT
+        count(*)                                                    AS emails_handled,
+        count(*) FILTER (WHERE route IN ('ready', 'needs_info'))    AS booking_requests,
+        count(*) FILTER (WHERE route = 'ready')                     AS auto_routed,
+        count(*) FILTER (WHERE route = 'needs_info')                AS needs_info,
+        count(*) FILTER (WHERE route = 'not_booking')               AS not_booking,
+        count(*) FILTER (WHERE status = 'approved')                 AS approved,
+        count(*) FILTER (WHERE status = 'rejected')                 AS rejected,
+        count(*) FILTER (WHERE status IN ('expired', 'invalid_click')) AS expired_or_invalid,
+        count(*) FILTER (WHERE status = 'received' AND route = 'ready') AS waiting_for_manager,
+        count(*) FILTER (WHERE clash)                               AS clashes_flagged,
+        avg(extract(epoch FROM decided_at - received_at) / 60)
+            FILTER (WHERE status IN ('approved', 'rejected'))      AS avg_minutes_to_decision,
+        percentile_cont(0.5) WITHIN GROUP (ORDER BY extract(epoch FROM decided_at - received_at) / 60)
+            FILTER (WHERE status IN ('approved', 'rejected'))      AS median_minutes_to_decision
+    FROM e
+), ai AS (
+    SELECT count(*) AS ai_calls, coalesce(sum(cost_usd), 0) AS ai_cost_usd
+    FROM ai_usage WHERE created_at >= now() - interval '7 days'
+)
+SELECT
+    c.emails_handled, c.booking_requests, c.auto_routed, c.needs_info, c.not_booking,
+    c.approved, c.rejected, c.expired_or_invalid, c.waiting_for_manager, c.clashes_flagged,
+    round(100.0 * c.auto_routed / NULLIF(c.booking_requests, 0), 1)            AS auto_routed_pct,
+    round(100.0 * c.approved / NULLIF(c.approved + c.rejected + c.expired_or_invalid, 0), 1) AS approval_rate_pct,
+    round(c.avg_minutes_to_decision::numeric, 1)                               AS avg_minutes_to_decision,
+    round(c.median_minutes_to_decision::numeric, 1)                            AS median_minutes_to_decision,
+    a.ai_calls,
+    round(a.ai_cost_usd, 6)                                                    AS ai_cost_usd,
+    round(a.ai_cost_usd / NULLIF(c.approved, 0), 6)                            AS ai_cost_per_booking_usd,
+    c.booking_requests * (SELECT value::int FROM app_settings WHERE key = 'minutes_saved_per_request')
+                                                                               AS est_minutes_saved,
+    (SELECT count(*) FROM workflow_errors WHERE created_at >= now() - interval '7 days') AS errors
+FROM counts c, ai a;
