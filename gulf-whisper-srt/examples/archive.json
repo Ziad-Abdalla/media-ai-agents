@@ -1,0 +1,377 @@
+{
+ "format": "gulf-srt-dialogue-index",
+ "version": 1,
+ "entries": [
+  {
+   "file": "../results/large-v3-turbo-cuda/fleurs_ar_007.srt",
+   "cue": 1,
+   "start": 0.0,
+   "end": 5.62,
+   "text": "منذ عام 1988 توجب أن تكون صناديق الاقتراع"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/fleurs_ar_007.srt",
+   "cue": 2,
+   "start": 5.62,
+   "end": 10.94,
+   "text": "شفافة بحيث يمكن للناخبين والمراقبين أن يتأكدوا من عدم وجود"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/fleurs_ar_007.srt",
+   "cue": 3,
+   "start": 10.94,
+   "end": 16.3,
+   "text": "مغلفات في بداية التصويت وأنه لا يتم إضافة مغلفات إلا"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/fleurs_ar_007.srt",
+   "cue": 4,
+   "start": 16.3,
+   "end": 21.32,
+   "text": "مغلفات الناخبين المسجلين والمصرحة لهم حسب الأصول"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/fleurs_ar_007.srt",
+   "cue": 5,
+   "start": 21.32,
+   "end": 22.32,
+   "text": "والمفوضين"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/fleurs_ar_066.srt",
+   "cue": 1,
+   "start": 0.98,
+   "end": 6.62,
+   "text": "عند أغذر كل الأشياء بعين الاعتبار لا ينبغي"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/fleurs_ar_066.srt",
+   "cue": 2,
+   "start": 6.62,
+   "end": 11.74,
+   "text": "لنا أن نندهش إذا قام أسلافنا بحل"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/fleurs_ar_066.srt",
+   "cue": 3,
+   "start": 11.74,
+   "end": 17.12,
+   "text": "مشكلة البروتين لديهم بطريقة ما"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/fleurs_ar_066.srt",
+   "cue": 4,
+   "start": 17.12,
+   "end": 22.8,
+   "text": "على نفس النحو التي يقوم بها الشمبانزي في"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/fleurs_ar_066.srt",
+   "cue": 5,
+   "start": 22.8,
+   "end": 23.98,
+   "text": "السفانة"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/fleurs_ar_184.srt",
+   "cue": 1,
+   "start": 0.75,
+   "end": 6.07,
+   "text": "لا نعرف الوضع الرقين لكن ربما كان"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/fleurs_ar_184.srt",
+   "cue": 2,
+   "start": 6.07,
+   "end": 11.21,
+   "text": "لديه لسان متشعب شمل نظامه"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/fleurs_ar_184.srt",
+   "cue": 3,
+   "start": 11.21,
+   "end": 17.07,
+   "text": "الغذائي السلاح في الأسماك الكبيرة والموز"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/fleurs_ar_184.srt",
+   "cue": 4,
+   "start": 17.07,
+   "end": 22.71,
+   "text": "الصور الأخرى ربما كان من آكل الرحوم"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/fleurs_ar_263.srt",
+   "cue": 1,
+   "start": 1.52,
+   "end": 7.28,
+   "text": "رأى البعض إنه على حق ولكن العديد من الناس"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/fleurs_ar_263.srt",
+   "cue": 2,
+   "start": 7.28,
+   "end": 13.24,
+   "text": "اعتقدوا بعكس ذلك إن النظام الشمسي"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/fleurs_ar_263.srt",
+   "cue": 3,
+   "start": 13.24,
+   "end": 18.7,
+   "text": "يدور حول الأرض بما فيها الشمس وحتى"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/fleurs_ar_263.srt",
+   "cue": 4,
+   "start": 18.7,
+   "end": 20.3,
+   "text": "النجوم الأخرى"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/sada_demo_scene.srt",
+   "cue": 1,
+   "start": 0.0,
+   "end": 5.86,
+   "text": "يا ابن الحلال، أنا أقوم بدري علشان الرياضة أنت تعرفني أنا رياضي"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/sada_demo_scene.srt",
+   "cue": 2,
+   "start": 5.86,
+   "end": 11.08,
+   "text": "وأحب الرياضة من نعومة الظافير منذ فترة"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/sada_demo_scene.srt",
+   "cue": 3,
+   "start": 11.08,
+   "end": 12.74,
+   "text": "سابقة يعني"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/sada_demo_scene.srt",
+   "cue": 4,
+   "start": 14.26,
+   "end": 17.86,
+   "text": "وتعرف يعني يعني لا أسمع حظة على اليابت"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/sada_demo_scene.srt",
+   "cue": 5,
+   "start": 18.76,
+   "end": 24.52,
+   "text": "أهلا الصدقين أقول لك يا عبد الله يطول في عمرك ودي أسا لك سؤال أنت لم"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/sada_demo_scene.srt",
+   "cue": 6,
+   "start": 24.52,
+   "end": 25.76,
+   "text": "أتقدك شعبك؟"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/sada_demo_scene.srt",
+   "cue": 7,
+   "start": 25.76,
+   "end": 31.24,
+   "text": "تدري ليش، تعرف اللعب الأجنبي خليت؟"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/sada_demo_scene.srt",
+   "cue": 8,
+   "start": 32.76,
+   "end": 38.66,
+   "text": "خليت، كذا عبود، تراك صدقت نفسك ومسوي عمرك أجنبي"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/sada_demo_scene.srt",
+   "cue": 9,
+   "start": 38.66,
+   "end": 41.68,
+   "text": "يا ابن الحلال انت بالنفسك لا تتمصع،"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/sada_demo_scene.srt",
+   "cue": 10,
+   "start": 41.68,
+   "end": 45.04,
+   "text": "تراك كلك عذب ما فيك ولا لحم حلوة،"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/sada_demo_scene.srt",
+   "cue": 11,
+   "start": 45.04,
+   "end": 50.86,
+   "text": "بس لا تعيدها مرة ثانية أدري فيك أنت غار من رشابتي تصدق"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/sada_demo_scene.srt",
+   "cue": 12,
+   "start": 50.86,
+   "end": 54.98,
+   "text": "عبد، إنك كرهتني في الرياضة والرشابة مشكلة"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/sada_scene_a.srt",
+   "cue": 1,
+   "start": 0.0,
+   "end": 5.46,
+   "text": "يا ابن الحلال، أنا أقوم بدري على شأن الرياضة أنت تعرفني أنا رياضي"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/sada_scene_a.srt",
+   "cue": 2,
+   "start": 5.46,
+   "end": 10.68,
+   "text": "وأحب الرياضة من نعومة الظافيري منذ فترة"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/sada_scene_a.srt",
+   "cue": 3,
+   "start": 10.68,
+   "end": 16.32,
+   "text": "سابقة يعني وتعرف يعني يعني ما أحظ على"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/sada_scene_a.srt",
+   "cue": 4,
+   "start": 16.32,
+   "end": 19.7,
+   "text": "اليابت أقول لك يا عبود الله يطول في عمرك،"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/sada_scene_a.srt",
+   "cue": 5,
+   "start": 19.7,
+   "end": 22.68,
+   "text": "ودي أسا لك سؤال أنت لم أتعتك شعبك؟"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/sada_scene_a.srt",
+   "cue": 6,
+   "start": 22.68,
+   "end": 23.86,
+   "text": "لا أدري ليش،"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/sada_scene_a.srt",
+   "cue": 7,
+   "start": 23.86,
+   "end": 27.88,
+   "text": "تعرف اللعب الأجنبي خليت؟"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/sada_scene_a.srt",
+   "cue": 8,
+   "start": 27.88,
+   "end": 33.82,
+   "text": "خليت؟ عبود تراك صدقت نفسك ومسوي عمرك يجنبي يا ابن"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/sada_scene_a.srt",
+   "cue": 9,
+   "start": 33.82,
+   "end": 39.74,
+   "text": "الحلال انتبه لنفسك لا تتمصع تراك كلك عدب ما فيك بولا لحم حلوة بس لا تعيدها"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/sada_scene_a.srt",
+   "cue": 10,
+   "start": 39.74,
+   "end": 45.38,
+   "text": "مرة ثانية أدري فيك انت غار من رشاقتي تصدق عبد"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/sada_scene_a.srt",
+   "cue": 11,
+   "start": 45.38,
+   "end": 48.04,
+   "text": "انك كرهتني في الرياضة والرشاق"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/sada_scene_b.srt",
+   "cue": 1,
+   "start": 0.0,
+   "end": 5.82,
+   "text": "الله يهديهم هم العيال قيل لهم رتبوا"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/sada_scene_b.srt",
+   "cue": 2,
+   "start": 5.82,
+   "end": 11.26,
+   "text": "مكاتبكم رتبوها قبل أن تطلعون عشان ترجعون تاني ومتلقونها بمنتهى القيافة"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/sada_scene_b.srt",
+   "cue": 3,
+   "start": 11.26,
+   "end": 17.14,
+   "text": "لكن لا حياته لما تنادي نبدأ شغلنا والمهام من"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/sada_scene_b.srt",
+   "cue": 4,
+   "start": 17.14,
+   "end": 22.84,
+   "text": "الجسيمة لا أبو حامل فراشة محترف يا أبو حامل"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/sada_scene_b.srt",
+   "cue": 5,
+   "start": 22.84,
+   "end": 28.74,
+   "text": "من غاد الشروط فقوة العلاق يا أبو.."
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/sada_scene_b.srt",
+   "cue": 6,
+   "start": 28.74,
+   "end": 31.52,
+   "text": "يا أبو حمد.. أيوه"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/sada_scene_b.srt",
+   "cue": 7,
+   "start": 33.9,
+   "end": 36.76,
+   "text": "خلنا.. نصلح شاهي العبود"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/sada_scene_b.srt",
+   "cue": 8,
+   "start": 37.52,
+   "end": 42.78,
+   "text": "بهذا اللي مديوش يسمونها بق ما عدموهم منه هذا اللي يصبوه"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/sada_scene_b.srt",
+   "cue": 9,
+   "start": 43.12,
+   "end": 48.64,
+   "text": "خلنا نصلح له العبود شاهي بدون سكر علشان صحته"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/sada_scene_b.srt",
+   "cue": 10,
+   "start": 48.64,
+   "end": 54.04,
+   "text": "ما أغطم مع هالوزارة ما أشى الله عليه أول واحد إن يجي للدوام"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/sada_scene_b.srt",
+   "cue": 11,
+   "start": 54.04,
+   "end": 59.76,
+   "text": "عبود بصراحة يعجبن هالولد عنده نشاط أكثر من"
+  },
+  {
+   "file": "../results/large-v3-turbo-cuda/sada_scene_b.srt",
+   "cue": 12,
+   "start": 59.76,
+   "end": 60.76,
+   "text": "اللاجم"
+  }
+ ]
+}

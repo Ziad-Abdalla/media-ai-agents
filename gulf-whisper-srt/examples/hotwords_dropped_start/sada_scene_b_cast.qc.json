@@ -3,43 +3,50 @@
   "cues": 7,
   "cues_flagged": 3,
   "share_flagged": 0.429,
+  "gaps_to_check": 1,
+  "gap_seconds": 20.1,
   "by_kind": {
-   "unsure-words": 3,
-   "long-silence": 1
+   "missed-speech": 1,
+   "unsure-words": 3
   }
  },
+ "notes": [],
  "issues": [
   {
    "priority": 1,
+   "kind": "missed-speech",
+   "start": 0.0,
+   "end": 20.14,
+   "cue": null,
+   "detail": "speech heard for 18 s of a 20 s stretch with no subtitle: dialogue was probably skipped",
+   "speech_seconds": 17.85
+  },
+  {
+   "priority": 2,
    "kind": "unsure-words",
    "start": 20.14,
    "end": 25.76,
    "cue": 1,
-   "detail": "Whisper was unsure of: «يا» 0.11, «من» 0.27"
+   "detail": "Whisper was unsure of: «يا» 0.10, «من» 0.26",
+   "speech_seconds": 0.0
   },
   {
-   "priority": 1,
+   "priority": 2,
    "kind": "unsure-words",
    "start": 25.76,
    "end": 31.54,
    "cue": 2,
-   "detail": "Whisper was unsure of: «أيوه» 0.50"
+   "detail": "Whisper was unsure of: «أيوه» 0.49",
+   "speech_seconds": 0.0
   },
   {
-   "priority": 1,
+   "priority": 2,
    "kind": "unsure-words",
    "start": 39.08,
    "end": 44.64,
    "cue": 4,
-   "detail": "Whisper was unsure of: «معدبوهم» 0.49"
-  },
-  {
-   "priority": 3,
-   "kind": "long-silence",
-   "start": 0.0,
-   "end": 20.14,
-   "cue": null,
-   "detail": "20 s with no subtitle: check for missed dialogue"
+   "detail": "Whisper was unsure of: «معدبوهم» 0.48",
+   "speech_seconds": 0.0
   }
  ]
 }

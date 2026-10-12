@@ -21,7 +21,7 @@ li:hover { background: #eef3f8; }
 li.now { background: #fff3c4; }
 li.flag { border-right: 4px solid #c0392b; }
 .time { font-family: Consolas, monospace; color: #555; direction: ltr; unicode-bidi: isolate; }
-.p1 { color: #c0392b; } .p2 { color: #b9770e; } .p3 { color: #2471a3; }
+.p1 { color: #8e1b10; } .p2 { color: #c0392b; } .p3 { color: #b9770e; } .p4 { color: #2471a3; }
 .detail { font-size: 13px; color: #444; }
 </style></head>
 <body>
@@ -47,11 +47,12 @@ li.flag { border-right: 4px solid #c0392b; }
 <div class="stat"><b>7</b>سطر ترجمة</div>
 <div class="stat"><b>3</b>عليها ملاحظة</div>
 <div class="stat"><b>43%</b>نسبة المراجعة</div>
+<div class="stat"><b>1</b>مقاطع بلا ترجمة<br>20 ثانية</div>
 </div>
-<ol><li data-t="20.14"><span class="time">00:00:20</span> <b class="p1">قد تكون الكلمات خاطئة</b> السطر 1<div class="detail" dir="ltr">Whisper was unsure of: «<bdi>يا</bdi>» 0.11, «<bdi>من</bdi>» 0.27</div></li>
-<li data-t="25.76"><span class="time">00:00:25</span> <b class="p1">قد تكون الكلمات خاطئة</b> السطر 2<div class="detail" dir="ltr">Whisper was unsure of: «<bdi>أيوه</bdi>» 0.50</div></li>
-<li data-t="39.08"><span class="time">00:00:39</span> <b class="p1">قد تكون الكلمات خاطئة</b> السطر 4<div class="detail" dir="ltr">Whisper was unsure of: «<bdi>معدبوهم</bdi>» 0.49</div></li>
-<li data-t="0.00"><span class="time">00:00:00</span> <b class="p3">ربما فات حوار</b> فراغ<div class="detail" dir="ltr">20 s with no subtitle: check for missed dialogue</div></li></ol>
+<ol><li data-t="0.00"><span class="time">00:00:00</span> <b class="p1">ربما فات حوار</b> فراغ<div class="detail" dir="ltr">speech heard for 18 s of a 20 s stretch with no subtitle: dialogue was probably skipped</div></li>
+<li data-t="20.14"><span class="time">00:00:20</span> <b class="p2">قد تكون الكلمات خاطئة</b> السطر 1<div class="detail" dir="ltr">Whisper was unsure of: «<bdi>يا</bdi>» 0.10, «<bdi>من</bdi>» 0.26</div></li>
+<li data-t="25.76"><span class="time">00:00:25</span> <b class="p2">قد تكون الكلمات خاطئة</b> السطر 2<div class="detail" dir="ltr">Whisper was unsure of: «<bdi>أيوه</bdi>» 0.49</div></li>
+<li data-t="39.08"><span class="time">00:00:39</span> <b class="p2">قد تكون الكلمات خاطئة</b> السطر 4<div class="detail" dir="ltr">Whisper was unsure of: «<bdi>معدبوهم</bdi>» 0.48</div></li></ol>
 </section>
 </main>
 <script>const CUES = [{"start": 20.14, "end": 25.76, "lines": ["يا أبو حمد من غادة الشروط"]}, {"start": 25.76, "end": 31.54, "lines": ["فقوة العلاق يا أبو حمد أيوه"]}, {"start": 33.56, "end": 39.08, "lines": ["خلنا نصلح شاهي العبود بهذا اللي مديوش"]}, {"start": 39.08, "end": 44.64, "lines": ["يسمونها بق معدبوهم منه هذا", "اللي يصبوه خلنا نصلح له العبود"]}, {"start": 44.64, "end": 50.0, "lines": ["شاهي بدون سكر علشان صحته ما أغطم مع"]}, {"start": 50.0, "end": 55.8, "lines": ["هالوزارة ما أشى الله عليه أول", "واحد يجي للدوام عبود بصراحة"]}, {"start": 55.8, "end": 60.1, "lines": ["يعجبن هالولد عنده إنشاء أكثر من اللاج"]}];
