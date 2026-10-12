@@ -16,7 +16,8 @@ PRICES = {
         "output": 0.50,
         "cache_read": 0.01,  # assumed: 0.1x input, not published separately
     },
-    "claude-haiku-5-5:long": {  # used when the prompt is over 100K tokens
+    # Our own key, not a real model id: the row used when a Haiku prompt is over 100K tokens.
+    "claude-haiku-5-5:long": {
         "input": 0.50,
         "output": 2.50,
         "cache_read": 0.05,  # assumed: 0.1x input
