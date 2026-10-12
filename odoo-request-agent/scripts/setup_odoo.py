@@ -55,8 +55,8 @@ def main():
     install_purchase(odoo)
 
     # Saudi riyal is in Odoo but switched off by default.
-    sar = odoo.call("res.currency", "search_read", [("name", "=", "SAR"), ("active", "in", [True, False])],
-                    fields=["id", "active"])
+    sar = odoo.search_read("res.currency", [("name", "=", "SAR"), ("active", "in", [True, False])],
+                           ["id", "active"])
     if sar and not sar[0]["active"]:
         odoo.write("res.currency", sar[0]["id"], {"active": True})
         print("activated SAR")

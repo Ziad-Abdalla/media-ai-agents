@@ -37,7 +37,7 @@ def extract_request(client, email: Email, run_id: str) -> PurchaseRequest:
         operation="extract_purchase_request",
         run_id=run_id,
         model=config.MODEL,
-        max_tokens=4000,
+        max_tokens=4000,  # headroom; real answers are about 200-300 tokens
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_message}],
         output_config={"effort": "low", "format": {"type": "json_schema", "schema": SCHEMA}},
@@ -48,7 +48,7 @@ def extract_request(client, email: Email, run_id: str) -> PurchaseRequest:
     if response.stop_reason == "max_tokens":
         raise ExtractionFailed("The answer was cut off (max_tokens).")
 
-    # With adaptive thinking the reply can include thinking blocks; we want the text one.
+    # The answer may hold other kinds of blocks (e.g. thinking); take the text one.
     text = next((b.text for b in response.content if b.type == "text"), None)
     if text is None:
         raise ExtractionFailed("No text in the model's answer.")

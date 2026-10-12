@@ -11,9 +11,9 @@ We never pick a vendor we're unsure about, and never create one without approval
 import difflib
 import re
 
-FUZZY_AUTO = 0.90   # at or above this, a single best match is accepted
-FUZZY_GREY = 0.70   # between GREY and AUTO, a human must choose
-PRODUCT_MATCH = 0.75  # products are lower risk: a wrong guess is visible on the approval page
+FUZZY_ACCEPT = 0.90     # at or above this, a single best match is accepted
+FUZZY_ASK_HUMAN = 0.70  # from here up to FUZZY_ACCEPT, a person must choose
+PRODUCT_MATCH = 0.75  # products are lower risk: the matched product is shown on the approval page
 
 GENERIC_PRODUCT = "Production Service"  # used for lines that match no product
 COMPANY_WORDS = {"co", "company", "llc", "ltd", "est", "establishment", "inc", "trading", "the"}
@@ -43,13 +43,13 @@ def resolve_vendor(odoo, vendor_name: str) -> dict:
         ({"id": v["id"], "name": v["name"], "score": round(similarity(vendor_name, v["name"]), 2)}
          for v in vendors),
         key=lambda c: c["score"], reverse=True)
-    close = [c for c in scored if c["score"] >= FUZZY_GREY]
+    close = [c for c in scored if c["score"] >= FUZZY_ASK_HUMAN]
 
     if len(exact) > 1:
         return {"status": "needs_human", "partner_id": None, "candidates": close[:5],
                 "reason": "several vendors have exactly this name"}
-    if close and close[0]["score"] >= FUZZY_AUTO:
-        runners_up = [c for c in close[1:] if c["score"] >= FUZZY_AUTO]
+    if close and close[0]["score"] >= FUZZY_ACCEPT:
+        runners_up = [c for c in close[1:] if c["score"] >= FUZZY_ACCEPT]
         if not runners_up:
             best = close[0]
             return {"status": "matched", "partner_id": best["id"], "name": best["name"],

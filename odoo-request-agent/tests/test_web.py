@@ -12,6 +12,7 @@ def test_page_shows_the_plan_and_approve_writes_the_po(store, odoo):
 
     page = web.get("/").text
     assert run_id in page and "pending_approval" in page and "APR-2026-0412" in page
+    assert "Camera Crane Rental" in page  # the matched Odoo product is shown
     assert odoo.pos() == []
 
     web.post(f"/runs/{run_id}/approve", data={"approver": "Ziad"})

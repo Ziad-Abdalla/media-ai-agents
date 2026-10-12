@@ -62,6 +62,10 @@
     <p>{% if v.status == "matched" %}Matched <b>{{ v.name }}</b> (id {{ v.partner_id }}{% if v.score %}, score {{ v.score }}{% endif %})
        {% elif v.status == "new" %}<b>No match. Approving will create a NEW vendor.</b> {{ v.reason }}
        {% else %}<b>Not sure which vendor:</b> {{ v.reason }}{% endif %}</p>
+    <h3>Products in Odoo</h3>
+    <ul>{% for p in run.resolution_json.products %}
+      <li>{{ p.product_name }}{% if p.free_text %} (no match: generic product, the email's wording is the description){% endif %}</li>
+    {% endfor %}</ul>
     {% if run.status == "needs_human" %}
       <form method="post" action="/runs/{{ run.run_id }}/resolve">
         {% for c in v.candidates %}
