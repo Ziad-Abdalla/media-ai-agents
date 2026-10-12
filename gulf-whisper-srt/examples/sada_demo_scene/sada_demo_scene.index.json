@@ -1,0 +1,90 @@
+{
+ "format": "gulf-srt-dialogue-index",
+ "version": 1,
+ "entries": [
+  {
+   "file": "sada_demo_scene.srt",
+   "cue": 1,
+   "start": 0.0,
+   "end": 5.86,
+   "text": "يا ابن الحلال، أنا أقوم بدري علشان الرياضة أنت تعرفني أنا رياضي"
+  },
+  {
+   "file": "sada_demo_scene.srt",
+   "cue": 2,
+   "start": 5.86,
+   "end": 11.08,
+   "text": "وأحب الرياضة من نعومة الظافير منذ فترة"
+  },
+  {
+   "file": "sada_demo_scene.srt",
+   "cue": 3,
+   "start": 11.08,
+   "end": 12.74,
+   "text": "سابقة يعني"
+  },
+  {
+   "file": "sada_demo_scene.srt",
+   "cue": 4,
+   "start": 14.26,
+   "end": 17.86,
+   "text": "وتعرف يعني يعني لا أسمع حظة على اليابت"
+  },
+  {
+   "file": "sada_demo_scene.srt",
+   "cue": 5,
+   "start": 18.76,
+   "end": 24.52,
+   "text": "أهلا الصدقين أقول لك يا عبد الله يطول في عمرك ودي أسا لك سؤال أنت لم"
+  },
+  {
+   "file": "sada_demo_scene.srt",
+   "cue": 6,
+   "start": 24.52,
+   "end": 25.76,
+   "text": "أتقدك شعبك؟"
+  },
+  {
+   "file": "sada_demo_scene.srt",
+   "cue": 7,
+   "start": 25.76,
+   "end": 31.24,
+   "text": "تدري ليش، تعرف اللعب الأجنبي خليت؟"
+  },
+  {
+   "file": "sada_demo_scene.srt",
+   "cue": 8,
+   "start": 32.76,
+   "end": 38.66,
+   "text": "خليت، كذا عبود، تراك صدقت نفسك ومسوي عمرك أجنبي"
+  },
+  {
+   "file": "sada_demo_scene.srt",
+   "cue": 9,
+   "start": 38.66,
+   "end": 41.68,
+   "text": "يا ابن الحلال انت بالنفسك لا تتمصع،"
+  },
+  {
+   "file": "sada_demo_scene.srt",
+   "cue": 10,
+   "start": 41.68,
+   "end": 45.04,
+   "text": "تراك كلك عذب ما فيك ولا لحم حلوة،"
+  },
+  {
+   "file": "sada_demo_scene.srt",
+   "cue": 11,
+   "start": 45.04,
+   "end": 50.86,
+   "text": "بس لا تعيدها مرة ثانية أدري فيك أنت غار من رشابتي تصدق"
+  },
+  {
+   "file": "sada_demo_scene.srt",
+   "cue": 12,
+   "start": 50.86,
+   "end": 54.98,
+   "text": "عبد، إنك كرهتني في الرياضة والرشابة مشكلة"
+  }
+ ]
+}

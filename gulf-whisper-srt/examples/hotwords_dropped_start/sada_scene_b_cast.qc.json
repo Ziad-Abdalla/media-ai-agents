@@ -1,0 +1,45 @@
+{
+ "summary": {
+  "cues": 7,
+  "cues_flagged": 3,
+  "share_flagged": 0.429,
+  "by_kind": {
+   "unsure-words": 3,
+   "long-silence": 1
+  }
+ },
+ "issues": [
+  {
+   "priority": 1,
+   "kind": "unsure-words",
+   "start": 20.14,
+   "end": 25.76,
+   "cue": 1,
+   "detail": "Whisper was unsure of: «يا» 0.11, «من» 0.27"
+  },
+  {
+   "priority": 1,
+   "kind": "unsure-words",
+   "start": 25.76,
+   "end": 31.54,
+   "cue": 2,
+   "detail": "Whisper was unsure of: «أيوه» 0.50"
+  },
+  {
+   "priority": 1,
+   "kind": "unsure-words",
+   "start": 39.08,
+   "end": 44.64,
+   "cue": 4,
+   "detail": "Whisper was unsure of: «معدبوهم» 0.49"
+  },
+  {
+   "priority": 3,
+   "kind": "long-silence",
+   "start": 0.0,
+   "end": 20.14,
+   "cue": null,
+   "detail": "20 s with no subtitle: check for missed dialogue"
+  }
+ ]
+}
