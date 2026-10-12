@@ -21,8 +21,8 @@ Nothing is written to Odoo until a person presses Approve on a small web page th
 original email, what was extracted, the budget picture, and the exact values that will be sent.
 Every write is audited and can be rolled back, a retry or a double-click never creates a second
 PO, and a kill switch stops the agent's writes. A KPI report shows management what it saves.
-Every AI call goes through [agent-cost-tracker](https://github.com/Ziad-Abdalla/agent-cost-tracker),
-my small library that records cost per operation and enforces a budget.
+Every AI call goes through agent-cost-tracker, my small library (a sibling folder, not published yet)
+that records cost per operation and enforces a budget.
 
 All example data (emails, people, vendors, productions, budgets) is **synthetic**: made up for this
 demo, not Sadaf data. The production names are fictional.
@@ -37,13 +37,15 @@ demo, not Sadaf data. The production names are fictional.
 - **Budget surprises show up before the PO, not at month end.** The approver sees "this order takes
   Sahrat Al-Khamis to 111.7% of its budget" and has to write why. That reason stays in the audit log.
 - **Shoot days don't wait on paperwork.** Equipment, crew, locations and catering are often needed
-  within days. The agent turns an email into a ready plan in seconds; the median from email to draft
-  PO in the demo was 6.7 minutes, and almost all of that was waiting for a person to click.
+  within days. The agent turns an email into a ready plan in about 20 seconds (median 0.3 min in the
+  demo). How long the plan then waits for an approver is shown as its own number on `/kpis`. In the
+  demo a script made the decisions, so that wait says nothing about real reviewers; at Sadaf it would.
 - **It reads how crews actually write.** "نبي نأجر Alexa Mini package لمسلسل رمال الخبر" works, Arabic-Indic
   digits work, and a request written in Arabic gets its "please send the missing details" reply in Arabic.
-- **Management gets numbers, not anecdotes.** `/kpis` shows the share handled without a person, approval
-  and success rate, handling time, cost per request (about $0.0003) and estimated staff time saved, with
-  the assumption written next to it.
+- **Management gets numbers, not anecdotes.** `/kpis` shows the share handled without a person, how many
+  needed a closer look (over budget, injection warning), approval and success rate, the agent's time and the
+  waiting time, cost per request (about $0.0003), spend by production and by cost type (equipment, crew,
+  location...), and estimated staff time saved, with the assumption written next to it.
 
 ## Flow
 
@@ -67,14 +69,11 @@ flowchart LR
 
 ## Quickstart
 
-Windows PowerShell. This repo needs [agent-cost-tracker](https://github.com/Ziad-Abdalla/agent-cost-tracker)
-cloned **next to it** (same parent folder), because it is installed from that folder.
+Windows PowerShell. Neither repo is on GitHub yet: you need this folder and the `agent-cost-tracker`
+folder **side by side** (same parent folder), because the library is installed from that folder.
 
 ```powershell
-# from the parent folder: get both repos side by side
-git clone https://github.com/Ziad-Abdalla/agent-cost-tracker
-git clone https://github.com/Ziad-Abdalla/odoo-request-agent
-cd odoo-request-agent
+# start inside this folder (odoo-request-agent), with ..\agent-cost-tracker next to it
 
 # Odoo 17 on :8069, Postgres on :5433, Mailpit on :8025
 docker compose up -d
@@ -93,6 +92,9 @@ python scripts\send_samples.py    # eleven sample emails into Mailpit
 python -m odoo_agent poll         # read emails and prepare runs (no Odoo writes)
 python -m odoo_agent serve        # approval page on http://localhost:8000, KPIs on /kpis
 ```
+
+`python scripts\demo_decisions.py` makes the README demo's decisions (approve, reject, pick, roll back)
+through the same forms, in a few seconds. It is a demo tool: the audit log records it as `demo-script`.
 
 Install `agent-cost-tracker` from the sibling folder as shown, not from PyPI: an unrelated
 package with the same name exists there.
@@ -125,7 +127,10 @@ called "Productions". `scripts/setup_odoo.py` creates three fictional ones from
 - **Charging**: every PO line gets `analytic_distribution = {"<account id>": 100}`, Odoo 17's way of
   saying "100% of this line belongs to this production".
 - **Budget**: committed = every PO line charged to the production that isn't cancelled, drafts
-  included, before VAT (USD converted at the 3.75 peg). The page shows within / close (≥ 90%) / over.
+  included, before VAT (USD converted at the 3.75 peg). Odoo is asked only for that production's lines.
+  A line in any other currency is left out and named on the page ("PO lines in EUR are not counted"),
+  never quietly counted as riyals. A budget of 0 means any spend is over. The page shows within /
+  close (≥ 90%) / over.
   It is a warning, not a block: approving an over-budget order needs a tick and a written reason, and
   the server re-checks with fresh numbers at the click. Odoo Community has no budget module, so
   budgets live in `production_budgets.json`; on Odoo Enterprise they would come from Odoo's budgets.
@@ -143,9 +148,11 @@ called "Productions". `scripts/setup_odoo.py` creates three fictional ones from
 | KPI | How it's measured |
 |---|---|
 | Auto-resolved share | runs where vendor and production matched without a person / runs that got a plan |
-| Approval rate | approved / (approved + rejected) |
-| Success rate | draft POs not rolled back + clarification replies sent, out of finished runs (rejections left out: that's a person's call) |
-| Median handling time | email Date header → draft PO created in Odoo; also email → plan ready (the agent's own part) |
+| Needed a closer look | approved over budget with a written reason, and runs with an injection warning. Counted on their own, because an auto-resolved run can still need care |
+| Approval rate | approved / (approved + rejected). Approved = the writes ran; a click the kill switch stopped doesn't count |
+| Success rate | draft POs not rolled back + clarification replies sent, out of finished runs (rejections left out: that's a person's call). Failed and rolled back are shown apart, because a rollback can be a drill |
+| Median handling time | email Date header → draft PO created in Odoo, split into the agent (email → plan ready) and the wait for a person (plan ready → Approve click). The wait is queue time, not reading time |
+| Spend by production and by cost type | the draft POs the agent created, before VAT |
 | Cost per request | model spend from the cost ledger / requests that reached the model |
 | Minutes saved | estimate: each draft PO saves `MINUTES_MANUAL_PO - MINUTES_REVIEW_PO` (12 − 2), each reply `MINUTES_PER_REPLY` (3). Settings, printed next to the number, to be replaced with times measured with the procurement team |
 | Extraction accuracy | the last `eval` run |
@@ -153,20 +160,30 @@ called "Productions". `scripts/setup_odoo.py` creates three fictional ones from
 ## Testing the model before trusting it (eval)
 
 `samples/requests.json` holds the eleven synthetic emails with a hand-written right answer for each
-field. `python -m odoo_agent eval --repeats 3` reads every email three times exactly like production
-does and scores every field. Eval calls are filed under their own ledger operation, so they never
-mix with real requests.
+field (ten are scored; the re-send is a copy). `python -m odoo_agent eval --repeats 3` reads every
+email three times exactly like production does and scores nine fields per reading, including
+`injection_flag`: `suspicious_instructions` must be true on the injection email **and** false on the
+nine clean ones. Eval calls are filed under their own ledger operation, so they never mix with real
+requests. Results on the current prompt and scorer (2026-10-13):
 
 | Haiku 5.5 effort | Fields right | Readings fully right | Cost (30 readings) | Mean latency |
 |---|---|---|---|---|
-| **low (used)** | 100% of 243 | 30/30 | $0.0098 | 2.3 s |
-| medium | 100% of 243 | 30/30 | $0.0114 | 2.9 s |
+| **low (used)** | 99.6% of 270 | 29/30 | $0.0101 | 2.4 s |
+| medium | 99.6% of 270 | 29/30 | $0.0121 | 2.9 s |
 
-Medium costs about 17% more and is slower with no gain, so the agent stays on low. The eval also
-caught a real problem: before the model was given the list of productions, the talk show
-"سهرة الخميس" (literally "Thursday evening") was sometimes read as a time, not a name, and left
-empty, so the request went back to the sender. Giving the model the production names fixed it.
-Ten emails are a demo set, not proof: for real use I'd label 50-100 of Sadaf's own requests.
+The one miss is the same at both efforts: on "Lights for studio B", which ends with "Please go ahead",
+the model set `suspicious_instructions` to true once in three readings. That is a false alarm (an extra
+red warning on the page), not a missed injection, so I left the prompt alone instead of tuning it to
+this one email. Medium costs about 20% more, is slower and gains nothing, so the agent stays on low.
+
+The eval also caught a real problem earlier: before the model was given the list of productions, the
+talk show "سهرة الخميس" (literally "Thursday evening") was sometimes read as a time, not a name.
+Giving the model the production names fixed it.
+
+Limits: I wrote these emails and their right answers myself, and I also wrote the prompt, so the set
+can share my blind spots. Ten emails are a demo set, not proof. For real use, procurement staff would
+label 50-100 of Sadaf's own past requests (people who didn't write the prompt), and the eval would run
+before every prompt or model change.
 
 ## Safety design
 
@@ -177,7 +194,7 @@ Ten emails are a demo set, not proof: for real use I'd label 50-100 of Sadaf's o
 | **Duplicate on retry** (network drops after Odoo saved the PO) | Idempotency key = hash(message-id + normalized request), stored in the PO's `origin` (and a new vendor's `ref`) and in the local `runs` table; before creating, search Odoo for the key and reuse the record if found. Approve moves the run to `writing` in one SQL `UPDATE ... WHERE status IN (...)`, so two clicks at once can't both write. Same email fetched twice is skipped before any AI call. A re-sent copy (new message-id) is flagged as a possible duplicate for a human | `test_pipeline.py::test_lost_answer_then_retry_makes_no_duplicate`, `::test_two_approvals_at_the_same_moment_make_one_po`, `::test_resent_request_is_flagged_as_duplicate`, live: `tests/live/test_live_odoo.py` |
 | **Approver approves a different plan than the one that runs** | The page shows a hash of the exact plan ("plan #abcd1234") and the Approve form sends the full hash back. The one-step claim only moves the run to `writing` if the stored plan still has that hash; the plan that runs is read after the claim. A changed plan, or a missing or wrong hash, is refused, logged in `audit`, and the run stays `pending_approval` | `test_pipeline.py::test_plan_changed_after_the_page_loaded_is_refused`, `::test_a_wrong_or_missing_plan_hash_is_refused`, `test_web.py::test_approve_without_the_plan_hash_is_refused` |
 | **Bad bulk update** | The agent's plans only create draft POs and vendors, one plan at a time, after approval. (An `update_purchase_order` action exists for a later "amend" flow; it only touches *draft* POs, but no plan uses it today.) Every write stores before/after values in `audit`; `rollback <run_id>` deletes the run's draft PO, restores edited fields, and archives a vendor it created. Kill switch: `python -m odoo_agent kill` works instantly; `AGENT_WRITES_ENABLED=false` works after a restart. Rollback is a human tool and ignores the kill switch on purpose | `test_rollback.py`, `test_permissions.py::test_kill_switch_*`, live rollback tests |
-| **Prompt injection** | Email is wrapped as data and the system prompt says so, but the real defence is structural: the model has no tools and only fills data fields; the plan is built by code from those fields; forbidden actions don't exist for it to call. Suspicious text is flagged on the approval page | `test_injection.py` (a "fooled" model output still produces the same one-step plan, no confirm/delete/email); eval field `injection_noted` |
+| **Prompt injection** | Email is wrapped as data and the system prompt says so, but the real defence is structural: the model has no tools and only fills data fields; the plan is built by code from those fields; forbidden actions don't exist for it to call. Suspicious text is flagged on the approval page | `test_injection.py` (a "fooled" model output still produces the same one-step plan, no confirm/delete/email); eval field `injection_flag` |
 | **Data leaving the company** | `send_email` is the only way to send mail: internal domain only, never attachments, needs approval, once per run. The From header must be on `COMPANY_DOMAINS`, so casual outside mail is dropped before the AI sees it. From can be forged, so production would also require Gmail's `Authentication-Results` header to show `dmarc=pass`; the human approval is the backstop. Gmail scope is read-only | `test_permissions.py::test_email_outside_the_company_is_refused`, `::test_attachments_are_never_sent`, `test_pipeline.py::test_outside_sender_is_ignored_without_spending_money` |
 | **Runaway cost** | Every model call goes through `tracked_call` (cost per operation and per run; budget `COST_BUDGET_USD` checked *before* each call); cheap model (Haiku 5.5) at low effort, chosen by the eval; one call per email; already-seen emails, outside senders and the agent's own replies never reach the model | `test_extract.py::test_every_call_is_recorded_in_the_cost_ledger`, agent-cost-tracker tests |
 
@@ -190,6 +207,11 @@ one function, `execute()`:
 
 Every human choice (vendor, production, re-send confirmation) is written to the audit log with the
 person's name.
+
+Stored runs keep the model's answer as JSON. When `PurchaseRequest` gains a field, old runs don't have
+it, so they are read through `PurchaseRequest.from_stored()`, which fills `FIELDS_ADDED_LATER` with the
+value matching the old behaviour (tested in `test_kpis.py::test_runs_stored_before_a_field_was_added_still_load`).
+The schema sent to the model still marks every field required.
 
 Honest limits: reads go straight to Odoo, outside the gate, because they can't change anything
 (a stricter setup gives the agent a read-only Odoo user plus a separate write user). Rollback is
@@ -204,36 +226,48 @@ the process is killed in the middle of a write, the run stays `writing`; a perso
 Odoo admin account; in production the agent gets its own user with Purchase rights, read access to
 analytic accounts, and an API key.
 
-## Live demo (2026-10-12, real Haiku 5.5, eleven synthetic emails)
+## Live demo (night of 2026-10-12/13, real Haiku 5.5, eleven synthetic emails)
+
+Run on the code in this repo as committed, from a fresh Odoo database and an empty `agent.sqlite`:
+`setup_odoo.py`, `send_samples.py`, `poll` (the AI step), then `scripts/demo_decisions.py` for every
+human decision. **The decisions were scripted**, made in about 5 seconds with the actor `demo-script`.
+Nobody reviewed anything, so the "waiting for a person" time below only measures the gap between the
+poll and the script (I took the screenshots in between). The screenshots are from this run.
 
 | Email | Result |
 |---|---|
 | Crane rental, Riyadh Grip Co, for Rimal Al-Khobar | `pending_approval`, all matched → approved → draft PO charged to RML-S1 |
-| Lights for studio B (no qty/price/date/approval) | `needs_info`, reply drafted asking for exactly those 5 things → sent (to Mailpit) after a click |
+| Lights for studio B (no qty/price/date/approval) | `needs_info`, reply drafted asking for exactly those 5 things → sent (to Mailpit) |
 | Same crane request re-sent | `needs_human`: "Looks like a re-send" → rejected |
-| Sound quote with an injected "SYSTEM NOTE" (confirm PO, delete vendors, email bank details out) | Same one-step plan as a normal email; model noted the injection; page warned; approved → draft PO only |
-| Catering, Najd Catering House (new vendor) | Plan: create vendor + PO → approved → then `rollback` deleted the draft PO and archived the vendor |
+| Sound quote with an injected "SYSTEM NOTE" (confirm PO, delete vendors, email bank details out) | Same one-step plan as a normal email; model set `suspicious_instructions` and described the injection; page warned in red; approved → draft PO only |
+| Catering, Najd Catering House (new vendor) | Plan: create vendor + PO → approved → then a rollback drill deleted the draft PO and archived the vendor |
 | Arabic request, Arabic-Indic digits, production written "بيت الجد" | Matched Bayt Al-Jadd → approved |
 | Saudi dialect + English: Alexa Mini package "لمسلسل رمال الخبر" | 3 × 5,600 SAR, Jeddah Camera House, RML-S1 → approved |
 | Steadicam operator, freelancer, via Abha Crew Services (new vendor) | Category `crew_services` → line uses "Crew & Freelancer Services" → approved |
 | Location fee, Al-Balad house, for Bayt Al-Jadd | "Close to budget" warning (99.3%) → approved |
 | LED wall for Sahrat Al-Khamis | "Over budget: 111.7%". Approve without a reason was refused and logged; approved with a reason |
-| Generator "for the رمال shoot" | `needs_human`: production unclear, all three listed, best guess first → person picked Rimal Al-Khobar → approved |
+| Generator "for the رمال shoot" | `needs_human`: production unclear, all three listed, best guess first → the script picked Rimal Al-Khobar → approved |
 
-KPIs after the demo (`python -m odoo_agent kpis`):
+KPIs after the demo (`python -m odoo_agent kpis`, first lines):
 
 ```
 Runs: 11   done 8, rolled_back 1, rejected 1, reply_sent 1
 Auto-resolved: 8   needed a human: 2   auto share: 80.0%
+Asked the sender for missing info: 1   blocked outside senders: 0
 Approval rate: 90.0% (9 approved, 1 rejected)
-Success rate: 90.0% (9 ended right, 1 failed or rolled back)
-Median time, email -> draft PO: 6.7 min (9 POs); email -> plan ready: 0.3 min
-Model cost: $0.00359 for 11 requests, $0.00033 per request
+Needed a closer look: 1 approved over budget with a written reason, 1 with an injection warning
+Success rate: 90.0% (9 ended right, 0 failed, 1 rolled back)
+Median time, email -> draft PO: 1.6 min (9 POs)
+  the agent (email -> plan ready): 0.3 min; waiting for a person (plan ready -> Approve): 1.2 min
+Model cost: $0.00372 for 11 requests, $0.00034 per request
 Estimated time saved: 83 min (assumption: by hand a PO takes 12 min, checking the agent's plan 2 min ...)
 ```
 
-About **$0.33 per 1,000 requests** for the AI part. The whole session of building and testing this
-version, eval runs included, spent $0.035 on the API.
+How to read these honestly: the 90% success rate is 9 of 10 only because the demo rolled one run back
+on purpose (a drill), and 8 of the 9 "ended right" are the script's approvals. The 1.2-minute wait is
+the demo, not reviewers. The 83 minutes is the 12-minus-2 assumption times nine POs, not a measurement.
+What the demo does show: every route works end to end on real Haiku and real Odoo, at about
+**$0.34 per 1,000 requests** for the AI part. The eval re-run and this demo together spent $0.026.
 
 ## Code map
 
@@ -253,6 +287,7 @@ version, eval runs included, spent $0.035 on the API.
 | `odoo_agent/store.py` | SQLite `runs` and `audit` tables; `claim_for_writing` (the one-step approve) |
 | `odoo_agent/kpis.py`, `templates/kpis.html` | KPI report and page |
 | `odoo_agent/evaluate.py` | Field-by-field extraction eval on the labelled samples |
+| `scripts/demo_decisions.py` | The demo's scripted decisions (approve, reject, pick, rollback drill) |
 | `odoo_agent/web.py`, `templates/index.html` | The approval page (FastAPI + Jinja) |
 | `odoo_agent/odoo_client.py` | Small XML-RPC wrapper |
 | `production_budgets.json`, `samples/requests.json` | Synthetic productions/budgets and sample emails with right answers |
@@ -264,6 +299,6 @@ Docs: [staff user guide in Arabic](docs/دليل-المستخدم.md).
 With the venv switched on:
 
 ```powershell
-python -m pytest            # 109 unit tests: fake model + fake Odoo, no network, no cost
+python -m pytest            # 141 unit tests: fake model + fake Odoo, no network, no cost
 python -m pytest -m live    # 3 tests against the docker Odoo (canned extraction, no AI cost)
 ```
