@@ -6,9 +6,11 @@ from pathlib import Path
 from gulf_srt.segment import Cue
 
 # U+200F RIGHT-TO-LEFT MARK: an invisible character that counts as a right-to-left letter.
-RLM = "‏"
+RLM = "\u200f"
 
-_ARABIC = re.compile(r"[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]")
+# Arabic letters: the main block, Supplement, Extended-A, and the two presentation-form
+# blocks (ending at FEFC, so the invisible U+FEFF byte-order mark doesn't count as Arabic).
+_ARABIC = re.compile("[\u0600-\u06ff\u0750-\u077f\u08a0-\u08ff\ufb50-\ufdff\ufe70-\ufefc]")
 
 
 def format_timestamp(seconds: float) -> str:
@@ -47,11 +49,19 @@ def write_srt(cues: list[Cue], path: str | Path, rtl: bool = True) -> None:
 
 
 def srt_to_text(srt: str) -> str:
-    """Keep only the spoken text of an SRT (drop numbers, timings, RLM marks)."""
+    """Keep only the spoken text of an SRT (drop numbers, timings, RLM marks).
+
+    Each block is a number line, a timing line, then the text lines, with an empty
+    line between blocks. We skip the first two lines of every block (not "any line
+    that is a number"), so a subtitle line that is just "2024" is kept."""
     text_lines = []
+    line_in_block = 0
     for line in srt.splitlines():
         line = line.replace(RLM, "").strip()
-        if not line or line.isdigit() or "-->" in line:
+        if not line:  # an empty line ends the block
+            line_in_block = 0
             continue
-        text_lines.append(line)
+        line_in_block += 1
+        if line_in_block > 2:
+            text_lines.append(line)
     return " ".join(text_lines)

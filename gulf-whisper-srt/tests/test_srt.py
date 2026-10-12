@@ -55,3 +55,8 @@ def test_every_arabic_line_in_srt_is_marked():
 def test_srt_to_text_round_trip():
     cues = [Cue(0.0, 2.0, ["هلا والله", "كيفك؟"]), Cue(3.0, 4.0, ["تمام"])]
     assert srt_to_text(to_srt(cues)) == "هلا والله كيفك؟ تمام"
+
+
+def test_srt_to_text_keeps_a_line_that_is_only_a_number():
+    cues = [Cue(0.0, 2.0, ["في سنة", "2024"]), Cue(3.0, 4.0, ["تمام"])]
+    assert srt_to_text(to_srt(cues)) == "في سنة 2024 تمام"
