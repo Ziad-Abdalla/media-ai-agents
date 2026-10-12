@@ -1,0 +1,55 @@
+{
+ "model": "large-v3-turbo",
+ "device": "cuda",
+ "hotwords": "عبود أبو حمد",
+ "clips": {
+  "fleurs_ar_007": {
+   "variety": "MSA (read)",
+   "ref_words": 36,
+   "ref_chars": 212,
+   "wer": 0.05555555555555555,
+   "cer": 0.009433962264150943,
+   "wer_light": 0.08333333333333333
+  },
+  "fleurs_ar_066": {
+   "variety": "MSA (read)",
+   "ref_words": 29,
+   "ref_chars": 155,
+   "wer": 0.10344827586206896,
+   "cer": 0.03225806451612903,
+   "wer_light": 0.10344827586206896
+  },
+  "fleurs_ar_184": {
+   "variety": "MSA (read)",
+   "ref_words": 24,
+   "ref_chars": 137,
+   "wer": 0.4583333333333333,
+   "cer": 0.10218978102189781,
+   "wer_light": 0.4583333333333333
+  },
+  "fleurs_ar_263": {
+   "variety": "MSA (read)",
+   "ref_words": 24,
+   "ref_chars": 124,
+   "wer": 0.0,
+   "cer": 0.0,
+   "wer_light": 0.08333333333333333
+  },
+  "sada_scene_a": {
+   "variety": "Saudi/Gulf dialect (TV show)",
+   "ref_words": 94,
+   "ref_chars": 470,
+   "wer": 0.3617021276595745,
+   "cer": 0.14468085106382977,
+   "wer_light": 0.4574468085106383
+  },
+  "sada_scene_b": {
+   "variety": "Saudi/Gulf dialect (TV show)",
+   "ref_words": 96,
+   "ref_chars": 485,
+   "wer": 0.65625,
+   "cer": 0.5175257731958763,
+   "wer_light": 0.6979166666666666
+  }
+ }
+}

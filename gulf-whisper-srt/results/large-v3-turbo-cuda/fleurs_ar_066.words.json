@@ -1,0 +1,199 @@
+{
+ "words": [
+  {
+   "start": 0.98,
+   "end": 1.56,
+   "text": "عند",
+   "probability": 0.9716796875
+  },
+  {
+   "start": 1.56,
+   "end": 2.28,
+   "text": "أغذر",
+   "probability": 0.63934326171875
+  },
+  {
+   "start": 2.28,
+   "end": 2.54,
+   "text": "كل",
+   "probability": 0.92578125
+  },
+  {
+   "start": 2.54,
+   "end": 3.42,
+   "text": "الأشياء",
+   "probability": 0.9871826171875
+  },
+  {
+   "start": 3.42,
+   "end": 3.88,
+   "text": "بعين",
+   "probability": 0.65185546875
+  },
+  {
+   "start": 3.88,
+   "end": 5.0,
+   "text": "الاعتبار",
+   "probability": 0.9490966796875
+  },
+  {
+   "start": 5.0,
+   "end": 5.68,
+   "text": "لا",
+   "probability": 0.5966796875
+  },
+  {
+   "start": 5.68,
+   "end": 6.62,
+   "text": "ينبغي",
+   "probability": 0.9767578125
+  },
+  {
+   "start": 6.62,
+   "end": 7.18,
+   "text": "لنا",
+   "probability": 0.9814453125
+  },
+  {
+   "start": 7.18,
+   "end": 7.6,
+   "text": "أن",
+   "probability": 0.90576171875
+  },
+  {
+   "start": 7.6,
+   "end": 8.56,
+   "text": "نندهش",
+   "probability": 0.9534912109375
+  },
+  {
+   "start": 8.56,
+   "end": 9.06,
+   "text": "إذا",
+   "probability": 0.978759765625
+  },
+  {
+   "start": 9.06,
+   "end": 9.64,
+   "text": "قام",
+   "probability": 0.991943359375
+  },
+  {
+   "start": 9.64,
+   "end": 10.96,
+   "text": "أسلافنا",
+   "probability": 0.8453125
+  },
+  {
+   "start": 10.96,
+   "end": 11.74,
+   "text": "بحل",
+   "probability": 0.98779296875
+  },
+  {
+   "start": 11.74,
+   "end": 12.68,
+   "text": "مشكلة",
+   "probability": 0.9970703125
+  },
+  {
+   "start": 12.68,
+   "end": 13.8,
+   "text": "البروتين",
+   "probability": 0.910400390625
+  },
+  {
+   "start": 13.8,
+   "end": 15.48,
+   "text": "لديهم",
+   "probability": 0.9791666666666666
+  },
+  {
+   "start": 15.48,
+   "end": 16.52,
+   "text": "بطريقة",
+   "probability": 0.9910888671875
+  },
+  {
+   "start": 16.52,
+   "end": 17.12,
+   "text": "ما",
+   "probability": 0.97412109375
+  },
+  {
+   "start": 17.12,
+   "end": 18.0,
+   "text": "على",
+   "probability": 0.5283203125
+  },
+  {
+   "start": 18.0,
+   "end": 18.54,
+   "text": "نفس",
+   "probability": 0.99951171875
+  },
+  {
+   "start": 18.54,
+   "end": 19.42,
+   "text": "النحو",
+   "probability": 0.9894205729166666
+  },
+  {
+   "start": 19.42,
+   "end": 20.02,
+   "text": "التي",
+   "probability": 0.853515625
+  },
+  {
+   "start": 20.02,
+   "end": 20.8,
+   "text": "يقوم",
+   "probability": 0.9632161458333334
+  },
+  {
+   "start": 20.8,
+   "end": 21.26,
+   "text": "بها",
+   "probability": 0.963134765625
+  },
+  {
+   "start": 21.26,
+   "end": 22.56,
+   "text": "الشمبانزي",
+   "probability": 0.8924153645833334
+  },
+  {
+   "start": 22.56,
+   "end": 22.8,
+   "text": "في",
+   "probability": 0.994140625
+  },
+  {
+   "start": 22.8,
+   "end": 23.98,
+   "text": "السفانة",
+   "probability": 0.931884765625
+  }
+ ],
+ "duration": 25.74,
+ "segments": [
+  {
+   "start": 0.98,
+   "end": 13.8,
+   "text": "عند أغذر كل الأشياء بعين الاعتبار لا ينبغي لنا أن نندهش إذا قام أسلافنا بحل مشكلة البروتين",
+   "avg_logprob": -0.13495163814652533,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 1.688622754491018
+  },
+  {
+   "start": 13.8,
+   "end": 23.98,
+   "text": "لديهم بطريقة ما على نفس النحو التي يقوم بها الشمبانزي في السفانة",
+   "avg_logprob": -0.13495163814652533,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 1.688622754491018
+  }
+ ],
+ "source": "data/samples/fleurs_ar_066.wav",
+ "hotwords": ""
+}

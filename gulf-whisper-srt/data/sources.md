@@ -2,7 +2,7 @@
 
 No audio is committed to this repo. `python scripts/fetch_samples.py` downloads
 the clips below from their original sources into `data/samples/` (git-ignored).
-The `.srt` and `.hyp.txt` files in `results/` are machine transcripts of these
+The `.srt`, `.hyp.txt` and `.words.json` files in `results/`, and everything in `examples/`, are machine transcripts of these
 clips and carry the same license and attribution as the clip they come from.
 
 ## 1. FLEURS, Arabic (Modern Standard Arabic, read speech)
