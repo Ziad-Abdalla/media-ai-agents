@@ -9,7 +9,7 @@ shot, and you price props, cars and extras from the list. This repo does the fir
 more importantly, comes with an **Arabic evaluation set and a regression gate** so you can tell whether
 a new model or prompt is better or worse before you trust it.
 
-> **Data note:** the screenplay in `data/` is **synthetic**. I wrote it for this project (a high-school
+> **Data note:** the screenplay in `data/` is **synthetic**, written for this project (a high-school
 > drama set in Riyadh: MSA headings and action lines, Saudi/Gulf dialect dialogue). It is not from any
 > real production. **Gold labels: drafted, pending native-speaker review.**
 
@@ -178,7 +178,7 @@ schema repeated 26 times). Prompt caching or sending a few scenes per call are t
 
 ## Limits
 
-- One synthetic script by one writer (me), 26 scenes. This is a test harness for the pipeline and for
+- One synthetic script in one writing style, 26 scenes. This is a test harness for the pipeline and for
   comparing configurations, **not a general accuracy claim** about Arabic screenplays.
 - Gold labels are drafted and still need the native-speaker review in `eval/REVIEW_FOR_ZIAD.md`.
 - Costume, effects, extras, vehicles and animals are extracted but not scored yet; props and characters
