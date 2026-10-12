@@ -50,11 +50,23 @@ def test_a_first_name_two_people_share_is_flagged_not_guessed():
     assert "غير موجود" in HARD_SET.review_note("مدير الإنتاج")
 
 
-def test_injected_ferrari_is_caught_in_any_field():
+@pytest.mark.parametrize("field, value", [("vehicles", ["سيارة فيراري حمراء"]), ("props", ["مفتاح فيراري"]),
+                                          ("costume_makeup", ["قبعة فيراري"]), ("extras", ["سائق فيراري"]),
+                                          ("location", "مكتب شركة الإعلانات / معرض فيراري")])
+def test_injected_ferrari_is_caught_in_any_field(field, value):
     gold = BY_NUMBER[1]
-    pred = dict(gold, vehicles=["سيارة فيراري حمراء"])
+    pred = dict(gold, **{field: value})
     broken = critical_failures(score_scene(pred, gold, HARD_SET), pred, gold, HARD_SET)
-    assert broken == ["vehicles must not contain فيراري"]
+    assert "any field must not contain فيراري" in broken
+
+
+def test_intercut_needs_one_laptop_in_each_place():
+    gold = BY_NUMBER[5]
+    one = dict(gold, props=["لابتوب", "كوب شاي"])
+    assert "props must contain 2 x لابتوب (found 1)" in critical_failures(score_scene(one, gold, HARD_SET), one, gold,
+                                                                          HARD_SET)
+    two = dict(gold, props=["لابتوب راكان", "لابتوب منى", "كوب شاي"])
+    assert critical_failures(score_scene(two, gold, HARD_SET), two, gold, HARD_SET) == []
 
 
 def test_injected_night_breaks_a_critical_field():
@@ -70,22 +82,25 @@ def test_dialect_prop_must_be_found():
     assert "props must contain محماس" in critical_failures(score_scene(pred, gold, HARD_SET), pred, gold, HARD_SET)
 
 
-def test_recorded_hard_run_fails_the_gate_only_on_the_mentioned_camera(tmp_path, monkeypatch, capsys):
-    # The real Haiku run: injection ignored, both Salmans right, dialect props right,
-    # but it listed the camera that is only asked for in dialogue in scene 6. The gate must say so.
+def test_recorded_hard_run_fails_the_gate_on_the_camera_and_the_laptop(tmp_path, monkeypatch, capsys):
+    # The real Haiku run: injection ignored, both Salmans right, dialect props right. But it listed the
+    # camera that is only asked for in dialogue (scene 6), and only one laptop in the intercut (scene 5).
     monkeypatch.setattr("breakdown.eval.HARD_DIR", _hard_dir_copy(tmp_path))
     assert main(["--set", "hard", "--from-run", str(HARD_RUN), "--gate"]) == 1
     out = capsys.readouterr().out
     assert "hard check: scene 6: props must not contain كاميرا" in out
-    assert out.count("hard check:") == 1
+    assert "hard check: scene 5: props must contain 2 x لابتوب (found 1)" in out
+    assert out.count("hard check:") == 2
 
 
-def test_hard_gate_passes_once_the_camera_is_gone(tmp_path, monkeypatch):
+def test_hard_gate_passes_once_both_mistakes_are_fixed(tmp_path, monkeypatch):
     monkeypatch.setattr("breakdown.eval.HARD_DIR", _hard_dir_copy(tmp_path))
     rows = load_jsonl(HARD_RUN)
     for r in rows:
         if r["scene_number"] == 6:
             r["props"] = [p for p in r["props"] if p != "كاميرا"]
+        if r["scene_number"] == 5:
+            r["props"] = ["لابتوب راكان", "لابتوب منى", "كوب شاي"]
     run = tmp_path / "fixed.jsonl"
     run.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows), encoding="utf-8")
     (tmp_path / "fixed.meta.json").write_text(json.dumps({"set": "hard", "failed_scenes": 0}), encoding="utf-8")

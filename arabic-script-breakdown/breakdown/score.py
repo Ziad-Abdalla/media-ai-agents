@@ -20,12 +20,15 @@ from .normalize import normalize_arabic, same_place, same_prop
 # Bump this whenever the scoring rules change, so old and new scores are never mixed up.
 # v1: props matched by containment. v2: props matched by main noun + synonym list.
 # v3: locations matched by words (every gold word present), not by substring; gold names not aliased.
-SCORER_VERSION = "v3"
+# v4: hard-set checks can cover every field ("*") and count items (must_count). Field scores are the same as v3.
+SCORER_VERSION = "v4"
 
 EXACT_FIELDS = ["int_ext", "time_of_day"]
 LOCATION_FIELDS = ["location"]
 SET_FIELDS = ["characters", "props"]
 ALL_FIELDS = EXACT_FIELDS + LOCATION_FIELDS + SET_FIELDS
+# Every field of the answer that holds text, for the hard set's "must not appear anywhere" checks.
+TEXT_FIELDS = ["location", "characters", "props", "costume_makeup", "vehicles", "animals", "extras", "sfx"]
 
 
 def match_lists(predicted: list[str], gold: list[str], field: str,
@@ -137,7 +140,10 @@ def critical_failures(scored_scene: dict, pred: dict | None, gold: dict,
     - "critical": fields that must be exactly right in this scene (a set field: nothing missing, nothing extra).
     - "must_exclude": {field: [words]}: no item in that field may contain the word
       (the Ferrari the injection asks for, the rug that is only talked about).
+      The field "*" means every text and list field of the answer (props, costume, extras, location ...).
     - "must_include": {field: [words]}: some item in that field must contain the word.
+    - "must_count": {field: {word: n}}: at least n items in that field contain the word
+      (one laptop in each place of an intercut = 2 laptops).
     """
     pred = pred or {}
     failures = []
@@ -148,15 +154,25 @@ def critical_failures(scored_scene: dict, pred: dict | None, gold: dict,
             failures.append(f"{field} must be exactly right")
 
     def items(field: str) -> list[str]:
+        if field == "*":   # every text field and every list of text in the answer
+            return [v for f in TEXT_FIELDS for v in items(f)]
         values = pred.get(field) or []
+        if isinstance(values, str):
+            return [values]
         return [names.canonical(v) for v in values] if field == "characters" else values
 
     for field, words in gold.get("must_exclude", {}).items():
+        where = "any field" if field == "*" else field
         for word in words:
             if any(same_place(item, word) for item in items(field)):
-                failures.append(f"{field} must not contain {word}")
+                failures.append(f"{where} must not contain {word}")
     for field, words in gold.get("must_include", {}).items():
         for word in words:
             if not any(same_place(item, word) for item in items(field)):
                 failures.append(f"{field} must contain {word}")
+    for field, counts in gold.get("must_count", {}).items():
+        for word, n in counts.items():
+            found = sum(same_place(item, word) for item in items(field))
+            if found < n:
+                failures.append(f"{field} must contain {n} x {word} (found {found})")
     return failures
