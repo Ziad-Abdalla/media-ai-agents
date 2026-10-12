@@ -1,7 +1,7 @@
 import unicodedata
 
 from gulf_srt.segment import Cue
-from gulf_srt.srt import RLM, format_timestamp, parse_srt, rtl_line, srt_to_text, to_srt
+from gulf_srt.srt import RLM, format_timestamp, parse_srt, read_srt, rtl_line, srt_to_text, to_srt
 
 
 def first_strong_direction(line: str) -> str:
@@ -81,3 +81,21 @@ def test_webvtt_without_hours_and_with_cue_settings():
 def test_a_timing_line_that_cannot_be_read_is_reported(capsys):
     assert parse_srt("1\n00:00:01 --> 00:00:02\nهلا\n") == []
     assert "couldn't be read" in capsys.readouterr().err
+
+
+def test_tags_and_all_direction_marks_are_not_counted_as_text():
+    srt = ("1\n00:00:01,000 --> 00:00:02,000\n" r"{\an8}" "<i>\u202bيا عبود\u202c</i>\n\n"
+           "2\n00:00:03,000 --> 00:00:04,000\n\u200e<font color=\"#ffff00\">تعال</font>\u061c\n")
+    assert [c.lines for c in parse_srt(srt)] == [["يا عبود"], ["تعال"]]
+
+
+def test_webvtt_entities_are_read_back_as_characters():
+    vtt = "WEBVTT\n\n00:01.000 --> 00:02.000\nسالم &amp; سعد &lt;3\n"
+    assert parse_srt(vtt)[0].lines == ["سالم & سعد <3"]
+
+
+def test_a_windows_1256_file_is_read_with_a_warning(tmp_path, capsys):
+    file = tmp_path / "vendor.srt"
+    file.write_bytes("1\r\n00:00:01,000 --> 00:00:02,500\r\nيا عبود، تعال\r\n".encode("cp1256"))
+    assert read_srt(file)[0].lines == ["يا عبود، تعال"]
+    assert "cp1256" in capsys.readouterr().err

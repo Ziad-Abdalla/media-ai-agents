@@ -1,5 +1,6 @@
-"""Write cues as an .srt file, with right-to-left marks for Arabic lines."""
+"""Write cues as an .srt file, with right-to-left marks for Arabic lines, and read any SRT/WebVTT back."""
 
+import html
 import re
 import sys
 from pathlib import Path
@@ -79,16 +80,33 @@ def _seconds(hours: str | None, minutes: str, secs: str, ms: str) -> float:
     return int(hours or 0) * 3600 + int(minutes) * 60 + int(secs) + int(ms) / 1000
 
 
+# Invisible direction marks (LRM, RLM, the Arabic letter mark, and the embedding, override and
+# isolate controls). They don't show on screen, so they must not count as characters.
+_BIDI = re.compile("[\u200e\u200f\u061c\u202a-\u202e\u2066-\u2069]")
+# Formatting that players draw but don't show as text: <i>, </b>, <font color=...>, WebVTT's
+# <c.yellow> and <v Speaker>, and positioning like {\an8}.
+_TAGS = re.compile(r"</?[a-zA-Z][^<>]*>|\{\\[^{}]*\}")
+
+
+def clean_line(line: str, webvtt: bool = False) -> str:
+    """The text a viewer reads: no tags, no direction marks, and WebVTT's &amp; back to &."""
+    line = _TAGS.sub("", _BIDI.sub("", line))
+    return (html.unescape(line) if webvtt else line).strip()
+
+
 def parse_srt(srt: str) -> list[Cue]:
     """Read an SRT or WebVTT file (ours or anyone's, for example a delivered subtitle file) back into cues.
 
     Blocks are separated by empty lines; in each block we look for the timing line and keep
-    the lines after it as text, without the RLM marks. Blocks with no timing line (like the
-    WEBVTT header) are skipped. A block that has "-->" but a timing we can't read is skipped
-    with a warning, so a line is never lost silently."""
+    the lines after it as text, cleaned by clean_line(), so tags and direction marks don't count
+    towards line length or reading speed. Blocks with no timing line (like the WEBVTT header)
+    are skipped. A block that has "-->" but a timing we can't read is skipped with a warning,
+    so a line is never lost silently."""
+    srt = srt.replace("\r\n", "\n").lstrip("\ufeff")
+    webvtt = srt.startswith("WEBVTT")
     cues = []
-    for block in re.split(r"\n\s*\n", srt.replace("\r\n", "\n").lstrip("\ufeff")):
-        lines = [line.replace(RLM, "").strip() for line in block.strip().split("\n")]
+    for block in re.split(r"\n\s*\n", srt):
+        lines = [clean_line(line, webvtt) for line in block.strip().split("\n")]
         for i, line in enumerate(lines):
             match = _TIMING.search(line)
             if match:
@@ -105,4 +123,13 @@ def parse_srt(srt: str) -> list[Cue]:
 
 
 def read_srt(path: str | Path) -> list[Cue]:
-    return parse_srt(Path(path).read_text(encoding="utf-8-sig"))
+    """UTF-8 first. Older Arabic subtitle files are often Windows-1256 (cp1256), so if the file
+    isn't valid UTF-8 it is read as cp1256, with a warning to check the Arabic looks right."""
+    data = Path(path).read_bytes()
+    try:
+        text = data.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        text = data.decode("cp1256", errors="replace")
+        print(f"{path} is not UTF-8; read it as Windows-1256 (cp1256). Check the Arabic looks right.",
+              file=sys.stderr)
+    return parse_srt(text)
