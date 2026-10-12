@@ -1,4 +1,4 @@
-"""Build eval/REVIEW_FOR_ZIAD.md: one table a native speaker can check the gold labels with.
+"""Build eval/GOLD_REVIEW.md: one table a native speaker can check the gold labels with.
 
 It also lists where the saved model runs disagreed with the gold, because those
 are the labels most worth a second look (either the model is wrong, or the label is).
@@ -17,7 +17,7 @@ from breakdown.eval import GOLD, RUNS, SCRIPT, load_jsonl  # noqa: E402
 from breakdown.score import scene_errors, score_scene  # noqa: E402
 from breakdown.split import split_script  # noqa: E402
 
-OUT = ROOT / "eval" / "REVIEW_FOR_ZIAD.md"
+OUT = ROOT / "eval" / "GOLD_REVIEW.md"
 
 
 def excerpt(text: str, limit: int = 170) -> str:
@@ -52,8 +52,8 @@ def main() -> None:
     out = [
         "# Gold labels: native-speaker review",
         "",
-        "These are the answers the eval treats as correct. I drafted them; they need your check as the",
-        "native speaker before the README can say they were reviewed. It should take about 20 minutes.",
+        "Review sheet for the gold labels: one row per scene, with the places where the saved model runs",
+        "disagreed with the gold. These are the answers the eval treats as correct. About 20 minutes.",
         "",
         "**How to review:** open `data/kamera_jaddi.txt` next to this file. For each row, read the scene and",
         "check the label columns. If something is wrong, write the fix in the last column (or edit",
@@ -70,7 +70,7 @@ def main() -> None:
         "**Characters** · **Props** · **Why this scene is in the set** · **Models disagreed** (from saved runs).",
         "",
         "| # | Scene start | I/E · Time | Location | Characters | Props | Why this scene is in the set "
-        "| Models disagreed | Your fix |",
+        "| Models disagreed | Fix |",
         "|---|---|---|---|---|---|---|---|---|",
     ]
     for g in golds:

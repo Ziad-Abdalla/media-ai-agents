@@ -1,7 +1,7 @@
 # Gold labels: native-speaker review
 
-These are the answers the eval treats as correct. I drafted them; they need your check as the
-native speaker before the README can say they were reviewed. It should take about 20 minutes.
+Review sheet for the gold labels: one row per scene, with the places where the saved model runs
+disagreed with the gold. These are the answers the eval treats as correct. About 20 minutes.
 
 **How to review:** open `data/kamera_jaddi.txt` next to this file. For each row, read the scene and
 check the label columns. If something is wrong, write the fix in the last column (or edit
@@ -17,7 +17,7 @@ check the label columns. If something is wrong, write the fix in the last column
 Columns: **#** scene · **Scene start** first action lines · **I/E · Time** · **Location** ·
 **Characters** · **Props** · **Why this scene is in the set** · **Models disagreed** (from saved runs).
 
-| # | Scene start | I/E · Time | Location | Characters | Props | Why this scene is in the set | Models disagreed | Your fix |
+| # | Scene start | I/E · Time | Location | Characters | Props | Why this scene is in the set | Models disagreed | Fix |
 |---|---|---|---|---|---|---|---|---|
 | 1 | صباح مزدحم في الرياض. طلاب بالثياب البيضاء يتدفقون نحو البوابة. جمس أبو فهد الأبيض يقف عند الرصيف. عم بندر، حارس المدرسة، يفتح البوابة الحديدية ويحيّي الطلاب بيده. ينزل ف… | داخلي/خارجي · نهار | سيارة أبو فهد / بوابة ثانوية الأفق | فهد، أبو فهد، عم بندر | شنطة مدرسية | Mixed INT/EXT (inside the car + school gate). Bandar is present but never speaks. | props extra: البوابة الحديدية | |
 | 2 | الأستاذ عادل يكتب معادلات على السبورة. الفصل مليان طلاب. فهد في الصف الأخير يرسم مربعات صغيرة في دفتره، في كل مربع لقطة من فيلم. جنبه ريان يقاوم النوم. ماجد في الصف اللي … | داخلي · نهار | فصل ٣ ثانوي | الأستاذ عادل، فهد، ريان، ماجد | دفتر | Heading written as م/2. Fahd called by nickname فهود. Rayan present but silent. | props extra: طباشير | |

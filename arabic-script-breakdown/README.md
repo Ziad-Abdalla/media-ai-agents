@@ -81,7 +81,7 @@ location (غرفة فهد: scenes 9, 12, 19, 20, shoot them together).
 ### How the set was built
 
 One synthetic 26-scene episode (`data/kamera_jaddi.txt`), written on purpose to contain the cases that
-break a naive breakdown, and one gold record per scene in `eval/gold.jsonl`. `eval/REVIEW_FOR_ZIAD.md` is
+break a naive breakdown, and one gold record per scene in `eval/gold.jsonl`. `eval/GOLD_REVIEW.md` is
 the review sheet for the native-speaker check (status: drafted, pending review). Hard cases covered:
 
 | Hard case | Scenes |
@@ -180,7 +180,7 @@ schema repeated 26 times). Prompt caching or sending a few scenes per call are t
 
 - One synthetic script in one writing style, 26 scenes. This is a test harness for the pipeline and for
   comparing configurations, **not a general accuracy claim** about Arabic screenplays.
-- Gold labels are drafted and still need the native-speaker review in `eval/REVIEW_FOR_ZIAD.md`.
+- Gold labels are drafted and still need the native-speaker review in `eval/GOLD_REVIEW.md`.
 - Costume, effects, extras, vehicles and animals are extracted but not scored yet; props and characters
   were the priority because they are what schedules and budgets break on.
 - Length in eighths of a page is counted from line numbers, so it is a rough estimate.
