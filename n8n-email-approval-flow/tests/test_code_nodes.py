@@ -122,6 +122,9 @@ class ApprovalEmail(unittest.TestCase):
         self.assertIn("طلب حجز", mail["subject"])
         # ISO dates stay left-to-right inside Arabic text, or "2026-10-21" shows as "21-10-2026".
         self.assertIn('<span dir="ltr">2026-10-20</span>', mail["html"])
+        # The original email's subject gets an Arabic label, not "Subject:" (which flips in RTL).
+        self.assertIn("<strong>الموضوع:</strong> <bdi>حجز كاميرات</bdi>", mail["html"])
+        self.assertNotIn("Subject:", mail["html"])
 
     def test_english_request_gets_a_left_to_right_email(self):
         mail, _ = approval_email({})
@@ -165,8 +168,8 @@ class ConfirmationAndWeekly(unittest.TestCase):
 
     def test_weekly_summary_is_arabic_and_shows_the_kpis(self):
         kpis = {"emails_handled": "10", "booking_requests": "8", "auto_routed": "6", "needs_info": "2",
-                "approved": "4", "rejected": "1", "expired_or_invalid": "0", "waiting_for_manager": "1",
-                "clashes_flagged": "1", "auto_routed_pct": "75.0", "approval_rate_pct": "80.0",
+                "approved": "4", "rejected": "1", "expired": "0", "invalid_clicks": "1",
+                "waiting_for_manager": "1", "clashes_flagged": "1", "cancelled": "1", "auto_routed_pct": "75.0", "approval_rate_pct": "80.0",
                 "avg_minutes_to_decision": "42.5", "median_minutes_to_decision": "30.0", "ai_calls": "9",
                 "ai_cost_usd": "0.002100", "ai_cost_per_booking_usd": "0.000525", "est_minutes_saved": "48",
                 "minutes_per_request": 6, "errors": "0",
@@ -177,6 +180,11 @@ class ConfirmationAndWeekly(unittest.TestCase):
         for shown in ("75.0%", "80.0%", "42.5 دقيقة", "$0.0021"):
             self.assertIn(shown, out["html"])
         self.assertIn("&lt;b&gt;Al Bait", out["html"])
+        # Plural after numbers: "عدد الطلبات 8", never "8 طلب".
+        self.assertEqual(out["subject"], "ملخص الحجوزات الأسبوعي: عدد الطلبات 8، الحجوزات المعتمدة 4")
+        self.assertIn("الروابط غير الصالحة لا تُحسب (1)", out["html"])
+        self.assertIn("حجوزات أُلغيت", out["html"])
+        self.assertIn("عدد الرسائل التي وصلت لصندوق الحجوزات: 10", out["html"])
         self.assertNotIn("upcoming", out["kpis"])
 
 

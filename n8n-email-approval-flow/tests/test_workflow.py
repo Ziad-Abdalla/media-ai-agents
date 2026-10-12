@@ -87,6 +87,16 @@ class WorkflowRules(unittest.TestCase):
         init_sql = (ROOT / "db/init.sql").read_text(encoding="utf8")
         self.assertIn("('odoo_sync', 'off')", init_sql)
 
+    def test_odoo_create_is_not_retried(self):
+        # Creating an activity is not safe to repeat: a retry after a timeout could make a second one.
+        self.assertFalse(NODES["Add booking to Odoo"].get("retryOnFail", False))
+
+    def test_odoo_switch_on_without_a_target_is_marked(self):
+        self.assertIn("'skipped_no_target'", NODES["Save booking"]["parameters"]["query"])
+
+    def test_cancelled_bookings_do_not_count_in_the_clash_check(self):
+        self.assertIn("b.cancelled_at IS NULL", NODES["Check for clashes"]["parameters"]["query"])
+
     def test_odoo_failure_does_not_stop_the_confirmation(self):
         self.assertEqual(NODES["Add booking to Odoo"].get("onError"), "continueErrorOutput")
         outputs = MAIN["connections"]["Add booking to Odoo"]["main"]
@@ -106,6 +116,8 @@ class WorkflowRules(unittest.TestCase):
     def test_claude_call_settings(self):
         body = NODES["Ask Claude to extract"]["parameters"]["jsonBody"]
         self.assertIn('"model": "claude-haiku-5-5"', body)
+        # Thinking tokens count toward max_tokens on Haiku 5.5, so leave room above the ~210 the answer needs.
+        self.assertIn('"max_tokens": 4000', body)
         self.assertIn('"type": "json_schema"', body)
         for unsupported in ("temperature", "top_p", "budget_tokens"):
             self.assertNotIn(unsupported, body)
