@@ -1,5 +1,5 @@
 {
-  "_note": "SYNTHETIC sample emails written for this demo. Names, people, vendors, productions, prices and approval numbers are made up. Not Sadaf data. 'expected' is the hand-written right answer used by python -m odoo_agent eval; 'production' there is the code it should resolve to (null = the agent should not be sure).",
+  "_note": "SYNTHETIC sample emails written for this demo. Names, people, vendors, productions, prices and approval numbers are made up. Not Sadaf data. 'expected' is the hand-written right answer used by python -m odoo_agent eval; 'production' there is the code it should resolve to ('unsure' = the email names it too vaguely, so the agent must not be sure and a person picks; null = the email does not name one, so the sender is asked).",
   "eval_received_at": "2026-10-12T09:00:00+03:00",
   "samples": [
     {
@@ -216,7 +216,7 @@
       "outcome": "needs_human: the production name is too short to be sure, a person picks it",
       "expected": {
         "vendor_name": "Desert Lights Rental",
-        "production": null,
+        "production": "unsure",
         "approval_reference": "APR-2026-0452",
         "needed_by": "2026-10-24",
         "currency": "SAR",

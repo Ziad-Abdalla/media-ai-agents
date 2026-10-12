@@ -24,6 +24,7 @@ NORMAL_REQUEST = {
     "department": "Production",
     "approval_reference": "APR-2026-0412",
     "confidence_notes": None,
+    "suspicious_instructions": False,
 }
 
 

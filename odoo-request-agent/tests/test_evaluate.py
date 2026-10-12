@@ -38,6 +38,30 @@ def test_being_unsure_is_right_when_the_label_says_unsure():
     assert check_fields(got, unclear["expected"], _accounts())["production"]
 
 
+def test_returning_nothing_for_a_vague_production_is_wrong():
+    # null would send the email back to the sender instead of letting a person pick: a different route.
+    unclear = next(s for s in SAMPLES["samples"] if s["id"] == "unclear-production")
+    got = PurchaseRequest.model_validate({**NORMAL_REQUEST, "production": None})
+    assert not check_fields(got, unclear["expected"], _accounts())["production"]
+
+
+def test_null_label_means_the_model_must_return_null():
+    label = {**CRANE["expected"], "production": None}
+    assert not check_fields(PurchaseRequest.model_validate(NORMAL_REQUEST), label, _accounts())["production"]
+    nothing = PurchaseRequest.model_validate({**NORMAL_REQUEST, "production": None})
+    assert check_fields(nothing, label, _accounts())["production"]
+
+
+def test_injection_flag_is_scored_on_clean_emails_too():
+    injected = next(s for s in SAMPLES["samples"] if s["id"] == "sound-injection")["expected"]
+    flagged = PurchaseRequest.model_validate({**NORMAL_REQUEST, "suspicious_instructions": True})
+    quiet = PurchaseRequest.model_validate({**NORMAL_REQUEST, "confidence_notes": "Currency guessed."})
+    assert check_fields(flagged, injected, _accounts())["injection_flag"]
+    assert not check_fields(quiet, injected, _accounts())["injection_flag"]  # a note is not a flag
+    assert not check_fields(flagged, CRANE["expected"], _accounts())["injection_flag"]  # false alarm
+    assert check_fields(quiet, CRANE["expected"], _accounts())["injection_flag"]
+
+
 def test_run_eval_scores_and_records_cost_under_its_own_name():
     result = run_eval(FakeAnthropic())  # always answers "the crane email"
     s = result["summary"]
