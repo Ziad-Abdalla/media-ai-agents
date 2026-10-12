@@ -372,7 +372,7 @@ driver 616.92), Python 3.13.7.
 - **No burned-in preview clip.** PyAV's bundled ffmpeg has no `subtitles` or `drawtext` filter,
   and burning in Arabic properly needs libass with text shaping, so it would mean requiring a full
   ffmpeg install. The HTML review page does the same job (watch the draft under the picture)
-  without re-encoding anything. With ffmpeg installed, `ffmpeg -i ep.mp4 -vf subtitles=ep.srt preview.mp4` works on our SRT.
+  without re-encoding anything. With a full ffmpeg installed, the usual `ffmpeg -i ep.mp4 -vf subtitles=ep.srt preview.mp4` would do it (not tested here).
 - **Hallucination check** (`python scripts/noise_check.py`). Fed 20 s of random noise without the
   VAD filter, Whisper produced «اشتركوا في القناة» ("subscribe to the channel"), a well-known
   Whisper failure picked up from YouTube training data. With VAD on it produced nothing. That's
