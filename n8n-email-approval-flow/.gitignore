@@ -1,0 +1,6 @@
+.env
+*.local.json
+credentials/credentials.json
+n8n_data/
+pg_data/
+__pycache__/
