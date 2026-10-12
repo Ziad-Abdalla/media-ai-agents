@@ -41,3 +41,15 @@ def test_no_match_across_the_end_of_a_sentence():
 
 def test_a_name_that_is_already_right_is_not_counted():
     assert apply_replacements(words("يا عبود"), [(["عبود"], "عبود")])[1] == 0
+
+
+def test_short_rules_never_change_other_words_that_start_with_an_attached_letter():
+    rules = [(["ريم"], "ريما"), (["مال"], "أموال"), (["حمد"], "أحمد")]
+    text = "كريم وكمال قالوا بحمد الله الحمد لله"
+    assert texts(apply_replacements(words(text), rules)) == text
+    assert texts(apply_replacements(words("يا ريم، مال"), rules)) == "يا ريما، أموال"
+
+
+def test_an_attached_form_of_a_short_word_needs_its_own_rule():
+    rules = [(["ريم"], "ريما"), (["لريم"], "لريما")]
+    assert texts(apply_replacements(words("قل لريم"), rules)) == "قل لريما"
