@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Purchase request agent: KPIs</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 1100px; margin: 2rem auto; color: #222; }
+  a { color: #1d5fa8; }
+  .hero { margin: 1rem 0 1.4rem; }
+  .hero .value { font-size: 52px; font-weight: 600; line-height: 1; }
+  .hero .label, .tile .label { color: #555; font-size: .9rem; }
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: .8rem; margin-bottom: 1.4rem; }
+  .tile { border: 1px solid #ddd; border-radius: 8px; padding: .7rem .9rem; }
+  .tile .value { font-size: 1.7rem; font-weight: 600; margin: .2rem 0; }
+  .tile .note { color: #666; font-size: .8rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 1.2rem; }
+  th, td { text-align: left; padding: .35rem .5rem; border-bottom: 1px solid #e4e4e4; font-size: .92rem; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .meter { position: relative; height: 10px; background: #dbe7f5; border-radius: 4px; width: 220px; overflow: hidden; }
+  .meter span { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; }
+  .ok span { background: #1d5fa8; } .near span { background: #fab219; } .over span { background: #d03b3b; }
+  .badge { font-size: .85rem; white-space: nowrap; }
+  .fine { color: #666; font-size: .82rem; }
+  h2 { font-size: 1.1rem; margin-top: 1.6rem; }
+</style>
+</head>
+<body>
+<p><a href="/">&larr; Approvals</a></p>
+<h1>Purchase request agent: KPIs <span class="fine">· مؤشرات الأداء</span></h1>
+<p class="fine">Demo data: synthetic emails and fictional productions, not Sadaf data.</p>
+
+<div class="hero">
+  <div class="label">Estimated staff time saved · الوقت الموفّر (تقدير)</div>
+  <div class="value">{{ k.minutes_saved_estimate }} min</div>
+  <div class="fine">Assumption: {{ k.assumption }}.</div>
+</div>
+
+{% macro pct(v) %}{% if v is none %}n/a{% else %}{{ v }}%{% endif %}{% endmacro %}
+<div class="tiles">
+  <div class="tile"><div class="label">Auto-resolved share</div>
+    <div class="value">{{ pct(k.auto_resolved_pct) }}</div>
+    <div class="note">{{ k.auto_resolved }} matched alone, {{ k.needed_human }} needed a person</div></div>
+  <div class="tile"><div class="label">Approval rate</div>
+    <div class="value">{{ pct(k.approval_rate_pct) }}</div>
+    <div class="note">{{ k.approved }} approved, {{ k.rejected }} rejected</div></div>
+  <div class="tile"><div class="label">Success rate</div>
+    <div class="value">{{ pct(k.success_rate_pct) }}</div>
+    <div class="note">{{ k.succeeded }} ended right, {{ k.failed_or_undone }} failed or rolled back</div></div>
+  <div class="tile"><div class="label">Median time, email to draft PO</div>
+    <div class="value">{% if k.median_minutes_email_to_po is none %}n/a{% else %}{{ k.median_minutes_email_to_po }} min{% endif %}</div>
+    <div class="note">agent part (email to plan ready): {% if k.median_minutes_email_to_plan is none %}n/a{% else %}{{ k.median_minutes_email_to_plan }} min{% endif %}</div></div>
+  <div class="tile"><div class="label">AI cost per request</div>
+    <div class="value">{% if k.cost_per_request_usd is none %}n/a{% else %}${{ "%.5f"|format(k.cost_per_request_usd) }}{% endif %}</div>
+    <div class="note">${{ "%.5f"|format(k.model_cost_usd) }} total, {{ k.requests_read_by_model }} requests</div></div>
+  <div class="tile"><div class="label">Extraction accuracy (eval)</div>
+    <div class="value">{% if k.extraction_eval %}{{ k.extraction_eval.field_accuracy_pct }}%{% else %}n/a{% endif %}</div>
+    <div class="note">{% if k.extraction_eval %}{{ k.extraction_eval.emails_all_correct }} of {{ k.extraction_eval.emails }} labelled emails fully right{% else %}run: python -m odoo_agent eval{% endif %}</div></div>
+  <div class="tile"><div class="label">Asked sender for missing info</div>
+    <div class="value">{{ k.needed_info }}</div>
+    <div class="note">reply drafted in the sender's language</div></div>
+  <div class="tile"><div class="label">Outside senders blocked</div>
+    <div class="value">{{ k.blocked_senders }}</div>
+    <div class="note">never reached the AI, cost $0</div></div>
+</div>
+
+<h2>Production budgets · ميزانيات الإنتاج</h2>
+{% if k.budgets_error %}<p class="fine">{{ k.budgets_error }}</p>{% endif %}
+{% if k.budgets %}
+<table>
+  <tr><th>Production</th><th class="num">Committed (SAR)</th><th class="num">Budget (SAR)</th><th>Used</th><th></th><th class="num">POs</th></tr>
+  {% for b in k.budgets %}
+  {% set state = "over" if b.used_pct > 100 else "near" if b.used_pct >= 90 else "ok" %}
+  <tr>
+    <td>{{ b.production }}</td>
+    <td class="num">{{ "{:,.0f}".format(b.committed) }}</td>
+    <td class="num">{{ "{:,.0f}".format(b.budget) }}</td>
+    <td><div class="meter {{ state }}" title="{{ b.used_pct }}% used"><span style="width: {{ [b.used_pct, 100]|min }}%"></span></div></td>
+    <td class="badge">{{ b.used_pct }}% {% if state == "over" %}&#9940; over budget{% elif state == "near" %}&#9888; close to budget{% else %}&#10003; within budget{% endif %}</td>
+    <td class="num">{{ b.po_count }}</td>
+  </tr>
+  {% endfor %}
+</table>
+<p class="fine">Committed = every PO line charged to the production that isn't cancelled, drafts included. Before VAT.</p>
+{% endif %}
+
+{% if k.draft_po_sar_by_production %}
+<h2>Draft POs created by the agent, by production</h2>
+<table>
+  <tr><th>Production</th><th class="num">SAR, before VAT</th></tr>
+  {% for name, amount in k.draft_po_sar_by_production.items() %}
+  <tr><td>{{ name }}</td><td class="num">{{ "{:,.2f}".format(amount) }}</td></tr>
+  {% endfor %}
+</table>
+{% endif %}
+
+<h2>Runs by status</h2>
+<table>
+  <tr><th>Status</th><th class="num">Runs</th></tr>
+  {% for s, n in k.runs_by_status.items() %}<tr><td>{{ s }}</td><td class="num">{{ n }}</td></tr>{% endfor %}
+  <tr><th>Total</th><th class="num">{{ k.runs_total }}</th></tr>
+</table>
+
+<p class="fine">Definitions: auto-resolved = vendor and production matched without a person. Approval rate =
+approved / (approved + rejected). Success rate = draft POs not rolled back plus sent clarification replies, out of
+finished runs (rejections are a person's decision and are left out). Handling time runs from the email's Date
+header to the draft PO in Odoo. The same numbers: <code>python -m odoo_agent kpis</code>.</p>
+</body>
+</html>

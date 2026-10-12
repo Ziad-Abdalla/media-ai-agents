@@ -1,6 +1,6 @@
-"""Step 5: the approval page. Plain HTML forms, no JavaScript.
+"""Step 5: the approval page, plus a KPI page. Plain HTML forms, no JavaScript.
 
-Start it with:  python -m odoo_agent serve   then open http://localhost:8000
+Start it with:  python -m odoo_agent serve   then open http://localhost:8000 (and /kpis)
 Nothing is written to Odoo until someone presses Approve here.
 (A real deployment would sit behind the company login; here the approver types a name.)
 """
@@ -15,7 +15,7 @@ from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from . import budget, pipeline
+from . import budget, kpis, pipeline
 from .permissions import ForbiddenAction, WritesDisabled, execute
 
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
@@ -59,6 +59,14 @@ def create_app(store, get_odoo) -> FastAPI:
             return f"Budget check unavailable (Odoo not reachable: {e}). Approve checks it again."
         return ""
 
+    @app.get("/kpis", response_class=HTMLResponse)
+    def kpi_page(request: Request):
+        report = kpis.compute(store)
+        try:
+            report["budgets"] = budget.production_overview(get_odoo())
+        except (OSError, xmlrpc.client.Error, PermissionError) as e:
+            report["budgets_error"] = f"Odoo not reachable: {e}"
+        return templates.TemplateResponse(request, "kpis.html", {"k": report})
 
     def back(message: str) -> RedirectResponse:
         return RedirectResponse(f"/?message={quote(message)}", status_code=303)
