@@ -1,0 +1,13 @@
+[project]
+name = "arabic-script-breakdown"
+version = "0.1.0"
+description = "An agent that turns an Arabic TV screenplay into a production breakdown, with an Arabic eval set."
+requires-python = ">=3.13"
+dependencies = ["anthropic>=1.13", "pydantic>=2.14", "python-dotenv>=1.2"]
+
+[project.optional-dependencies]
+dev = ["pytest>=9"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
