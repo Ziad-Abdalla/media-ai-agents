@@ -96,3 +96,11 @@ def test_a_reply_is_sent_only_once(store, odoo, monkeypatch):
     web.post(f"/runs/{run_id}/send_reply", data={"approver": "Ziad"})
     assert sent == ["noura@sadaf.example"]
     assert store.get_run(run_id)["status"] == "reply_sent"
+
+
+def test_model_notes_are_a_plain_box_and_only_injections_are_red(store, odoo):
+    noted = {**NORMAL_REQUEST, "confidence_notes": "Year not given; assumed 2026."}
+    run_id = process_email(make_email(), client=FakeAnthropic(noted), odoo=odoo, store=store)
+    page = TestClient(create_app(store, lambda: odoo)).get(f"/?run={run_id}").text
+    assert '<p class="note">AI\'s notes: Year not given; assumed 2026.</p>' in page
+    assert 'class="warn"' not in page

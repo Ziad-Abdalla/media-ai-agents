@@ -15,6 +15,7 @@
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
   pre { background: #f6f6f6; padding: .6rem; white-space: pre-wrap; font-size: .82rem; margin: .3rem 0; }
   .warn { background: #fff0f0; border-left: 4px solid #d33; padding: .4rem .7rem; margin: .4rem 0; }
+  .note { background: #f4f6f8; border-left: 4px solid #9aa5b1; padding: .4rem .7rem; margin: .4rem 0; color: #444; }
   .msg { background: #eef6ff; padding: .6rem; border-radius: 6px; }
   form { display: inline-block; margin: .4rem .6rem .2rem 0; }
   button { padding: .35rem .9rem; cursor: pointer; }
@@ -42,6 +43,7 @@
     {% if run.approved_by %} · decided by {{ run.approved_by }}{% endif %}</div>
   {% if run.error %}<p class="warn">{{ run.error }}</p>{% endif %}
   {% for w in (run.resolution_json or {}).get("warnings", []) %}<p class="warn">{{ w }}</p>{% endfor %}
+  {% if (run.resolution_json or {}).get("notes") %}<p class="note">AI's notes: {{ run.resolution_json.notes }}</p>{% endif %}
 
   <div class="grid">
     <div>

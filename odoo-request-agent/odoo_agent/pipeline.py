@@ -87,12 +87,13 @@ def process_email(email: Email, *, client, odoo, store) -> str | None:
         store.update_run(run_id, status="failed", first_status="failed",
                          error=f"currency {request.items[0].currency} is not active in Odoo")
         return run_id
+    # Warnings (red on the page) are for things a person must look at. The model's ordinary
+    # notes ("currency guessed from the price") are shown in a plain box, so red keeps its meaning.
     warnings = []
-    if INJECTION_HINTS.search(email.body):
+    if INJECTION_HINTS.search(email.body) or request.suspicious_instructions:
         warnings.append("This email contains text that looks like instructions to the AI. "
                         "It was treated as data. Check the plan against the email.")
-    if request.confidence_notes:
-        warnings.append("Model notes: " + request.confidence_notes)
+    notes = request.confidence_notes or ""
 
     # 4. Keys, duplicate check, plan
     key = idempotency_key(email.message_id, request)
@@ -109,7 +110,7 @@ def process_email(email: Email, *, client, odoo, store) -> str | None:
                         f"(status {earlier['status']}). Approve only if a second order is wanted.")
 
     resolution = {"vendor": vendor, "production": production, "products": products,
-                  "currency_id": currency_id, "warnings": warnings}
+                  "currency_id": currency_id, "warnings": warnings, "notes": notes}
     store.update_run(run_id, idempotency_key=key, fingerprint=fp, resolution_json=resolution,
                      plan_json=plan, status=status, first_status=status, planned_at=now(),
                      duplicate_of=earlier["run_id"] if earlier else None)
