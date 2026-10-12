@@ -1,0 +1,191 @@
+{
+  "id": "BookingWeekly001",
+  "name": "Weekly bookings summary",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "weeksInterval": 1,
+              "triggerAtDay": [
+                0
+              ],
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "id": "17f71b9e-bfcb-4fbf-966f-d8fc1dd5602e",
+      "name": "Every Sunday 08:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "337ddf85-74fd-45c4-a98f-d557f149eb4d",
+      "name": "Run now (testing)",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- The KPI row (see the kpi_last_7_days view in db/init.sql), the time-saved assumption,\n-- and the approved bookings for the next 14 days.\nSELECT k.*,\n  (SELECT value::int FROM app_settings WHERE key = 'minutes_saved_per_request') AS minutes_per_request,\n  (SELECT coalesce(json_agg(json_build_object(\n      'resource', r.name_ar, 'item', b.item, 'production', b.production,\n      'start_date', b.start_date, 'end_date', b.end_date, 'quantity', b.quantity)\n      ORDER BY b.start_date), '[]'::json)\n   FROM bookings b LEFT JOIN resources r ON r.code = b.resource_code\n   WHERE b.end_date >= current_date AND b.start_date < current_date + $1::int) AS upcoming\nFROM kpi_last_7_days k;",
+        "options": {
+          "queryReplacement": "={{ [ 14 ] }}"
+        }
+      },
+      "id": "4e7567f8-68e0-4630-a92d-a4242d455483",
+      "name": "Collect last week's numbers",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        240,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "pgBookings000001",
+          "name": "Bookings Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Turns the KPI row into a short Arabic email for the production manager (right-to-left).\n// The numbers come from the kpi_last_7_days view; nothing here is written by the AI.\nconst k = $input.first().json;\nconst upcoming = k.upcoming || [];\nconst esc = s => String(s ?? '').replace(/[&<>\"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', \"'\": '&#39;' }[c]));\nconst num = v => (v === null || v === undefined ? '-' : String(v));\nconst minutes = v => {\n  if (v === null || v === undefined) return '-';\n  const m = Number(v);\n  return m < 60 ? `${m.toFixed(1)} دقيقة` : `${(m / 60).toFixed(1)} ساعة`;\n};\n\n// One line per KPI: label, value, and a short explanation in plain Arabic.\nconst tiles = [\n  ['طلبات الحجز', num(k.booking_requests), `من أصل ${num(k.emails_handled)} رسالة وصلت لصندوق الحجوزات`],\n  ['نسبة الطلبات الكاملة', k.auto_routed_pct === null ? '-' : `${k.auto_routed_pct}%`, 'وصلت للمدير مباشرة دون الحاجة لأسئلة إضافية'],\n  ['تحتاج معلومات', num(k.needs_info), 'تم تجهيز رد للموظف ليرسله'],\n  ['نسبة الموافقة', k.approval_rate_pct === null ? '-' : `${k.approval_rate_pct}%`, `${num(k.approved)} موافقة، ${num(k.rejected)} رفض، ${num(k.expired_or_invalid)} منتهية`],\n  ['متوسط وقت القرار', minutes(k.avg_minutes_to_decision), `الوسيط ${minutes(k.median_minutes_to_decision)}، من وصول الرسالة حتى ضغط المدير`],\n  ['تعارضات تم التنبيه لها', num(k.clashes_flagged), 'نفس الاستوديو أو المعدة في تواريخ متداخلة'],\n  ['بانتظار قرارك', num(k.waiting_for_manager), 'طلبات أُرسلت ولم يتم الضغط عليها بعد'],\n  ['تكلفة الذكاء الاصطناعي', `$${Number(k.ai_cost_usd || 0).toFixed(4)}`, `${num(k.ai_calls)} استدعاء، حوالي $${Number(k.ai_cost_per_booking_usd || 0).toFixed(4)} لكل حجز`],\n  ['الوقت الموفَّر (تقدير)', minutes(k.est_minutes_saved), `على افتراض ${num(k.minutes_per_request)} دقائق يدوية لكل طلب`],\n  ['أخطاء النظام', num(k.errors), 'مسجلة في جدول الأخطاء للمراجعة'],\n];\n\nconst upcomingRows = upcoming.length\n  ? upcoming.map(u => `<tr><td style=\"padding:6px;border-bottom:1px solid #eee\"><bdi>${esc(u.resource || u.item)}</bdi></td><td style=\"padding:6px;border-bottom:1px solid #eee\"><bdi>${esc(u.production)}</bdi></td><td style=\"padding:6px;border-bottom:1px solid #eee\">${esc(u.start_date)} إلى ${esc(u.end_date)}</td><td style=\"padding:6px;border-bottom:1px solid #eee\">${esc(u.quantity)}</td></tr>`).join('\\n')\n  : '<tr><td colspan=\"4\" style=\"padding:6px\">لا توجد حجوزات معتمدة في الأسبوعين القادمين.</td></tr>';\n\nconst subject = `ملخص الحجوزات الأسبوعي: ${num(k.booking_requests)} طلب، ${num(k.approved)} حجز`;\nconst html = `<!doctype html>\n<html lang=\"ar\" dir=\"rtl\"><body style=\"margin:0;background:#f4f1ea\">\n<div dir=\"rtl\" style=\"max-width:680px;margin:0 auto;padding:24px;font-family:Tahoma,Arial,sans-serif;text-align:right;color:#222\">\n  <h2 style=\"margin:0 0 4px;color:#5a3e1b\">ملخص الحجوزات - آخر 7 أيام</h2>\n  <p style=\"margin:0 0 16px;color:#666\">من نظام حجوزات الاستوديوهات والمعدات. الأرقام محسوبة من قاعدة البيانات مباشرة.</p>\n  <table style=\"width:100%;border-collapse:collapse;background:#fff\">\n    ${tiles.map(([label, value, hint]) => `<tr><th style=\"text-align:right;padding:10px;border-bottom:1px solid #eee;width:34%\">${esc(label)}</th><td style=\"padding:10px;border-bottom:1px solid #eee;font-size:20px;font-weight:bold;color:#5a3e1b;width:22%\"><bdi>${esc(value)}</bdi></td><td style=\"padding:10px;border-bottom:1px solid #eee;color:#666;font-size:13px\">${esc(hint)}</td></tr>`).join('\\n    ')}\n  </table>\n  <h3 style=\"margin:24px 0 8px;color:#5a3e1b\">الحجوزات المعتمدة في الأسبوعين القادمين</h3>\n  <table style=\"width:100%;border-collapse:collapse;background:#fff\">\n    <tr style=\"background:#efe7d8\"><th style=\"text-align:right;padding:6px\">المعدة / الاستوديو</th><th style=\"text-align:right;padding:6px\">الإنتاج</th><th style=\"text-align:right;padding:6px\">التواريخ</th><th style=\"text-align:right;padding:6px\">العدد</th></tr>\n    ${upcomingRows}\n  </table>\n  <p style=\"margin-top:24px;color:#666;font-size:13px\">\"الوقت الموفَّر\" تقدير مبني على افتراض قابل للتعديل في جدول الإعدادات، وليس قياساً. بيانات العرض تجريبية.</p>\n</div></body></html>`;\n\nconst text = [\n  'ملخص الحجوزات - آخر 7 أيام', '',\n  ...tiles.map(([label, value, hint]) => `${label}: ${value} (${hint})`), '',\n  'الحجوزات المعتمدة في الأسبوعين القادمين:',\n  ...(upcoming.length ? upcoming.map(u => `- ${u.resource || u.item} | ${u.production} | ${u.start_date} إلى ${u.end_date} | ${u.quantity}`) : ['لا توجد.']),\n].join('\\n');\n\n// The KPI numbers without the upcoming list, for report_log.\nconst { upcoming: _drop, ...kpis } = k;\nreturn [{ json: { subject, text, html, kpis } }];\n"
+      },
+      "id": "791c6a88-17f7-4eec-8950-d9cea4a9e588",
+      "name": "Write Arabic summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "booking-bot@sadafprod.test",
+        "toEmail": "production-manager@sadafprod.test",
+        "subject": "={{ $json.subject }}",
+        "emailFormat": "both",
+        "text": "={{ $json.text }}",
+        "html": "={{ $json.html }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "6920711b-051f-4e85-96f5-1fdbd6cfd273",
+      "name": "Email the production manager",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        720,
+        0
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "smtpMailpit00001",
+          "name": "Mailpit SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO report_log (sent_to, kpis) VALUES ($1, $2::jsonb);",
+        "options": {
+          "queryReplacement": "={{ [ 'production-manager@sadafprod.test', JSON.stringify($('Write Arabic summary').first().json.kpis) ] }}"
+        }
+      },
+      "id": "417468cd-3f1b-4edf-b185-92c2fde5a759",
+      "name": "Keep a copy of the report",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        960,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "pgBookings000001",
+          "name": "Bookings Postgres"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every Sunday 08:00": {
+      "main": [
+        [
+          {
+            "node": "Collect last week's numbers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run now (testing)": {
+      "main": [
+        [
+          {
+            "node": "Collect last week's numbers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect last week's numbers": {
+      "main": [
+        [
+          {
+            "node": "Write Arabic summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Arabic summary": {
+      "main": [
+        [
+          {
+            "node": "Email the production manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email the production manager": {
+      "main": [
+        [
+          {
+            "node": "Keep a copy of the report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "BookingErrors001",
+    "timezone": "Asia/Riyadh"
+  },
+  "pinData": {}
+}
