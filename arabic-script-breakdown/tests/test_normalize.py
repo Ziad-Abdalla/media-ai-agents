@@ -61,3 +61,11 @@ def test_a_second_khalid_is_not_merged_into_the_principal():
     # A different person with a full name stays himself.
     assert canonical_character("خالد الشهري") == "خالد الشهري"
     assert canonical_character("الأستاذ خالد الزهراني") == "المدير"
+
+
+def test_same_place_rejects_a_missing_word():
+    assert not same_place("المدرسة", "ممر المدرسة")
+    assert not same_place("فهد", "غرفة فهد")
+    # Scene 8 is a phone call shot in two places; naming only one of them is wrong.
+    assert not same_place("غرفة فهد", "غرفة فهد / بيت الجدة لطيفة في جدة")
+    assert same_place("غرفة فهد / بيت الجدة لطيفة في جدة", "غرفة فهد / بيت الجدة لطيفة في جدة")

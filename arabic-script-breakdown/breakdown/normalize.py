@@ -43,15 +43,15 @@ def item_key(text: str) -> str:
     return " ".join(strip_al(w) for w in normalize_arabic(text).split())
 
 
-def same_place(a: str, b: str) -> bool:
-    """Loose match for locations: same after normalizing, or one contained in the other.
+def same_place(predicted: str, gold: str) -> bool:
+    """Location match: every word of the gold location must be in the predicted one.
 
+    Spelling and punctuation don't matter, and extra words are allowed:
     "بيت ابو فهد، المجلس" matches "بيت أبو فهد - المجلس".
+    A missing word is a mistake: "المدرسة" does not match "ممر المدرسة".
     """
-    ka, kb = item_key(a), item_key(b)
-    if not ka or not kb:
-        return False
-    return ka == kb or ka in kb or kb in ka
+    pred_words, gold_words = set(item_key(predicted).split()), set(item_key(gold).split())
+    return bool(gold_words) and gold_words <= pred_words
 
 
 # Words that name the same object. Some are Gulf dialect vs Modern Standard Arabic

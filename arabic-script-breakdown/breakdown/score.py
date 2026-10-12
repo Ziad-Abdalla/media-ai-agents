@@ -2,7 +2,8 @@
 
 Three kinds of field, three ways to score:
 - EXACT_FIELDS:    one right answer from a short list (داخلي / خارجي, نهار / ليل ...). Right or wrong.
-- LOCATION_FIELDS: free text, so we normalize the Arabic first and allow small wording differences.
+- LOCATION_FIELDS: free text, so we normalize the Arabic first; every word of the gold location must
+                   appear in the answer (extra words are allowed).
 - SET_FIELDS:      lists (characters, props). Characters are compared after the alias map;
                    props match when their main noun (first word) is the same. We count what was
                    found, what was missed,
@@ -18,7 +19,8 @@ from .normalize import normalize_arabic, same_place, same_prop
 
 # Bump this whenever the scoring rules change, so old and new scores are never mixed up.
 # v1: props matched by containment. v2: props matched by main noun + synonym list.
-SCORER_VERSION = "v2"
+# v3: locations matched by words (every gold word present), not by substring; gold names not aliased.
+SCORER_VERSION = "v3"
 
 EXACT_FIELDS = ["int_ext", "time_of_day"]
 LOCATION_FIELDS = ["location"]
