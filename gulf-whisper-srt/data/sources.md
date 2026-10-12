@@ -18,6 +18,7 @@ clips and carry the same license and attribution as the clip they come from.
   Single rows are fetched through the Hugging Face dataset viewer API
   (`https://datasets-server.huggingface.co/rows?dataset=google/fleurs&config=ar_eg&split=test&offset=<row>&length=1`),
   so we don't download the full 243 MB archive.
+  The clips were built from dataset commit `70bb2e84b976b7e960aa89f1c648e09c59f894dd`.
 - **License:** CC-BY-4.0.
 - **Attribution:** Conneau et al., "FLEURS: Few-shot Learning Evaluation of Universal Representations of Speech" (2022), Google.
 - **Reference transcript:** the dataset's own `raw_transcription` field (official, punctuated).
@@ -33,9 +34,16 @@ clips and carry the same license and attribution as the clip they come from.
 
 - **Source:** SADA (Saudi Audio Dataset for Arabic), released by SDAIA (Saudi Data and AI Authority)
   with the Saudi Broadcasting Authority. Official page: https://ieee-dataport.org/node/14747
-  (the official Kaggle copy needs a login). We fetch from the non-gated Hugging Face copy
-  https://huggingface.co/datasets/muaadh019/najdi-female-tts-small, rows 0-52 of `train`,
+  (DOI 10.21227/revt-pa41; the official IEEE DataPort and Kaggle copies need a login). We fetch
+  from https://huggingface.co/datasets/muaadh019/najdi-female-tts-small, rows 0-52 of `train`,
   which are one episode of the series «الديرة نت».
+- **This is an unofficial community mirror**, two hops from SDAIA (it says "Duplicated from
+  m6011/sada2022", itself a re-upload). We have not checked it file by file against the official
+  release. Its name is misleading: the rows we use are not Najdi or female. SADA's own labels on
+  them say `SpeakerDialect = Khaliji` (Gulf) for 52 of 53 rows, mostly male speakers, and that
+  Khaliji label is our evidence for calling these clips Gulf dialect. The clips were built from
+  mirror commit `d6b1d1438c3385a8d449d367bf9b327cb005ddbc`; `fetch_samples.py` warns if the mirror
+  has changed since then.
 - **License:** **CC BY-NC-SA 4.0 (non-commercial).** The Hugging Face copy's metadata tag says
   CC-BY-4.0, but its card text and the official SADA release say CC BY-NC-SA 4.0, so we follow
   the stricter one. This repo is a non-commercial evaluation; don't use these clips commercially.
