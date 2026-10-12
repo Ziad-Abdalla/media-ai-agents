@@ -79,6 +79,7 @@ files are git-ignored.
 |---|---|---|
 | **Wrong record** (PO goes to the wrong vendor) | Exact match first; fuzzy match only if clearly the best (≥ 0.90 and no close second); unsure → `needs_human` with candidates; unknown vendor is only *proposed*, created after approval | `test_resolve.py`, `test_pipeline.py::test_human_picks_vendor_when_unsure`, `::test_unknown_vendor_needs_approval_to_be_created` |
 | **Duplicate on retry** (network drops after Odoo saved the PO) | Idempotency key = hash(message-id + normalized request), stored in the PO's `origin` (and a new vendor's `ref`) and in the local `runs` table; before creating, search Odoo for the key and reuse the record if found. Approve moves the run to `writing` in one SQL `UPDATE ... WHERE status IN (...)`, so two clicks at once can't both write. Same email fetched twice is skipped before any AI call. A re-sent copy (new message-id) is flagged as a possible duplicate for a human | `test_pipeline.py::test_lost_answer_then_retry_makes_no_duplicate`, `::test_two_approvals_at_the_same_moment_make_one_po`, `::test_resent_request_is_flagged_as_duplicate`, live: `tests/live/test_live_odoo.py` |
+| **Approver approves a different plan than the one that runs** (the plan changed after the page loaded, or a stale tab is clicked) | The page shows a hash of the exact plan ("plan #abcd1234") and the Approve form sends the full hash back. The one-step claim only moves the run to `writing` if the stored plan still has that hash; the plan that runs is read after the claim. A changed plan, or a missing or wrong hash, is refused with "the plan changed after you opened the page", logged in `audit`, and the run stays `pending_approval` | `test_pipeline.py::test_plan_changed_after_the_page_loaded_is_refused`, `::test_a_wrong_or_missing_plan_hash_is_refused`, `::test_approving_with_the_shown_plan_hash_writes_the_po`, `test_web.py::test_approve_without_the_plan_hash_is_refused` |
 | **Bad bulk update** | The agent's plans only create draft POs and vendors, one plan at a time, after approval. (An `update_purchase_order` action exists for a later "amend" flow; it only touches *draft* POs, but no plan uses it today.) Every write stores before/after values in `audit`; `rollback <run_id>` deletes the run's draft PO, restores edited fields, and archives a vendor it created (found by the key). Kill switch: `python -m odoo_agent kill` works instantly; `AGENT_WRITES_ENABLED=false` works after a restart. Rollback is a human tool and ignores the kill switch on purpose | `test_rollback.py`, `test_permissions.py::test_kill_switch_*`, live rollback test |
 | **Prompt injection** | Email is wrapped as data and the system prompt says so, but the real defence is structural: the model has no tools and only fills data fields; the plan is built by code from those fields; forbidden actions don't exist for it to call. Suspicious text is flagged on the approval page | `test_injection.py` (a "fooled" model output still produces the same one-step plan, no confirm/delete/email) |
 | **Data leaving the company** | `send_email` is the only way to send mail: internal domain only, never attachments, needs approval, once per run. The From header must be on `COMPANY_DOMAINS`, so casual outside mail is dropped before the AI sees it. From can be forged, so production would also require Gmail's `Authentication-Results` header to show `dmarc=pass`; the human approval is the backstop. Gmail scope is read-only | `test_permissions.py::test_email_outside_the_company_is_refused`, `::test_attachments_are_never_sent`, `test_pipeline.py::test_outside_sender_is_ignored_without_spending_money` |
@@ -96,7 +97,7 @@ Honest limits: reads go straight to Odoo, outside the gate, because they can't c
 a human tool and also sits outside the gate. The approval page has no login and no CSRF
 protection: the approver name is typed in, and any web page the approver opens could post a
 form to localhost:8000. A real deployment puts it behind company SSO, takes the approver from
-the login, and adds CSRF tokens. If the process is killed in the middle of a write, the run
+the login, and adds CSRF tokens. (The plan hash on the Approve form is not a secret, so it is not a CSRF token.) If the process is killed in the middle of a write, the run
 stays `writing`; a person resets it to `write_failed` with one SQL UPDATE (the retry is then safe,
 because of the key). The demo uses the Odoo admin account; in production the agent gets its own
 user with Purchase rights and an API key.
@@ -134,7 +135,7 @@ That's about **$0.28 per 1,000 requests** for the AI part.
 | `odoo_agent/actions.py` | The actions: create vendor/PO (idempotent), update draft PO, send email |
 | `odoo_agent/pipeline.py` | `process_email`, `approve_run`, `resolve_needs_human`, `reject_run` |
 | `odoo_agent/rollback.py` | Undo one run using the key in Odoo (`origin`, `ref`) and the audit log |
-| `odoo_agent/store.py` | SQLite `runs` and `audit` tables; `claim_for_writing` (the one-step approve) |
+| `odoo_agent/store.py` | SQLite `runs` and `audit` tables; `claim_for_writing` (the one-step approve, checks status and plan hash) |
 | `odoo_agent/web.py`, `templates/index.html` | The approval page (FastAPI + one Jinja template) |
 | `odoo_agent/odoo_client.py` | Small XML-RPC wrapper |
 
@@ -143,6 +144,6 @@ That's about **$0.28 per 1,000 requests** for the AI part.
 With the venv switched on:
 
 ```powershell
-python -m pytest            # 64 unit tests: fake model + fake Odoo, no network, no cost
+python -m pytest            # 71 unit tests: fake model + fake Odoo, no network, no cost
 python -m pytest -m live    # 2 tests against the docker Odoo (canned extraction, no AI cost)
 ```
