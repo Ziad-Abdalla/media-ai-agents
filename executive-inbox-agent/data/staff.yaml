@@ -1,0 +1,231 @@
+# SYNTHETIC staff directory for a TV drama production house (all names invented).
+# Used by the agent to resolve "who should own this task" and "who may approve what".
+#
+# people[].responsibilities: words (Arabic and English) that mean "this is my job".
+#   The rules engine matches them against the task text and the email subject.
+# people[].aliases: other ways the person is written in emails (first name, Arabic name).
+# people[].out_of_office: dates the person is away; tasks go to their delegate.
+# people[].can_approve: which agent actions this person may approve on the approval page.
+
+company:
+  name_en: Sadaf Audio-Visual Production (synthetic demo)
+  name_ar: الصدف للإنتاج الصوتي والمرئي (بيانات تجريبية)
+  domains: [sadaf.example]
+  # Approved correspondents the office may reply to (always with a person's approval):
+  # channels, the municipality, talent agencies under contract, registered vendors.
+  # Anything else is "outside" and the agent can't send to it at all.
+  partner_domains: [mbc-group.example, shahid.example, riyadh-municipality.example,
+                    najmtalent.example, rawaj-talent.example, madar-artists.example,
+                    desertlights-rental.example, falconcam-rental.example]
+  executive_briefing_to: exec-office@sadaf.example
+  # The inbox the agent reads (the CEO / GM office).
+  office_inbox: ceo-office@sadaf.example
+  agent_address: inbox-agent@sadaf.example
+
+departments:
+  executive_office:
+    name_ar: المكتب التنفيذي
+    categories: [approval_needed, meeting]
+    keywords: [board, مجلس الإدارة, اجتماع, meeting, موعد, appointment, strategy, استراتيجية]
+  production:
+    name_ar: الإنتاج
+    categories: []
+    # Not "تصوير"/"shoot" alone: in a production company almost every email mentions filming.
+    keywords: [shooting schedule, shoot day, call sheet, جدول التصوير, موعد التصوير, يوم التصوير, schedule, director, المخرج, set, لوكيشن, crew, الطاقم, overtime]
+  locations:
+    name_ar: المواقع والتصاريح
+    categories: []
+    keywords: [permit, تصريح, تصاريح, municipality, بلدية, أمانة, location, موقع التصوير, road closure, إغلاق, police, شرطة]
+  post_production:
+    name_ar: ما بعد الإنتاج
+    categories: []
+    keywords: [delivery, تسليم, master, ماستر, QC, مراجعة الجودة, subtitles, ترجمة, color, تلوين, edit, مونتاج, sound mix, ميكساج, deliverables]
+  channel_relations:
+    name_ar: العلاقات مع القنوات والمنصات
+    categories: []
+    keywords: [MBC, ام بي سي, Shahid, شاهد, channel, القناة, platform, المنصة, promo, برومو, trailer, إعلان تشويقي, airing, عرض, broadcast]
+  legal:
+    name_ar: الشؤون القانونية والعقود
+    categories: [legal_contract]
+    keywords: [contract, عقد, العقد, agent, وكيل, clause, بند, NDA, اتفاقية, rights, حقوق, signature, توقيع, dispute, نزاع]
+  finance:
+    name_ar: المالية
+    categories: [vendor_finance]
+    keywords: [invoice, فاتورة, payment, دفع, سداد, VAT, ضريبة, PO, أمر شراء, bank, تحويل, budget, ميزانية, rental fee, إيجار المعدات]
+  hr:
+    name_ar: الموارد البشرية
+    categories: []
+    keywords: [HR, الموارد البشرية, leave, إجازة, payroll, رواتب, hiring, توظيف, iqama, إقامة, visa, تأشيرة, onboarding, sick, مرضية]
+  it_security:
+    name_ar: تقنية المعلومات وأمن المعلومات
+    categories: [suspicious]
+    keywords: [password, كلمة المرور, phishing, تصيد, VPN, laptop, لابتوب, account, حساب, security, أمن]
+
+people:
+  - id: khalid
+    name_en: Khalid Al-Otaibi
+    name_ar: خالد العتيبي
+    aliases: [Khalid, خالد, أبو فهد, Abu Fahad]
+    email: khalid.otaibi@sadaf.example
+    department: executive_office
+    role: CEO
+    role_ar: الرئيس التنفيذي
+    responsibilities: [board, مجلس الإدارة, strategy, استراتيجية]
+    can_approve: [send_reply, forward_internal, create_task, release_quarantine]
+
+  - id: reem
+    name_en: Reem Al-Qahtani
+    name_ar: ريم القحطاني
+    aliases: [Reem, ريم]
+    email: reem.qahtani@sadaf.example
+    department: executive_office
+    role: General Manager
+    role_ar: المدير العام
+    responsibilities: [approval, اعتماد, موافقة, budget sign-off, اعتماد الميزانية]
+    can_approve: [send_reply, forward_internal, create_task]
+
+  - id: sara
+    name_en: Sara Al-Mutairi
+    name_ar: سارة المطيري
+    aliases: [Sara, سارة, ساره]
+    email: sara.mutairi@sadaf.example
+    department: executive_office
+    role: Executive Office Manager
+    role_ar: مديرة المكتب التنفيذي
+    responsibilities: [meeting, اجتماع, موعد, calendar, جدول المواعيد, visit, زيارة, invitation, دعوة]
+    can_approve: [send_reply, forward_internal, create_task]
+
+  - id: faisal
+    name_en: Faisal Al-Dosari
+    name_ar: فيصل الدوسري
+    aliases: [Faisal, فيصل]
+    email: faisal.dosari@sadaf.example
+    department: executive_office
+    role: Executive Assistant
+    role_ar: مساعد تنفيذي
+    responsibilities: [travel, سفر, حجز, booking, logistics]
+    can_approve: [create_task]
+
+  - id: majed
+    name_en: Majed Al-Shehri
+    name_ar: ماجد الشهري
+    aliases: [Majed, ماجد]
+    email: majed.shehri@sadaf.example
+    department: production
+    role: Head of Production
+    role_ar: مدير الإنتاج
+    responsibilities: [shoot day, schedule, جدول التصوير, موعد التصوير, director, المخرج, crew, الطاقم, call sheet, overtime]
+    can_approve: [create_task]
+
+  - id: noura
+    name_en: Noura Al-Harbi
+    name_ar: نورة الحربي
+    aliases: [Noura, نورة, نوره]
+    email: noura.harbi@sadaf.example
+    department: production
+    role: Line Producer
+    role_ar: منتجة منفذة
+    responsibilities: [equipment, معدات, catering, إعاشة, transport, نقل, crew booking]
+    can_approve: []
+
+  - id: abdulrahman
+    name_en: Abdulrahman Al-Zahrani
+    name_ar: عبدالرحمن الزهراني
+    aliases: [Abdulrahman, عبدالرحمن, عبد الرحمن]
+    email: abdulrahman.zahrani@sadaf.example
+    department: locations
+    role: Locations & Permits Manager
+    role_ar: مدير المواقع والتصاريح
+    responsibilities: [permit, تصريح, تصاريح, municipality, بلدية, أمانة, location, موقع التصوير, road closure, إغلاق طريق]
+    can_approve: []
+
+  - id: lama
+    name_en: Lama Al-Ghamdi
+    name_ar: لمى الغامدي
+    aliases: [Lama, لمى]
+    email: lama.ghamdi@sadaf.example
+    department: post_production
+    role: Post-Production Supervisor
+    role_ar: مشرفة ما بعد الإنتاج
+    responsibilities: [delivery, تسليم, master, ماستر, QC, مراجعة الجودة, subtitles, ترجمة, color, تلوين, مونتاج, sound mix, ميكساج]
+    can_approve: []
+
+  - id: omar
+    name_en: Omar Haddad
+    name_ar: عمر حداد
+    aliases: [Omar, عمر]
+    email: omar.haddad@sadaf.example
+    department: channel_relations
+    role: Channel & Platform Relations Manager
+    role_ar: مدير العلاقات مع القنوات والمنصات
+    responsibilities: [MBC, ام بي سي, Shahid, شاهد, promo, برومو, trailer, airing, عرض, broadcast slot, موعد العرض]
+    can_approve: []
+
+  - id: hind
+    name_en: Hind Al-Subaie
+    name_ar: هند السبيعي
+    aliases: [Hind, هند]
+    email: hind.subaie@sadaf.example
+    department: legal
+    role: Legal Counsel
+    role_ar: المستشارة القانونية
+    responsibilities: [contract, عقد, agent, وكيل, clause, بند, NDA, rights, حقوق, dispute, نزاع]
+    delegate: waleed
+    out_of_office: {from: "2026-10-11", to: "2026-10-15", note: "Cannes MIPCOM"}
+    can_approve: []
+
+  - id: waleed
+    name_en: Waleed Al-Anazi
+    name_ar: وليد العنزي
+    aliases: [Waleed, وليد]
+    email: waleed.anazi@sadaf.example
+    department: legal
+    role: Legal Associate
+    role_ar: مستشار قانوني مساعد
+    responsibilities: [contract, عقد, NDA, signature, توقيع]
+    can_approve: []
+
+  - id: yousef
+    name_en: Yousef Al-Malki
+    name_ar: يوسف المالكي
+    aliases: [Yousef, يوسف]
+    email: yousef.malki@sadaf.example
+    department: finance
+    role: Finance Manager
+    role_ar: المدير المالي
+    responsibilities: [invoice, فاتورة, payment, دفع, سداد, VAT, ضريبة, budget, ميزانية, bank, تحويل]
+    can_approve: []
+
+  - id: dana
+    name_en: Dana Al-Rashid
+    name_ar: دانة الراشد
+    aliases: [Dana, دانة, دانه]
+    email: dana.rashid@sadaf.example
+    department: hr
+    role: HR Manager
+    role_ar: مديرة الموارد البشرية
+    responsibilities: [leave, إجازة, payroll, رواتب, hiring, توظيف, iqama, إقامة, visa, تأشيرة, onboarding]
+    can_approve: []
+
+  - id: bandar
+    name_en: Bandar Al-Harthi
+    name_ar: بندر الحارثي
+    aliases: [Bandar, بندر]
+    email: bandar.harthi@sadaf.example
+    department: it_security
+    role: IT & Security Lead
+    role_ar: مسؤول تقنية المعلومات وأمن المعلومات
+    responsibilities: [security, أمن, phishing, تصيد, password, كلمة المرور, VPN, account, حساب]
+    can_approve: [release_quarantine]
+
+# Who leads each department (the default owner when only the department is known).
+department_heads:
+  executive_office: sara
+  production: majed
+  locations: abdulrahman
+  post_production: lama
+  channel_relations: omar
+  legal: hind
+  finance: yousef
+  hr: dana
+  it_security: bandar
