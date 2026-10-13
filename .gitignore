@@ -1,0 +1,46 @@
+# Secrets and local settings
+.env
+.env.*
+!.env.example
+credentials.json
+token.json
+
+# Virtual environments
+.venv/
+venv/
+
+# Local databases and run output
+*.sqlite
+*.sqlite3
+*.db
+agent.kill
+
+# Python caches and build files
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Model files and audio/video
+*.bin
+*.pt
+*.pth
+*.safetensors
+*.onnx
+*.gguf
+*.ckpt
+models/
+*.wav
+*.mp3
+*.m4a
+*.flac
+*.mp4
+*.mkv
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
