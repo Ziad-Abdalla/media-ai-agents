@@ -81,17 +81,19 @@ def build_user_message(email: Email, directory, thread_context: list[str], corre
     if thread_context:
         parts.append("EARLIER IN THIS CONVERSATION (agent summaries):\n" +
                      spotlight("thread_context", "\n".join(f"- {s}" for s in thread_context), marker))
+    # The sender writes the names, addresses, file names and file types too, so they are
+    # neutralized like the body: no < or > from the email reaches the prompt anywhere.
     parts.append(f"EMAIL received {email.date}. Use it to resolve dates without a year.\n"
-                 f"From: {neutralize(email.from_name)} ({email.from_addr})\nTo: {', '.join(email.to)}\n"
-                 f"Cc: {', '.join(email.cc)}\n" +
+                 f"From: {neutralize(email.from_name)} ({neutralize(email.from_addr)})\n"
+                 f"To: {neutralize(', '.join(email.to))}\nCc: {neutralize(', '.join(email.cc))}\n" +
                  spotlight("subject", email.subject, marker) + "\n" +
                  spotlight("email_body", text_for_classification(email), marker))
     for a in email.attachments:
         if a.text:
-            parts.append(f"ATTACHMENT {a.filename} (text, first 1500 characters):\n" +
+            parts.append(f"ATTACHMENT {neutralize(a.filename)} (text, first 1500 characters):\n" +
                          spotlight("attachment", a.text[:1500], marker))
         else:
-            parts.append(f"ATTACHMENT {a.filename} ({a.content_type}, not read)")
+            parts.append(f"ATTACHMENT {neutralize(a.filename)} ({neutralize(a.content_type)}, not read)")
     return "\n\n".join(parts)
 
 
