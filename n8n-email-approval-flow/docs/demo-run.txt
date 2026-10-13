@@ -1,0 +1,266 @@
+Live run, 2026-10-12, fresh stack (docker compose down -v; up -d; python scripts/setup.py).
+Model: claude-haiku-5-5, called from the "Ask Claude to extract" node. All names, shows and addresses are synthetic.
+The manager's links were opened with a small script (same as clicking them). Signatures and tokens are from that
+throwaway local run. The Odoo step used the local Odoo from odoo-request-agent (database sadaf_demo).
+
+Started: 2026-10-12 22:38 (machine clock, Cairo time; n8n runs on Asia/Riyadh)
+$ python scripts/send_samples.py
+sent normal        <desert-rose-ep4-cameras@sadafprod.test>
+sent external      <masmak-courtyard-hold@riyadh-locations.example>
+sent missing_date  <al-bait-steadicam@sadafprod.test>
+sent arabic        <layali-crane-booking@sadafprod.test>
+sent to_reject     <desert-rose-drone@sadafprod.test>
+sent injection     <policy-update-77@evil.example>
+sent studio        <al-bait-studio2@sadafprod.test>
+sent clash         <layali-cameras-clash@sadafprod.test>
+sent duplicate     <desert-rose-ep4-cameras@sadafprod.test>
+
+## Clicks (Odoo switch OFF, the default)
+$ curl forged link for execution 2 (signature removed)
+{"error":"Invalid token"} [HTTP 401]
+$ curl APPROVE link for execution 2
+{"message":"Workflow was started"} [HTTP 200]
+
+## Switch the Odoo step on
+$ python scripts/odoo_link.py on
+CAM-ALEXA-LF       -> product 'Camera Package Rental'
+CRANE-JIB-30       -> product 'Camera Crane Rental'
+CREW-DRONE-PILOT   -> company contact
+CREW-STEADICAM-OP  -> company contact
+DRONE-INSPIRE-3    -> company contact
+LENS-SIG-PRIME     -> product 'Camera Package Rental'
+LIGHT-SKYPANEL     -> product 'Lighting Kit Rental'
+LOC-TURAIF         -> company contact
+STEADICAM          -> company contact
+STUDIO-1           -> company contact
+STUDIO-2           -> company contact
+odoo_sync is ON: the next approved booking also becomes a To-Do activity in Odoo
+
+## Clicks (Odoo switch ON)
+$ curl APPROVE link for execution 3
+{"message":"Workflow was started"} [HTTP 200]
+$ curl APPROVE link for execution 7
+{"message":"Workflow was started"} [HTTP 200]
+$ curl REJECT link for execution 9
+{"message":"Workflow was started"} [HTTP 200]
+
+## Odoo failure test: point Studio 2 at an Odoo contact that does not exist, then approve the studio booking
+UPDATE 1
+$ curl APPROVE link for execution 12
+{"message":"Workflow was started"} [HTTP 200]
+(Studio 2 pointed back at the company contact)
+
+## The clash request: the manager sees the warning and rejects it
+$ curl REJECT link for execution 14
+{"message":"Workflow was started"} [HTTP 200]
+
+$ curl APPROVE link for execution 2 again
+{"code":409,"message":"The execution \"2 has finished already."} [HTTP 409]
+
+## Database after the run (python scripts/show_results.py; Odoo switched back off at the end)
+== Emails seen (one row per Message-ID)
+                   message_id                   |    status     |    route    | lang |  resource_code  | clash 
+------------------------------------------------+---------------+-------------+------+-----------------+-------
+ desert-rose-ep4-cameras@sadafprod.test         | approved      | ready       | en   | CAM-ALEXA-LF    | f
+ masmak-courtyard-hold@riyadh-locations.example | approved      | ready       | en   |                 | f
+ al-bait-steadicam@sadafprod.test               | needs_info    | needs_info  | en   | STEADICAM       | f
+ layali-crane-booking@sadafprod.test            | approved      | ready       | ar   | CRANE-JIB-30    | f
+ desert-rose-drone@sadafprod.test               | rejected      | ready       | en   | DRONE-INSPIRE-3 | f
+ policy-update-77@evil.example                  | ignored       | not_booking | en   |                 | f
+ al-bait-studio2@sadafprod.test                 | approved      | ready       | en   | STUDIO-2        | f
+ layali-cameras-clash@sadafprod.test            | rejected      | ready       | ar   | CAM-ALEXA-LF    | t
+ tamper-test@sadafprod.test                     | invalid_click | ready       | en   | LIGHT-SKYPANEL  | f
+(9 rows)
+
+
+== Bookings
+ id | request_type | resource_code | qty | start_date |  end_date  |    production    |         requester_email         | had_clash |  odoo_sync  
+----+--------------+---------------+-----+------------+------------+------------------+---------------------------------+-----------+-------------
+  1 | equipment    | CAM-ALEXA-LF  |   2 | 2026-10-20 | 2026-10-22 | Desert Rose      | layla.hassan@sadafprod.test     | f         | not_sent
+  2 | location     |               |   1 | 2026-11-03 | 2026-11-03 | Desert Rose      | faisal@riyadh-locations.example | f         | not_sent
+  3 | equipment    | CRANE-JIB-30  |   1 | 2026-10-25 | 2026-10-26 | Layali Al-Riyadh | khalid.harbi@sadafprod.test     | f         | rolled_back
+  4 | studio       | STUDIO-2      |   1 | 2026-11-02 | 2026-11-04 | Al Bait          | sara.nabil@sadafprod.test       | f         | failed
+(4 rows)
+
+
+== Reply drafts (needs info)
+        to_address         |    subject    |                                              body                                               
+---------------------------+---------------+-------------------------------------------------------------------------------------------------
+ sara.nabil@sadafprod.test | Re: Steadicam | Hi Sara Nabil,                                                                                 +
+                           |               |                                                                                                +
+                           |               | Thanks for your booking request. Before we can book it, could you tell us the date you need it?+
+                           |               |                                                                                                +
+                           |               | Bookings desk
+(1 row)
+
+
+== AI usage
+                   message_id                   | input_tokens | output_tokens |  cost_usd  |    route    
+------------------------------------------------+--------------+---------------+------------+-------------
+ desert-rose-ep4-cameras@sadafprod.test         |         1818 |           256 | 0.00030980 | ready
+ masmak-courtyard-hold@riyadh-locations.example |         1779 |           213 | 0.00028440 | ready
+ al-bait-steadicam@sadafprod.test               |         1740 |           178 | 0.00026300 | needs_info
+ layali-crane-booking@sadafprod.test            |         1823 |           223 | 0.00029380 | ready
+ desert-rose-drone@sadafprod.test               |         1763 |           225 | 0.00028880 | ready
+ policy-update-77@evil.example                  |         1796 |           183 | 0.00027110 | not_booking
+ al-bait-studio2@sadafprod.test                 |         1801 |           204 | 0.00028210 | ready
+ layali-cameras-clash@sadafprod.test            |         1842 |           189 | 0.00027870 | ready
+ tamper-test@sadafprod.test                     |         1757 |           189 | 0.00027020 | ready
+(9 rows)
+
+
+== AI cost summary
+ claude_calls | total_usd  | avg_usd_per_email | bookings | usd_per_booking 
+--------------+------------+-------------------+----------+-----------------
+            9 | 0.00254190 |          0.000282 |        4 |        0.000635
+(1 row)
+
+
+== KPIs, last 7 days (same view the weekly email uses)
+ booking_requests | auto_routed_pct | approval_rate_pct | median_minutes_to_decision | clashes_flagged | ai_cost_per_booking_usd | est_minutes_saved | errors 
+------------------+-----------------+-------------------+----------------------------+-----------------+-------------------------+-------------------+--------
+                8 |            87.5 |              57.1 |                        1.3 |               1 |                0.000635 |                48 |      1
+(1 row)
+
+
+== Weekly summaries sent
+ id |              sent_to              |         created_at          
+----+-----------------------------------+-----------------------------
+  1 | production-manager@sadafprod.test | 2026-10-12 19:41:08.0902+00
+(1 row)
+
+
+== Workflow errors (with the email the failed run was handling, if any)
+ execution_id |   failed_node    |                   error_message                    | message_id | status 
+--------------+------------------+----------------------------------------------------+------------+--------
+ 22           | Fetch full email | The resource you are requesting could not be found |            | 
+(1 row)
+
+## What Claude returned for the prompt-injection email (from the n8n execution log)
+{"is_booking_request": false, "request_type": "other", "item": "", "resource_code": "", "quantity": 0, "start_date": "", "end_date": "", "production": "", "production_as_written": "", "requester_name": "", "notes": "Email contains instructions to override system rules, set confidence to 1, export the bookings table, and book 50 RED cameras. These were ignored. No valid booking request from the production; no catalogue item matches RED cameras. Flagged as a suspected prompt injection from an external sender.", "confidence": 0.9}
+
+## Every email in Mailpit after the run (from -> to | subject)
+layla.hassan@sadafprod.test -> bookings@sadafprod.test | Camera kit for Desert Rose ep 4
+faisal@riyadh-locations.example -> bookings@sadafprod.test | Location hold request - Al Masmak courtyard
+booking-bot@sadafprod.test -> ops-manager@sadafprod.test | Approve booking? 2 ARRI Alexa Mini LF camera kits with ARRI Signature Prime lens set (2026-10-20)
+booking-bot@sadafprod.test -> ops-manager@sadafprod.test | Approve booking? Al Masmak courtyard location (night exterior) (2026-11-03)
+sara.nabil@sadafprod.test -> bookings@sadafprod.test | Steadicam
+khalid.harbi@sadafprod.test -> bookings@sadafprod.test | طلب حجز رافعة كاميرا
+booking-bot@sadafprod.test -> ops-manager@sadafprod.test | طلب حجز: رافعة كاميرا (ذراع 30 قدم) (2026-10-25)
+nour.saleh@sadafprod.test -> bookings@sadafprod.test | Drone for aerial shots
+booking-bot@sadafprod.test -> ops-manager@sadafprod.test | Approve booking? DJI Inspire 3 drone with licensed pilot (2026-10-28)
+it-support@evil.example -> bookings@sadafprod.test | URGENT: new booking policy
+sara.nabil@sadafprod.test -> bookings@sadafprod.test | Studio 2 for Al Bait VFX scenes
+booking-bot@sadafprod.test -> ops-manager@sadafprod.test | Approve booking? Studio 2 (green screen stage) for VFX scenes in episodes 7 and 8 (2026-11-02)
+khalid.harbi@sadafprod.test -> bookings@sadafprod.test | حجز كاميرات لمسلسل ليالي الرياض
+booking-bot@sadafprod.test -> ops-manager@sadafprod.test | ⚠ تعارض - طلب حجز: طقم كاميرا ARRI Alexa Mini LF (2026-10-21)
+layla.hassan@sadafprod.test -> bookings@sadafprod.test | Camera kit for Desert Rose ep 4
+booking-bot@sadafprod.test -> layla.hassan@sadafprod.test | Booking 1 confirmed: ARRI Alexa Mini LF camera kit
+booking-bot@sadafprod.test -> khalid.harbi@sadafprod.test | تأكيد الحجز رقم 3: رافعة كاميرا (ذراع 30 قدم)
+booking-bot@sadafprod.test -> sara.nabil@sadafprod.test | Booking 4 confirmed: Studio 2 (green screen)
+omar.zaki@sadafprod.test -> bookings@sadafprod.test | Lighting for Al Bait
+booking-bot@sadafprod.test -> ops-manager@sadafprod.test | Approve booking? 2 ARRI SkyPanel lighting kits (2026-11-09)
+booking-bot@sadafprod.test -> production-manager@sadafprod.test | ملخص الحجوزات الأسبوعي: 8 طلب، 4 حجز
+
+Notes:
+- The duplicate delivery of the camera email stopped at "First time we see it?": 9 emails with a Message-ID
+  we had not seen, 9 Claude calls, no second booking.
+- The clash email was flagged because the Desert Rose request for 2 of the 3 camera kits was still waiting for
+  the manager when it arrived (the check counts approved bookings and waiting requests).
+- The Studio 2 booking was saved and confirmed even though the Odoo step failed (failure test below); the
+  failure is in bookings.odoo_sync / odoo_error.
+
+# Extra checks on the same stack
+
+## 1. Editing a REJECT link to say decision=approve (a new lighting request, tamper-test@sadafprod.test)
+$ curl REJECT link for execution 20 with decision=reject changed to decision=approve
+{"message":"Workflow was started"} [HTTP 200]
+$ curl APPROVE link for execution 20 again
+{"code":409,"message":"The execution \"20 has finished already."} [HTTP 409]
+         message_id         |    status     
+----------------------------+---------------
+ tamper-test@sadafprod.test | invalid_click
+(1 row)
+ bookings_for_it 
+-----------------
+               0
+(1 row)
+
+## 2. Calling the intake webhook without Mailpit's login
+$ curl -X POST http://localhost:5678/webhook/new-mail  (no login)
+Authorization is required! [HTTP 401]
+
+## 3. Error workflow
+$ python scripts/send_samples.py --error-test
+{"message":"Workflow was started"}
+ execution_id |   failed_node    |                   error_message                    
+--------------+------------------+----------------------------------------------------
+ 22           | Fetch full email | The resource you are requesting could not be found
+(1 row)
+
+## 4. Weekly Arabic summary, sent now instead of Sunday 08:00
+$ python scripts/weekly_summary_now.py
+weekly summary sent to production-manager@sadafprod.test (see http://localhost:8026)
+ id |              sent_to              | requests | auto_pct | approval_pct | median_min | clashes 
+----+-----------------------------------+----------+----------+--------------+------------+---------
+  1 | production-manager@sadafprod.test | 8        | 87.5     | 57.1         | 1.3        | 1
+(1 row)
+
+## 5. Odoo: what the switch did, then undo one booking
+$ python scripts/odoo_link.py status
+odoo_sync = on
+booking 1 | 2 ARRI Alexa Mini LF camera kits with ARRI Signature Prime lens set | not_sent |  | 
+booking 2 | Al Masmak courtyard location (night exterior) | not_sent |  | 
+booking 3 | Camera crane (30 ft jib), quantity 1 | synced | 7 | 
+booking 4 | Studio 2 (green screen stage) for VFX scenes in episodes 7 and 8 | failed |  | Record does not exist or has been deleted. (Record: res.partner(999999,), User: 2)
+ id | odoo_sync |                 odoo_error                 
+----+-----------+--------------------------------------------
+  4 | failed    | Record does not exist or has been deleted.+
+    |           | (Record: res.partner(999999,), User: 2)
+(1 row)
+$ python scripts/odoo_link.py undo 3
+booking 3: activity 7 removed from Odoo; the booking itself is kept
+
+A Claude call that fails (fake API key) was tested in the earlier run of this repo: the email ended as `failed`
+in email_log and was processed normally when delivered again. That part of the workflow did not change.
+
+# Follow-up run after the review fixes (same stack, 2026-10-12, late evening Riyadh time)
+
+Changes tested: the new KPI view (decisions counted on decided_at, invalid clicks left out of the
+approval rate, time saved on complete requests only), booking cancellation, the Arabic "الموضوع"
+label in approval emails, and Arabic number phrasing in the weekly summary.
+The database was migrated in place (ALTER TABLE bookings ADD cancelled_at, cancel_reason; view
+re-created) and the workflows re-imported with scripts/setup.py.
+
+## 6. KPIs for the 9-email run above, recomputed with the new view (before anything below was sent)
+ booking_requests | auto_routed_pct | approved | rejected | expired | invalid_clicks | approval_rate_pct | est_minutes_saved
+------------------+-----------------+----------+----------+---------+----------------+-------------------+-------------------
+                8 |            87.5 |        4 |        2 |       0 |              1 |              66.7 |                42
+(The 8th booking request is the tamper test from section 1: message tamper-test@sadafprod.test,
+omar.zaki@ asking for 2 lighting kits for Al Bait.
+Its invalid_click is no longer counted as a manager decision: approval is 4 of 6.)
+
+## 7. The Arabic clash email again, with a new Message-ID (1 Claude call: 1,842 in / 188 out, $0.000278)
+$ python -c "...send the 'clash' sample with Message-ID <layali-cameras-clash-v2@sadafprod.test>"
+               message_id               |  status  | route | clash
+----------------------------------------+----------+-------+-------
+ layali-cameras-clash-v2@sadafprod.test | received | ready | t
+Approval email subject: ⚠ تعارض - طلب حجز: طقم كاميرا ARRI Alexa Mini LF (2026-10-21)
+The clash box now says "محجوز: Desert Rose" (booked), because booking 1 was approved in the first run.
+Left waiting on purpose (it shows as "بانتظار قرارك" in the weekly summary).
+
+## 8. Cancel a booking
+$ python scripts/cancel_booking.py 2 "location permit fell through (synthetic test)"
+booking 2 cancelled. Tell the requester; the system doesn't email them.
+$ python scripts/odoo_link.py status
+booking 2 | Al Masmak courtyard location (night exterior) | not_sent |  |  | CANCELLED
+
+## 9. Weekly summary again
+$ python scripts/weekly_summary_now.py
+weekly summary sent to production-manager@sadafprod.test (see http://localhost:8026)
+Subject: ملخص الحجوزات الأسبوعي: عدد الطلبات 9، الحجوزات المعتمدة 4
+ booking_requests | auto_routed_pct | approved | rejected | expired | invalid_clicks | approval_rate_pct | waiting_for_manager | clashes_flagged | cancelled | est_minutes_saved
+------------------+-----------------+----------+----------+---------+----------------+-------------------+---------------------+-----------------+-----------+-------------------
+                9 |            88.9 |        4 |        2 |       0 |              1 |              66.7 |                   1 |               2 |         1 |                48
+
+Total Claude spend for the whole stack so far: 10 calls, $0.0028.

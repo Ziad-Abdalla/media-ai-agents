@@ -1,0 +1,58 @@
+{
+  "id": "BookingErrors001",
+  "name": "Booking errors",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "4dfa34e2-1fab-4328-a6e1-1f4490715d44",
+      "name": "When the booking workflow fails",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- 1. Record what failed.\nINSERT INTO workflow_errors (workflow_name, execution_id, failed_node, error_message)\nVALUES ($1, $2, $3, $4);\n-- 2. If the run had claimed an email and not finished it, mark that email failed,\n-- so delivering it again gets a fresh try (see Claim Message-ID).\nUPDATE email_log SET status = 'failed', updated_at = now()\nWHERE execution_id = $2 AND status = 'received';",
+        "options": {
+          "queryReplacement": "={{ [ $json.workflow.name, $json.execution.id, $json.execution.lastNodeExecuted ?? '', $json.execution.error?.message ?? 'unknown error' ] }}"
+        }
+      },
+      "id": "7eb6257f-496d-4427-b05d-5109027942a8",
+      "name": "Record the error",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        260,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "pgBookings000001",
+          "name": "Bookings Postgres"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "When the booking workflow fails": {
+      "main": [
+        [
+          {
+            "node": "Record the error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}
