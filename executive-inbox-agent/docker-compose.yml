@@ -5,7 +5,7 @@ services:
   mailpit:
     image: axllent/mailpit
     ports:
-      - "1027:1025"   # SMTP: scripts/seed_mailpit.py sends the dataset here
+      - "1027:1025"   # SMTP: python -m inbox_agent seed sends the dataset here
       - "8027:8025"   # web UI + HTTP API: the agent reads emails from here
     environment:
       MP_MAX_MESSAGES: 2000

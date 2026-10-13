@@ -10,10 +10,6 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-CATEGORIES = ["urgent_action", "approval_needed", "meeting", "info",
-              "vendor_finance", "legal_contract", "spam", "suspicious"]
-PRIORITIES = ["urgent", "high", "normal", "low"]
-
 Category = Literal["urgent_action", "approval_needed", "meeting", "info",
                    "vendor_finance", "legal_contract", "spam", "suspicious"]
 Priority = Literal["urgent", "high", "normal", "low"]

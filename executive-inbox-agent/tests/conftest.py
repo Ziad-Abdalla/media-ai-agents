@@ -104,6 +104,7 @@ def store(tmp_path):
 @pytest.fixture
 def ctx(store, directory):
     linker = ThreadLinker(store, FakeEmbedder(), threshold=0.6,
-                          ignore_addresses=["ceo-office@sadaf.example", "inbox-agent@sadaf.example"])
+                          ignore_addresses=["ceo-office@sadaf.example", "inbox-agent@sadaf.example"],
+                          internal_domains=directory.company_domains)
     return Context(store=store, directory=directory, linker=linker, mailer=RecordingMailer(),
                    board=LocalBoard(store), batch="test")

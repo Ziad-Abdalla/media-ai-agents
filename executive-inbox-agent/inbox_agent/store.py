@@ -119,7 +119,6 @@ class Store:
         self.lock = threading.RLock()
         self.conn = sqlite3.connect(path, check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
-        self.conn.create_function("plan_hash", 1, lambda t: plan_hash(json.loads(t or "null")))
         self.conn.executescript(SCHEMA)
 
     # ---- generic helpers ----
@@ -222,13 +221,16 @@ class Store:
         return self.query(f"SELECT * FROM actions WHERE {where} ORDER BY id", params)
 
     def claim_action(self, action_id: int, approver: str, shown_plan_hash: str) -> bool:
-        """Move an action from 'pending' to 'executing' in ONE database step, only if its
-        plan is still the one the approver saw. If two people click at once, one wins."""
+        """Move an action from 'pending' to 'executing', only if its plan is still the one the
+        approver saw. The check and the update happen together under the lock, and the UPDATE
+        only matches a 'pending' row, so if two people click at once, one wins."""
         with self.lock:
+            row = self.one("SELECT plan_json FROM actions WHERE id = ?", (action_id,))
+            if not row or plan_hash(row["plan_json"]) != shown_plan_hash:
+                return False
             cur = self.conn.execute(
                 "UPDATE actions SET status = 'executing', approved_by = ?, updated_at = ?"
-                " WHERE id = ? AND status = 'pending' AND plan_hash(plan_json) = ?",
-                (approver, now(), action_id, shown_plan_hash))
+                " WHERE id = ? AND status = 'pending'", (approver, now(), action_id))
             self.conn.commit()
         return cur.rowcount == 1
 

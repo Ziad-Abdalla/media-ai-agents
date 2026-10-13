@@ -86,9 +86,9 @@ def _days_between(a: str, b: str) -> float:
 class ThreadLinker:
     def __init__(self, store, embedder=None, ignore_addresses: list[str] | None = None,
                  threshold: float = config.THREAD_SIMILARITY_THRESHOLD,
-                 window_days: int = config.THREAD_WINDOW_DAYS, internal_domains: list[str] | None = None):
+                 window_days: int = config.THREAD_WINDOW_DAYS, *, internal_domains: list[str]):
         self.store = store
-        self.internal_domains = {d.lower() for d in (internal_domains or ["sadaf.example"])}
+        self.internal_domains = {d.lower() for d in internal_domains}   # required: no silent default
         self.embedder = embedder
         self.ignore = {a.lower() for a in ignore_addresses or []}
         self.threshold = threshold
