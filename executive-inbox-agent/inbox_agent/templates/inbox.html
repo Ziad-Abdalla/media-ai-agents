@@ -26,6 +26,7 @@
 .dec .owner{font-size:13px}
 .dec form{display:inline}
 .dec .row{display:flex;gap:6px;margin-top:6px;align-items:center;flex-wrap:wrap}
+.dec .draft{white-space:pre-wrap;background:#F8FAFA;border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:13px;margin-top:4px}
 {% endblock %}
 {% block content %}
 <h1>الوارد</h1>
@@ -73,6 +74,8 @@
         {% if flagged %}<span class="cat cat-approval_needed">يحتاج تأكيدًا</span>{% endif %}</div>
     {% else %}
       <div class="what">إلى: <span class="ltr">{{ x.a.plan_json.to|join(', ') }}</span></div>
+      {# the full text that will be sent: the Approve button below runs exactly this #}
+      {% if x.a.plan_json.body %}<div class="draft" dir="auto">{{ x.a.plan_json.body }}</div>{% endif %}
     {% endif %}
     <div class="row">
       <form method="post" action="/actions/{{ x.a.id }}/approve">

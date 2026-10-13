@@ -94,3 +94,10 @@ def test_a_refusal_on_any_button_is_a_message_not_a_crash(ctx):
     pipeline.approve_action(ctx, a["id"], "sara", plan_hash(a["plan_json"]))
     assert noura.post(f"/actions/{a['id']}/rollback", data={"next": "/"}).status_code == 200
     assert ctx.store.get_action(a["id"])["status"] == "executed"
+
+
+def test_the_inbox_sidebar_shows_the_full_reply_next_to_its_approve_button(ctx):
+    process_email(make_email(), ctx, FakeAnthropic(PERMIT))
+    page = client_as(ctx, "sara").get("/").text
+    side = page.split('id="decisions"')[1]
+    assert "شكرًا، سنتابع." in side

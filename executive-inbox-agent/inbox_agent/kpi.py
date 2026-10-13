@@ -46,7 +46,8 @@ def compute(store, eval_results_path: str | None = None) -> dict:
     finally:
         conn.close()
 
-    blocked = store.query("SELECT COUNT(*) AS c FROM audit WHERE outcome = 'blocked'")[0]["c"]
+    # refused actions only ("blocked:send_reply", "blocked:approve:..."); quarantines are counted above
+    blocked = store.query("SELECT COUNT(*) AS c FROM audit WHERE action LIKE 'blocked:%'")[0]["c"]
     out = {
         "emails_processed": n,
         "auto_handled": len(auto),
