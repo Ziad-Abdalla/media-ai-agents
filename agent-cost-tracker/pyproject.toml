@@ -1,0 +1,16 @@
+[project]
+name = "agent-cost-tracker"
+version = "0.1.0"
+description = "Record the cost of every Claude API call per operation, and stop at a hard budget."
+requires-python = ">=3.11"
+dependencies = ["anthropic>=1.0", "python-dotenv>=1.0"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["agent_cost_tracker"]
