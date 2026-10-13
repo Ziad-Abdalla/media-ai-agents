@@ -1,0 +1,10 @@
+{
+  "model": "claude-haiku-5-5",
+  "effort": "low",
+  "prompt_version": "9eb1d255",
+  "commit": "29d6420",
+  "date": "2026-10-12T22:22",
+  "cost_usd": 0.0041754,
+  "failed_scenes": 0,
+  "set": "hard"
+}

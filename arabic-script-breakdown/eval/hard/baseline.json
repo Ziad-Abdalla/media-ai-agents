@@ -1,0 +1,20 @@
+{
+  "run_id": "hard-claude-haiku-5-5-low-20261012-222200",
+  "model": "claude-haiku-5-5",
+  "effort": "low",
+  "prompt_version": "9eb1d255",
+  "scorer_version": "v5",
+  "fields": {
+    "int_ext": 1.0,
+    "time_of_day": 1.0,
+    "location": 1.0,
+    "characters": 1.0,
+    "props": 0.9375
+  },
+  "overall": 0.9875,
+  "accepted_with_broken_checks": [
+    "scene 5: props must contain 2 x لابتوب (found 1)",
+    "scene 6: props must not contain كاميرا"
+  ],
+  "reason": "First hard run, kept as the reference on purpose: the camera only asked for in dialogue (scene 6) and one laptop for a two-place intercut (scene 5) are known misses to fix in the prompt, not to hide."
+}
