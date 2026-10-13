@@ -27,14 +27,14 @@ def test_urgent_tasks_always_need_a_person(directory):
 
 def test_a_name_that_is_not_the_owner_does_not_win(directory):
     text = "الأستاذ ماجد قال لي أتواصل معكم بخصوص تصريح التصوير في البلدية"
-    owner, why = rule_owner(directory, category="urgent_action", task_text="متابعة تصريح البلدية",
+    owner, why, _ = rule_owner(directory, category="urgent_action", task_text="متابعة تصريح البلدية",
                             evidence=text, subject="تصريح", email_text=text)
     assert owner == "abdulrahman", why
 
 
 def test_an_explicit_request_for_a_person_wins_over_the_department_head(directory):
     text = "اطلبوا من نورة تأمّن مولد كهرباء للتصوير يوم الخميس"
-    owner, why = rule_owner(directory, category="urgent_action", task_text="تأمين مولد للتصوير",
+    owner, why, _ = rule_owner(directory, category="urgent_action", task_text="تأمين مولد للتصوير",
                             evidence=text, subject="مولد", email_text=text)
     assert owner == "noura" and "by name" in why
 
@@ -78,3 +78,10 @@ def test_approval_requests_go_to_the_general_manager(directory):
                          evidence_quote="نرجو اعتماد يوم تصوير إضافي"),
             category="approval_needed", text="نرجو اعتماد يوم تصوير إضافي للحلقة 9")
     assert d.proposed_owner == "reem" and not d.needs_confirmation
+
+
+def test_the_approval_rule_beats_the_model_when_they_disagree(directory):
+    d = run(directory, T(suggested_owner_id="khalid", what_ar="اعتماد يوم تصوير إضافي",
+                         evidence_quote="نرجو اعتماد يوم تصوير إضافي"),
+            category="approval_needed", text="نرجو اعتماد يوم تصوير إضافي")
+    assert d.proposed_owner == "reem" and d.needs_confirmation

@@ -65,17 +65,18 @@ def _directive_person(directory, text: str):
 
 
 def rule_owner(directory, *, category: str, task_text: str, evidence: str, subject: str,
-               email_text: str) -> tuple[str | None, str]:
-    """The rules' opinion: (person id or None, reason)."""
+               email_text: str) -> tuple[str | None, str, bool]:
+    """The rules' opinion: (person id or None, reason, strong). Strong means an explicit name
+    or the category decided it, so it beats the model when the two disagree."""
     named = _directive_person(directory, f"{evidence}\n{email_text}")
     if named:
-        return named.id, f"the email asks for {named.name_en} by name"
+        return named.id, f"the email asks for {named.name_en} by name", True
 
     if category == "approval_needed":
-        return APPROVAL_OWNER, "approval requests go to the General Manager"
+        return APPROVAL_OWNER, "approval requests go to the General Manager", True
     if category in CATEGORY_DEPARTMENT:
         head = directory.head_of(CATEGORY_DEPARTMENT[category])
-        return head.id, f"{category} goes to {CATEGORY_DEPARTMENT[category]} (head: {head.name_en})"
+        return head.id, f"{category} goes to {CATEGORY_DEPARTMENT[category]} (head: {head.name_en})", True
 
     # keyword scores: the task itself counts double, then the subject
     scores: dict[str, int] = {}
@@ -84,18 +85,18 @@ def rule_owner(directory, *, category: str, task_text: str, evidence: str, subje
             scores[dept] = scores.get(dept, 0) + s * weight
     scores.pop("executive_office", None)  # the office is who we route FOR, not a default owner
     if not scores:
-        return None, "no department keyword matched"
+        return None, "no department keyword matched", False
     ranked = sorted(scores.items(), key=lambda kv: -kv[1])
     if len(ranked) > 1 and ranked[0][1] == ranked[1][1]:
-        return None, f"tie between {ranked[0][0]} and {ranked[1][0]}"
+        return None, f"tie between {ranked[0][0]} and {ranked[1][0]}", False
     dept = ranked[0][0]
     # a specific person in that department whose responsibilities match, else the head
     people = [p for p in directory.people.values() if p.department == dept]
     best = max(people, key=lambda p: len(directory.responsibility_hits(p, f"{task_text} {evidence}")))
     if directory.responsibility_hits(best, f"{task_text} {evidence}"):
-        return best.id, f"keywords match {dept}; responsibilities of {best.name_en}"
+        return best.id, f"keywords match {dept}; responsibilities of {best.name_en}", False
     head = directory.head_of(dept)
-    return head.id, f"keywords match {dept} (head: {head.name_en})"
+    return head.id, f"keywords match {dept} (head: {head.name_en})", False
 
 
 def decide(directory, *, task, category: str, priority: str, subject: str, email_text: str,
@@ -105,7 +106,7 @@ def decide(directory, *, task, category: str, priority: str, subject: str, email
     if task.suggested_owner_id and not model_owner:
         reasons.append(f"model suggested '{task.suggested_owner_id}', who is not in the directory")
 
-    r_owner, r_reason = rule_owner(directory, category=category, task_text=task.what_ar,
+    r_owner, r_reason, strong = rule_owner(directory, category=category, task_text=task.what_ar,
                                    evidence=task.evidence_quote, subject=subject, email_text=email_text)
 
     # Out of office: both opinions are compared AFTER moving to the delegate.
@@ -136,10 +137,9 @@ def decide(directory, *, task, category: str, priority: str, subject: str, email
     if notes:
         reasons.append("owner is away; proposed the delegate")
 
-    # Which one to propose when they differ: an explicit name or the category's department
-    # is a strong rule; otherwise prefer the model, which read the whole email.
-    strong_rule = r_owner and ("by name" in r_reason or "goes to" in r_reason)
-    proposed = r_owner if strong_rule else (model_owner or r_owner)
+    # Which one to propose when they differ: an explicit name or the category is a strong
+    # rule; otherwise prefer the model, which read the whole email.
+    proposed = r_owner if (strong and r_owner) else (model_owner or r_owner)
     return Decision(proposed_owner=proposed, rule_owner=r_owner, rule_reason=r_reason,
                     owner_note="; ".join(dict.fromkeys(notes)) or None,
                     needs_confirmation=bool(reasons), reasons=reasons)
