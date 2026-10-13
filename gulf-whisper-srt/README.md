@@ -53,8 +53,8 @@ what they were measured on, including a measured (not assumed) test of the `--ho
 ## Quickstart
 
 ```
-git clone <this repo>
-cd gulf-whisper-srt
+git clone https://github.com/Ziad-Abdalla/media-ai-agents
+cd media-ai-agents/gulf-whisper-srt
 python -m venv .venv
 ```
 

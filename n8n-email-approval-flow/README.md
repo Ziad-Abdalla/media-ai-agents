@@ -4,7 +4,7 @@
 
 Crews at a TV drama production house email the bookings desk to reserve a studio, equipment (camera kits, a crane, a drone), crew (a drone pilot, a Steadicam operator) or a filming location, for a specific production and dates. This n8n workflow reads each email, asks Claude Haiku 5.5 to fill a fixed form and match the request to the company's catalogue, checks the fields in plain code, and **checks for clashes**: is that studio or kit already booked, or already requested, on overlapping dates? The manager then gets an approval email **in the requester's language** (Arabic emails get an Arabic, right-to-left email) showing the clash warning, the original email and Approve / Reject buttons. Nothing is booked until the manager clicks. Approve saves the booking, confirms to the requester (internal addresses only) and, if switched on, adds the booking to **Odoo**. Every step is logged, so the workflow can measure itself: time from email to decision, share of requests that needed no follow-up, approval rate, clashes and AI cost per booking. A **weekly Arabic summary** goes to the production manager every Sunday at 08:00.
 
-It does the same kind of job as my Python project [odoo-request-agent](https://github.com/Ziad-Abdalla/odoo-request-agent), so the two can be compared honestly (see "n8n or code?"). All names, shows, addresses and the catalogue are synthetic.
+It does the same kind of job as my Python project [odoo-request-agent](https://github.com/Ziad-Abdalla/media-ai-agents/tree/main/odoo-request-agent), so the two can be compared honestly (see "n8n or code?"). All names, shows, addresses and the catalogue are synthetic.
 
 | Arabic approval email with a clash warning | Weekly summary for the production manager |
 |---|---|

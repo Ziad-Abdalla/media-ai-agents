@@ -99,16 +99,15 @@ The morning briefing as it arrives: [`docs/screenshots/briefing.png`](docs/scree
 
 ## Quickstart (Windows PowerShell)
 
-`agent-cost-tracker` is my own small library in a sibling repo. It is not the unrelated PyPI package with the same name. Install it from the sibling folder **before** this repo, or pip will fetch the wrong one. The two repos need to sit side by side:
+`agent-cost-tracker` is my own small library. It is not the unrelated PyPI package with the same name. Install it from the sibling folder **before** this project, or pip will fetch the wrong one. Clone media-ai-agents; the tracker is the sibling folder:
 
 ```powershell
-git clone https://github.com/Ziad-Abdalla/agent-cost-tracker
-git clone https://github.com/Ziad-Abdalla/executive-inbox-agent
-cd executive-inbox-agent
+git clone https://github.com/Ziad-Abdalla/media-ai-agents
+cd media-ai-agents\executive-inbox-agent
 docker compose up -d                       # Mailpit: SMTP 1027, web UI http://localhost:8027
 py -3.13 -m venv .venv
 .venv\Scripts\pip install torch --index-url https://download.pytorch.org/whl/cpu    # CPU build; for an NVIDIA GPU use /whl/cu128
-.venv\Scripts\pip install -e ..\agent-cost-tracker  # the sibling repo, first
+.venv\Scripts\pip install -e ..\agent-cost-tracker  # the sibling folder, first
 .venv\Scripts\pip install -e ".[embeddings,dev]"
 copy .env.example .env                     # put your ANTHROPIC_API_KEY in it (or keep one .env in the parent folder)
 

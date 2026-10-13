@@ -21,7 +21,7 @@ Nothing is written to Odoo until a person presses Approve on a small web page th
 original email, what was extracted, the budget picture, and the exact values that will be sent.
 Every write is audited and can be rolled back, a retry or a double-click never creates a second
 PO, and a kill switch stops the agent's writes. A KPI report shows management what it saves.
-Every AI call goes through agent-cost-tracker, my small library (a sibling folder, not published yet)
+Every AI call goes through agent-cost-tracker, my small library (in the sibling folder)
 that records cost per operation and enforces a budget.
 
 All example data (emails, people, vendors, productions, budgets) is **synthetic**: made up for this
@@ -69,11 +69,12 @@ flowchart LR
 
 ## Quickstart
 
-Windows PowerShell. Neither repo is on GitHub yet: you need this folder and the `agent-cost-tracker`
-folder **side by side** (same parent folder), because the library is installed from that folder.
+Windows PowerShell. Clone media-ai-agents; the tracker is the sibling folder (`agent-cost-tracker`),
+and the library is installed from that folder.
 
 ```powershell
-# start inside this folder (odoo-request-agent), with ..\agent-cost-tracker next to it
+git clone https://github.com/Ziad-Abdalla/media-ai-agents
+cd media-ai-agents\odoo-request-agent
 
 # Odoo 17 on :8069, Postgres on :5433, Mailpit on :8025
 docker compose up -d

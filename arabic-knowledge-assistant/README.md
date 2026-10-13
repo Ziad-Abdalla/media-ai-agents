@@ -96,12 +96,11 @@ Each citation also shows the Odoo menu where the action happens (for example `Ex
 
 ## Quickstart (PowerShell)
 
-The repo needs my small cost tracker, `agent-cost-tracker`, in a folder **next to** this one (same parent folder). It is installed from that folder on purpose: PyPI has an unrelated package with the same name, so it is not listed in `pyproject.toml`.
+The project needs my small cost tracker, `agent-cost-tracker`. Clone media-ai-agents; the tracker is the sibling folder. It is installed from that folder on purpose: PyPI has an unrelated package with the same name, so it is not listed in `pyproject.toml`.
 
 ```powershell
-git clone https://github.com/Ziad-Abdalla/sadaf-knowledge-assistant
-git clone https://github.com/Ziad-Abdalla/agent-cost-tracker
-cd sadaf-knowledge-assistant
+git clone https://github.com/Ziad-Abdalla/media-ai-agents
+cd media-ai-agents\arabic-knowledge-assistant
 py -3.13 -m venv .venv                     # Mac/Linux: python3 -m venv .venv && source .venv/bin/activate
 .\.venv\Scripts\Activate.ps1
 # PyTorch with CUDA for the RTX 50xx series, about 3 GB:

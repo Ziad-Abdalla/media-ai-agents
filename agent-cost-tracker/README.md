@@ -112,7 +112,7 @@ and the Batch API discount (50% off) aren't modelled.
 ## Install
 
 ```
-pip install -e ../agent-cost-tracker     # local, next to your project
+pip install -e ../agent-cost-tracker     # from a project folder in media-ai-agents (the sibling folder)
 ```
 
 Settings are environment variables (see `.env.example`). The `report` command reads a

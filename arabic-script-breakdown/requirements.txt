@@ -1,4 +1,4 @@
-# agent-cost-tracker is a separate repo. Clone it next to this folder first (see the README).
+# agent-cost-tracker is the sibling folder in media-ai-agents (see the README).
 anthropic>=1.13
 pydantic>=2.14
 python-dotenv>=1.2

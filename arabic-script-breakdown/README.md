@@ -106,15 +106,17 @@ so if the map ever merged two different people, the eval would show it as an err
 
 ## Quickstart
 
-This repo uses my separate `agent-cost-tracker` repo, installed from a folder next to this one:
+This project uses my `agent-cost-tracker` library. Clone media-ai-agents; the tracker is the sibling folder:
 
 ```
-some-folder/
-    agent-cost-tracker/        <- clone this first
-    arabic-script-breakdown/   <- this repo
+media-ai-agents/
+    agent-cost-tracker/        <- the shared cost tracker
+    arabic-script-breakdown/   <- this project
 ```
 
 ```powershell
+git clone https://github.com/Ziad-Abdalla/media-ai-agents
+cd media-ai-agents\arabic-script-breakdown
 py -3.13 -m venv .venv
 .venv\Scripts\activate                 # if PowerShell blocks it: Set-ExecutionPolicy -Scope Process Bypass
 pip install -r requirements.txt        # installs ../agent-cost-tracker too; this is the only install path
