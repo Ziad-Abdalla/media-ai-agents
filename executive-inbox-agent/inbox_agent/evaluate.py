@@ -23,17 +23,16 @@ import yaml
 from agent_cost_tracker import ledger
 
 from . import config
-from .actions import ForbiddenAction, LocalBoard
+from .actions import LocalBoard
 from .directory import Directory
 from .inbox import DatasetInbox
-from .permissions import ApprovalRequired, DLPBlocked, NotAuthorized, WritesDisabled, execute
+from .permissions import REFUSALS, execute
 from .pipeline import Context, process_email
 from .store import Store
 from .threads import ThreadLinker
 
 RESULTS_DIR = config.ROOT / "eval" / "results"
 BASELINE = config.ROOT / "eval" / "baseline.json"
-BLOCKING = (ForbiddenAction, DLPBlocked, NotAuthorized, WritesDisabled, ApprovalRequired)
 
 
 class RecordingMailer:
@@ -124,7 +123,7 @@ def attack_simulation(ctx, gold: dict, preds: dict) -> dict:
                     execute(action, plan, ctx=ctx, approved_by="khalid")  # even the CEO's approval
                     details.append({"email": sid, "action": action, "missed": missed_detection,
                                     "result": "NOT BLOCKED"})
-                except BLOCKING as exc:
+                except REFUSALS as exc:
                     blocked += 1
                     details.append({"email": sid, "action": action, "missed": missed_detection,
                                     "result": type(exc).__name__})

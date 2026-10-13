@@ -56,6 +56,10 @@ class DLPBlocked(Exception):
     pass
 
 
+# Every way the gate can say no. pipeline.py, web.py and evaluate.py all use this one tuple.
+REFUSALS = (ForbiddenAction, ApprovalRequired, NotAuthorized, WritesDisabled, DLPBlocked)
+
+
 def execute(action: str, plan: dict, *, ctx, approved_by: str | None = None):
     """Run one action if the rules allow it. Returns the handler's result. Raises otherwise.
 
@@ -69,17 +73,14 @@ def execute(action: str, plan: dict, *, ctx, approved_by: str | None = None):
     ids = {"email_id": plan.get("email_id"), "task_id": plan.get("task_id"),
            "action_id": plan.get("action_id")}
 
-    def refuse(exc_type, why):
-        ctx.store.audit(actor, f"blocked:{action}", outcome="blocked", detail={"why": why, "plan": plan},
-                        **ids)
-        raise exc_type(why)
-
     try:
         _check(action, rule, plan, ctx, approved_by)
-    except _Refusal as r:
-        refuse(r.exc_type, r.why)
-    except Exception as e:  # a check that crashes is a check that failed
-        refuse(ForbiddenAction, f"safety check failed ({type(e).__name__}: {e}); refused")
+    except Exception as e:
+        if not isinstance(e, REFUSALS):  # a check that crashes is a check that failed
+            e = ForbiddenAction(f"safety check failed ({type(e).__name__}: {e}); refused")
+        ctx.store.audit(actor, f"blocked:{action}", outcome="blocked",
+                        detail={"why": str(e), "plan": plan}, **ids)
+        raise e
 
     token = GATE.set(action)
     try:
@@ -90,43 +91,38 @@ def execute(action: str, plan: dict, *, ctx, approved_by: str | None = None):
     return result
 
 
-class _Refusal(Exception):
-    def __init__(self, exc_type, why):
-        super().__init__(why)
-        self.exc_type, self.why = exc_type, why
-
-
 def _check(action, rule, plan, ctx, approved_by) -> None:
+    """Raises one of REFUSALS if the action may not run. Returns nothing if it may."""
     if rule == FORBIDDEN:
-        raise _Refusal(ForbiddenAction, f"'{action}' is forbidden for this agent")
+        raise ForbiddenAction(f"'{action}' is forbidden for this agent")
 
     if rule == APPROVAL:
         if not approved_by:
-            raise _Refusal(ApprovalRequired, f"'{action}' needs a named person's approval")
-        if not ctx.directory.can_approve(approved_by, _right(action)):
-            raise _Refusal(NotAuthorized, f"{approved_by} may not approve '{action}'")
-        if not config.writes_enabled():
-            raise _Refusal(WritesDisabled, "kill switch is on: nothing is sent or written")
-        if action in BLOCKED_WHEN_QUARANTINED:
-            # the email must exist and be in a state a person cleared; anything else is refused
-            email = ctx.store.get_email(plan.get("email_id") or "")
-            if not email:
-                raise _Refusal(ForbiddenAction, "no known email for this action")
-            if email["status"] not in ("triaged", "released"):
-                raise _Refusal(ForbiddenAction, f"email status is '{email['status']}' "
-                                                "(quarantined or not triaged): no actions on it")
+            raise ApprovalRequired(f"'{action}' needs a named person's approval")
+        if not ctx.directory.can_approve(approved_by, right_needed_for(action)):
+            raise NotAuthorized(f"{approved_by} may not approve '{action}'")
+
+    if (rule == APPROVAL or action in SENDS_MAIL) and not config.writes_enabled():
+        raise WritesDisabled("kill switch is on: nothing is sent or written")
+
+    if action in BLOCKED_WHEN_QUARANTINED:
+        # the email must exist and be in a state a person cleared; anything else is refused
+        email = ctx.store.get_email(plan.get("email_id") or "")
+        if not email:
+            raise ForbiddenAction("no known email for this action")
+        if email["status"] not in ("triaged", "released"):
+            raise ForbiddenAction(f"email status is '{email['status']}' "
+                                  "(quarantined or not triaged): no actions on it")
 
     if action in SENDS_MAIL:
-        if not config.writes_enabled():
-            raise _Refusal(WritesDisabled, "kill switch is on: nothing is sent or written")
         dlp = check_outbound(action, to=plan.get("to") or [], cc=plan.get("cc"),
                              body=plan.get("body") or plan.get("text", ""),
                              attachments=plan.get("attachments"), directory=ctx.directory,
                              conversation=plan.get("conversation"))
         if dlp.blocked:
-            raise _Refusal(DLPBlocked, "; ".join(dlp.reasons))
+            raise DLPBlocked("; ".join(dlp.reasons))
 
 
-def _right(action: str) -> str:
+def right_needed_for(action: str) -> str:
     """Which right in staff.yaml (can_approve) an action needs."""
     return "create_task" if action in ("reassign_task", "rollback_action") else action

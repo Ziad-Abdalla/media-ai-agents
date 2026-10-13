@@ -5,6 +5,7 @@ import pytest
 from inbox_agent.classify import ClassificationFailed, classify, correction_examples
 from inbox_agent.pipeline import (approve_action, process_email, reassign_task, reject_action,
                                   rollback)
+from inbox_agent.permissions import WritesDisabled
 from inbox_agent.store import plan_hash
 
 from .conftest import FakeAnthropic, classification, make_email, task
@@ -133,11 +134,10 @@ def test_reassign_records_a_correction_and_it_feeds_the_next_prompt(ctx):
     process_email(make_email(body="نرجو متابعة تصريح التصوير وتأمين مولد"), ctx, FakeAnthropic(wrong))
     [t] = ctx.store.tasks()
     [a] = pending(ctx, "create_task")
-    out = reassign_task(ctx, t["id"], "noura", "المولدات من مسؤولية المنتجة المنفذة", "sara",
-                        plan_hash(a["plan_json"]))
-    new_plan = ctx.store.get_action(out["action_id"])["plan_json"]
-    assert new_plan["owner"] == "noura"
-    approve_action(ctx, out["action_id"], "sara", plan_hash(new_plan))
+    reassign_task(ctx, t["id"], "noura", "المولدات من مسؤولية المنتجة المنفذة", "sara",
+                  plan_hash(a["plan_json"]))   # choosing the owner creates the task in one click
+    assert ctx.store.get_action(a["id"])["plan_json"]["owner"] == "noura"
+    assert ctx.store.get_action(a["id"])["status"] == "executed"
     assert ctx.store.get_task(t["id"])["status"] == "reassigned"
     assert ctx.store.query("SELECT user_id FROM board_tasks")[0]["user_id"] == "noura"
 
@@ -182,3 +182,53 @@ def test_a_sent_email_cannot_be_rolled_back(ctx):
     approve_action(ctx, a["id"], "sara", plan_hash(a["plan_json"]))
     with pytest.raises(ValueError, match="already sent"):
         rollback(ctx, a["id"], "sara")
+
+
+# ---------------------------------------------------------------- what happens when a click can't finish
+def test_a_click_while_the_kill_switch_is_on_can_be_approved_later(ctx, tmp_path):
+    process_email(make_email(), ctx, FakeAnthropic(PERMIT))
+    [a] = pending(ctx, "create_task")
+    (tmp_path / "agent.kill").write_text("stop")
+    with pytest.raises(WritesDisabled):
+        approve_action(ctx, a["id"], "sara", plan_hash(a["plan_json"]))
+    assert ctx.store.get_action(a["id"])["status"] == "pending"     # not stranded as 'blocked'
+    (tmp_path / "agent.kill").unlink()
+    approve_action(ctx, a["id"], "sara", plan_hash(a["plan_json"]))
+    assert ctx.store.get_action(a["id"])["status"] == "executed"
+
+
+def test_a_refused_reassign_saves_no_correction_and_keeps_the_owner(ctx, tmp_path):
+    process_email(make_email(), ctx, FakeAnthropic(PERMIT))
+    [a] = pending(ctx, "create_task")
+    approve_action(ctx, a["id"], "sara", plan_hash(a["plan_json"]))
+    [t] = ctx.store.tasks()
+    (tmp_path / "agent.kill").write_text("stop")
+    with pytest.raises(WritesDisabled):
+        reassign_task(ctx, t["id"], "majed", "x", "sara")
+    assert ctx.store.corrections() == []
+    assert ctx.store.get_task(t["id"])["final_owner"] == "abdulrahman"
+    assert ctx.store.query("SELECT user_id FROM board_tasks")[0]["user_id"] == "abdulrahman"
+
+
+def test_a_send_that_may_have_happened_is_not_offered_again(ctx, monkeypatch):
+    process_email(make_email(), ctx, FakeAnthropic(PERMIT))
+    [a] = pending(ctx, "send_reply")
+
+    def accepted_then_timed_out(msg):
+        raise TimeoutError("SMTP took the message, then timed out")
+    monkeypatch.setattr(ctx.mailer, "send", accepted_then_timed_out)
+    with pytest.raises(TimeoutError):
+        approve_action(ctx, a["id"], "sara", plan_hash(a["plan_json"]))
+    assert ctx.store.get_action(a["id"])["status"] == "failed"      # a second click can't send it twice
+
+
+def test_a_mail_server_that_never_answered_can_be_retried(ctx, monkeypatch):
+    process_email(make_email(), ctx, FakeAnthropic(PERMIT))
+    [a] = pending(ctx, "send_reply")
+
+    def refused(msg):
+        raise ConnectionRefusedError("Mailpit is down")
+    monkeypatch.setattr(ctx.mailer, "send", refused)
+    with pytest.raises(ConnectionRefusedError):
+        approve_action(ctx, a["id"], "sara", plan_hash(a["plan_json"]))
+    assert ctx.store.get_action(a["id"])["status"] == "pending"

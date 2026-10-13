@@ -15,6 +15,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from . import briefing, kpi, pipeline
+from .permissions import REFUSALS
 from .briefing import ACTION_AR, CATEGORY_AR, PRIORITY_AR
 from .store import plan_hash as hash_plan
 
@@ -116,7 +117,7 @@ def create_app(ctx) -> FastAPI:
                 user: str | None = Cookie(None)):
         try:
             pipeline.approve_action(ctx, action_id, acting(user), plan_hash)
-        except (PermissionError, ValueError, OSError, *pipeline.ACTION_ERRORS) as e:
+        except (PermissionError, ValueError, OSError, *REFUSALS) as e:
             return back(next, f"لم يُنفَّذ: {e}")
         return back(next, "تم الاعتماد والتنفيذ")
 
@@ -124,7 +125,7 @@ def create_app(ctx) -> FastAPI:
     def reject(action_id: int, next: str = Form("/"), user: str | None = Cookie(None)):
         try:
             pipeline.reject_action(ctx, action_id, acting(user))
-        except (PermissionError, ValueError) as e:
+        except (PermissionError, ValueError, OSError, *REFUSALS) as e:
             return back(next, f"لم يُرفض: {e}")
         return back(next, "تم الرفض")
 
@@ -132,13 +133,9 @@ def create_app(ctx) -> FastAPI:
     def reassign(task_id: int, new_owner: str = Form(...), reason: str = Form(""),
                  plan_hash: str = Form(""), next: str = Form("/"), user: str | None = Cookie(None)):
         try:
-            who = acting(user)
-            out = pipeline.reassign_task(ctx, task_id, new_owner, reason or "بدون سبب", who,
-                                         plan_hash or None)
-            if out.get("board") == "pending":   # the person chose the owner: create it now
-                action = ctx.store.get_action(out["action_id"])
-                pipeline.approve_action(ctx, action["id"], who, hash_plan(action["plan_json"]))
-        except (PermissionError, ValueError, OSError, *pipeline.ACTION_ERRORS) as e:
+            pipeline.reassign_task(ctx, task_id, new_owner, reason or "بدون سبب", acting(user),
+                                   plan_hash or None)
+        except (PermissionError, ValueError, OSError, *REFUSALS) as e:
             return back(next, f"لم تتم إعادة الإسناد: {e}")
         return back(next, f"أُسندت المهمة إلى {d.get(new_owner).name_ar} وسُجّل التصحيح")
 
@@ -146,7 +143,7 @@ def create_app(ctx) -> FastAPI:
     def forward(email_id: str, to_person: str = Form(...), user: str | None = Cookie(None)):
         try:
             pipeline.propose_forward(ctx, email_id, to_person, acting(user))
-        except (PermissionError, ValueError) as e:
+        except (PermissionError, ValueError, OSError, *REFUSALS) as e:
             return back(f"/email/{email_id}", f"لم يُجهَّز التحويل: {e}")
         return back(f"/email/{email_id}", "جُهّز التحويل الداخلي، بانتظار الاعتماد")
 
@@ -154,7 +151,7 @@ def create_app(ctx) -> FastAPI:
     def release(email_id: str, user: str | None = Cookie(None)):
         try:
             pipeline.release_quarantine(ctx, email_id, acting(user))
-        except (PermissionError, ValueError, *pipeline.ACTION_ERRORS) as e:
+        except (PermissionError, ValueError, OSError, *REFUSALS) as e:
             return back(f"/email/{email_id}", f"لم يُفك الحجز: {e}")
         return back(f"/email/{email_id}", "تم فك الحجز")
 
@@ -162,7 +159,7 @@ def create_app(ctx) -> FastAPI:
     def rollback(action_id: int, next: str = Form("/"), user: str | None = Cookie(None)):
         try:
             pipeline.rollback(ctx, action_id, acting(user))
-        except (PermissionError, ValueError) as e:
+        except (PermissionError, ValueError, OSError, *REFUSALS) as e:
             return back(next, f"لم يتم التراجع: {e}")
         return back(next, "تم التراجع")
 

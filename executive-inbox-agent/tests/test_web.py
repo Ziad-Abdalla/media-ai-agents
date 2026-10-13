@@ -2,7 +2,9 @@ import re
 
 from fastapi.testclient import TestClient
 
+from inbox_agent import pipeline
 from inbox_agent.pipeline import process_email
+from inbox_agent.store import plan_hash
 from inbox_agent.web import create_app
 
 from .conftest import FakeAnthropic, classification, make_email, task
@@ -79,3 +81,16 @@ def test_kpi_audit_and_briefing_pages_render(ctx):
     assert "مؤشرات الأداء" in web.get("/kpi").text
     assert "classify" in web.get("/audit").text
     assert "الموجز التنفيذي الصباحي" in web.get("/briefing?as_of=2026-10-12").text
+
+
+def test_a_refusal_on_any_button_is_a_message_not_a_crash(ctx):
+    eid = process_email(make_email(), ctx, FakeAnthropic(PERMIT))
+    [a] = ctx.store.actions("kind = 'create_task'")
+    noura = client_as(ctx, "noura")   # the line producer may approve nothing
+    for url, data in ((f"/actions/{a['id']}/reject", {"next": "/"}),
+                      (f"/email/{eid}/forward", {"to_person": "majed"})):
+        assert noura.post(url, data=data).status_code == 200, url
+    assert ctx.store.get_action(a["id"])["status"] == "pending"
+    pipeline.approve_action(ctx, a["id"], "sara", plan_hash(a["plan_json"]))
+    assert noura.post(f"/actions/{a['id']}/rollback", data={"next": "/"}).status_code == 200
+    assert ctx.store.get_action(a["id"])["status"] == "executed"

@@ -21,14 +21,12 @@ import numpy as np
 from agent_cost_tracker import BudgetExceeded
 
 from . import assign as assign_mod
-from .actions import ForbiddenAction
 from .classify import classify, correction_examples
 from .dlp import check_outbound
 from .guard import GuardResult, Signal, scan
 from .models import Email
 from .normalize import split_body, text_for_classification
-from .permissions import (ApprovalRequired, DLPBlocked, NotAuthorized, WritesDisabled,
-                          execute)
+from .permissions import REFUSALS, NotAuthorized, WritesDisabled, execute, right_needed_for
 from .store import email_key, now, plan_hash
 from .threads import Link
 
@@ -44,7 +42,6 @@ class Context:
     batch: str = "run"   # tags the cost ledger rows of one processing run
 
 
-ACTION_ERRORS = (ApprovalRequired, NotAuthorized, WritesDisabled, DLPBlocked, ForbiddenAction)
 # Errors where the right move is to stop and try the whole email again later (nothing was stored).
 RETRY_LATER = (BudgetExceeded, anthropic.APIConnectionError, anthropic.RateLimitError,
                anthropic.InternalServerError)
@@ -208,17 +205,13 @@ def _require(ctx, who: str | None, right: str, what: str, **ids) -> None:
         raise NotAuthorized(f"{who or 'nobody'} may not {what}")
 
 
-def _right_for(kind: str) -> str:
-    return "create_task" if kind in ("reassign_task", "rollback_action") else kind
-
-
 def approve_action(ctx, action_id: int, approver: str, shown_hash: str):
     """Run the exact plan the approver saw. Refused if the plan changed, if this person may
     not approve this kind of action, if DLP blocks it, or if it was already handled."""
     action = ctx.store.get_action(action_id)
     if not action:
         raise ValueError("no such action")
-    _require(ctx, approver, _right_for(action["kind"]), f"approve:{action['kind']}",
+    _require(ctx, approver, right_needed_for(action["kind"]), f"approve:{action['kind']}",
              action_id=action_id, email_id=action["email_id"])
     if not shown_hash or not ctx.store.claim_action(action_id, approver, shown_hash):
         ctx.store.audit(f"human:{approver}", f"blocked:approve:{action['kind']}", outcome="blocked",
@@ -228,11 +221,17 @@ def approve_action(ctx, action_id: int, approver: str, shown_hash: str):
     plan = {**action["plan_json"], "action_id": action_id}
     try:
         result = execute(action["kind"], plan, ctx=ctx, approved_by=approver)
-    except ACTION_ERRORS as e:
+    except (WritesDisabled, ConnectionRefusedError) as e:
+        # Nothing happened (kill switch on, or the mail server never answered): approve it again later.
+        ctx.store.update_action(action_id, status="pending", result_json={"error": str(e)})
+        raise
+    except REFUSALS as e:
         ctx.store.update_action(action_id, status="blocked", result_json={"error": str(e)})
         raise
-    except Exception as e:  # network etc.: the action can be retried
-        ctx.store.update_action(action_id, status="pending", result_json={"error": str(e)})
+    except Exception as e:
+        # The handler started, so the email may already be sent or the task created (e.g. SMTP took
+        # the message, then timed out). Retrying could do it twice, so a person checks instead.
+        ctx.store.update_action(action_id, status="failed", result_json={"error": str(e)})
         raise
     ctx.store.update_action(action_id, status="executed", result_json=result)
     if action["kind"] == "create_task":
@@ -247,7 +246,7 @@ def reject_action(ctx, action_id: int, approver: str) -> None:
     action = ctx.store.get_action(action_id)
     if not action or action["status"] != "pending":
         raise ValueError("only a pending action can be rejected")
-    _require(ctx, approver, _right_for(action["kind"]), f"reject:{action['kind']}",
+    _require(ctx, approver, right_needed_for(action["kind"]), f"reject:{action['kind']}",
              action_id=action_id, email_id=action["email_id"])
     ctx.store.update_action(action_id, status="rejected", approved_by=approver)
     if action["kind"] == "create_task":
@@ -257,10 +256,12 @@ def reject_action(ctx, action_id: int, approver: str) -> None:
 
 
 def reassign_task(ctx, task_id: int, new_owner: str, reason: str, by: str, shown_hash: str | None = None):
-    """A person says the proposed owner is wrong. Records the correction (it becomes a
-    few-shot example next run). Before the task exists on the board: changes the pending
-    plan, which the person then approves (new hash). After: a reassign_task action fixes it
-    on the board through the permission gate."""
+    """A person says the proposed owner is wrong and picks the right one. The person just chose
+    this exact owner, so the change runs straight away, through the permission gate:
+      task not on the board yet   the pending create_task plan gets the new owner and is created
+      task already on the board   a reassign_task action changes the owner there
+    Only if that worked is the correction saved (it becomes a few-shot example next run).
+    Returns the gate's result."""
     task = ctx.store.get_task(task_id)
     if not task or not ctx.directory.get(new_owner):
         raise ValueError("unknown task or person")
@@ -268,12 +269,38 @@ def reassign_task(ctx, task_id: int, new_owner: str, reason: str, by: str, shown
     old = task["final_owner"] or task["proposed_owner"]
     if new_owner == old:
         raise ValueError("that is already the owner")
+    if task["status"] == "rejected":
+        raise ValueError("this task was rejected")
     email = ctx.store.get_email(task["email_id"])
     pending = ctx.store.actions("task_id = ? AND kind = 'create_task' AND status = 'pending'", (task_id,))
     if pending and (not shown_hash or plan_hash(pending[0]["plan_json"]) != shown_hash):
         ctx.store.audit(f"human:{by}", "blocked:reassign_task", outcome="blocked", task_id=task_id,
                         email_id=task["email_id"], detail={"why": "plan hash missing or stale"})
         raise ValueError("plan changed after you opened the page; reload")
+
+    if task["board_task_id"]:
+        new_plan = {"email_id": task["email_id"], "task_id": task_id, "board_task_id": task["board_task_id"],
+                    "old_owner": old, "new_owner": new_owner}
+        action_id = ctx.store.add_action(email_id=task["email_id"], task_id=task_id, kind="reassign_task",
+                                         plan_json=new_plan, status="pending")
+    else:
+        new_plan = _task_plan(ctx, {**task, "final_owner": new_owner})
+        if pending:  # same action, new owner in the plan
+            action_id = pending[0]["id"]
+            ctx.store.update_action(action_id, plan_json=new_plan)
+        else:        # no owner was proposed, so there was no action yet
+            action_id = ctx.store.add_action(email_id=task["email_id"], task_id=task_id,
+                                             kind="create_task", plan_json=new_plan, status="pending")
+    try:
+        result = approve_action(ctx, action_id, by, plan_hash(new_plan))
+    except Exception:
+        # Refused or failed: no correction is saved and the owner stays as it was.
+        if ctx.store.get_action(action_id)["status"] == "pending":   # nothing ran (kill switch on)
+            if pending:
+                ctx.store.update_action(action_id, plan_json=pending[0]["plan_json"])
+            else:
+                ctx.store.update_action(action_id, status="blocked")
+        raise
 
     ctx.store.add_correction(task_id=task_id, email_id=task["email_id"], task_text=task["what_ar"],
                              subject=email["subject"], evidence_quote=task["evidence_quote"],
@@ -282,18 +309,7 @@ def reassign_task(ctx, task_id: int, new_owner: str, reason: str, by: str, shown
                     detail={"from": old, "to": new_owner, "reason": reason})
     ctx.store.update_task(task_id, final_owner=new_owner, status="reassigned", decided_by=by,
                           decided_at=now())
-    task = ctx.store.get_task(task_id)
-    if pending:
-        ctx.store.update_action(pending[0]["id"], plan_json=_task_plan(ctx, task))
-        return {"action_id": pending[0]["id"], "board": "pending"}
-    if task["board_task_id"]:
-        plan = {"email_id": task["email_id"], "task_id": task_id, "board_task_id": task["board_task_id"],
-                "old_owner": old, "new_owner": new_owner}
-        action_id = ctx.store.add_action(email_id=task["email_id"], task_id=task_id, kind="reassign_task",
-                                         plan_json=plan, status="pending")
-        # the person just chose this exact change, so they approve this exact plan
-        return approve_action(ctx, action_id, by, plan_hash(plan))
-    return {"board": "none"}
+    return result
 
 
 def propose_forward(ctx, email_id: str, to_person: str, requested_by: str) -> int:
