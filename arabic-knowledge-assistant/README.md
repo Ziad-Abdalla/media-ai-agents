@@ -1,4 +1,4 @@
-# sadaf-knowledge-assistant
+# arabic-knowledge-assistant
 
 An internal knowledge assistant for a TV drama production house: staff ask in Arabic (formal or Saudi dialect) or English, and it answers **only from company documents**, with a citation on every sentence.
 

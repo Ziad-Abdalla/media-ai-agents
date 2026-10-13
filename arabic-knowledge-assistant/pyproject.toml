@@ -1,5 +1,5 @@
 [project]
-name = "sadaf-knowledge-assistant"
+name = "arabic-knowledge-assistant"
 version = "0.1.0"
 description = "Answers staff questions from company documents only: permissions before retrieval, latest version by default, citations, and refusal when the answer isn't there."
 requires-python = ">=3.11"
