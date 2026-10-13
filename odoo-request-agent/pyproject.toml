@@ -1,0 +1,35 @@
+[project]
+name = "odoo-request-agent"
+version = "0.1.0"
+description = "Turns approved purchase requests sent by email into draft Purchase Orders in Odoo, with a human approving every write."
+requires-python = ">=3.11"
+dependencies = [
+    "agent-cost-tracker",   # pip install -e ../agent-cost-tracker (NOT the unrelated PyPI package)
+    "anthropic>=1.0",
+    "pydantic>=2",
+    "fastapi",
+    "uvicorn",
+    "jinja2",
+    "python-multipart",
+    "httpx",
+    "python-dotenv",
+    "google-api-python-client",
+    "google-auth-oauthlib",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["odoo_agent"]
+
+[tool.setuptools.package-data]
+odoo_agent = ["templates/*.html"]
+
+[tool.pytest.ini_options]
+markers = ["live: needs the docker Odoo stack running (python -m pytest -m live)"]
+addopts = "-m 'not live'"

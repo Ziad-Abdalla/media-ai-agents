@@ -1,0 +1,9 @@
+{
+  "_note": "SYNTHETIC demo data: fictional productions and made-up budgets. Not Sadaf data. In a real setup these numbers come from the finance team (or from Odoo Enterprise budgets).",
+  "currency": "SAR",
+  "productions": [
+    {"code": "RML-S1", "name": "Rimal Al-Khobar (رمال الخبر)", "kind": "drama series, season 1", "budget": 450000},
+    {"code": "BYT-R27", "name": "Bayt Al-Jadd (بيت الجد)", "kind": "Ramadan drama series", "budget": 300000},
+    {"code": "SHK-S3", "name": "Sahrat Al-Khamis (سهرة الخميس)", "kind": "weekly studio talk show, season 3", "budget": 60000}
+  ]
+}
