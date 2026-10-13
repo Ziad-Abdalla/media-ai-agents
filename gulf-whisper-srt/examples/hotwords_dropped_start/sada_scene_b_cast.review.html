@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head><meta charset="utf-8"><title>sada_scene_b_cast - subtitle review</title><style>
+body { font-family: "Segoe UI", Tahoma, sans-serif; margin: 0; background: #f4f1ea; color: #222; }
+header { background: #1d2a38; color: #fff; padding: 14px 24px; }
+header h1 { margin: 0; font-size: 20px; }
+header p { margin: 4px 0 0; opacity: .8; font-size: 13px; }
+main { display: grid; grid-template-columns: 1.3fr 1fr; gap: 18px; padding: 18px 24px; }
+section { background: #fff; border-radius: 8px; padding: 14px 16px; box-shadow: 0 1px 3px #0002; }
+h2 { font-size: 15px; margin: 0 0 10px; }
+video, audio { width: 100%; }
+#screen { background: #000; color: #fff; min-height: 96px; display: flex; align-items: center;
+  justify-content: center; text-align: center; font-size: 24px; line-height: 1.5; padding: 10px;
+  border-radius: 6px; margin-top: 10px; white-space: pre-line; }
+.stats { display: flex; gap: 10px; margin-bottom: 12px; }
+.stat { flex: 1; background: #f4f1ea; border-radius: 6px; padding: 8px; text-align: center; }
+.stat b { display: block; font-size: 22px; }
+ol { margin: 0; padding: 0 30px 0 0; max-height: 520px; overflow-y: auto; }
+li { margin: 0 0 6px; cursor: pointer; padding: 4px 6px; border-radius: 4px; }
+li:hover { background: #eef3f8; }
+li.now { background: #fff3c4; }
+li.flag { border-right: 4px solid #c0392b; }
+.time { font-family: Consolas, monospace; color: #555; direction: ltr; unicode-bidi: isolate; }
+.p1 { color: #8e1b10; } .p2 { color: #c0392b; } .p3 { color: #b9770e; } .p4 { color: #2471a3; }
+.detail { font-size: 13px; color: #444; }
+</style></head>
+<body>
+<header><h1>sada_scene_b_cast: مراجعة الترجمة المبدئية</h1>
+<p>مسودة آلية من gulf-whisper-srt. لا تُسلَّم قبل أن يراجعها محرر.</p></header>
+<main>
+<section>
+<h2>المشاهدة</h2>
+<audio id="media" controls preload="metadata" src="../../data/samples/sada_scene_b.wav"></audio>
+<div id="screen"></div>
+<h2 style="margin-top:16px">الحوار كامل (اضغط على أي سطر للانتقال إليه)</h2>
+<ol id="dialogue"><li data-t="20.14" class="flag"><span class="time">00:00:20</span> يا أبو حمد من غادة الشروط</li>
+<li data-t="25.76" class="flag"><span class="time">00:00:25</span> فقوة العلاق يا أبو حمد أيوه</li>
+<li data-t="33.56" class=""><span class="time">00:00:33</span> خلنا نصلح شاهي العبود بهذا اللي مديوش</li>
+<li data-t="39.08" class="flag"><span class="time">00:00:39</span> يسمونها بق معدبوهم منه هذا اللي يصبوه خلنا نصلح له العبود</li>
+<li data-t="44.64" class=""><span class="time">00:00:44</span> شاهي بدون سكر علشان صحته ما أغطم مع</li>
+<li data-t="50.00" class=""><span class="time">00:00:50</span> هالوزارة ما أشى الله عليه أول واحد يجي للدوام عبود بصراحة</li>
+<li data-t="55.80" class=""><span class="time">00:00:55</span> يعجبن هالولد عنده إنشاء أكثر من اللاج</li></ol>
+</section>
+<section>
+<h2>ابدأ من هنا: نقاط المراجعة</h2>
+<div class="stats">
+<div class="stat"><b>7</b>سطر ترجمة</div>
+<div class="stat"><b>3</b>عليها ملاحظة</div>
+<div class="stat"><b>43%</b>نسبة المراجعة</div>
+<div class="stat"><b>1</b>مقاطع بلا ترجمة<br>20 ثانية</div>
+</div>
+<ol><li data-t="0.00"><span class="time">00:00:00</span> <b class="p1">ربما فات حوار</b> فراغ<div class="detail" dir="ltr">speech heard for 18 s of a 20 s stretch with no subtitle: dialogue was probably skipped</div></li>
+<li data-t="20.14"><span class="time">00:00:20</span> <b class="p2">قد تكون الكلمات خاطئة</b> السطر 1<div class="detail" dir="ltr">Whisper was unsure of: «<bdi>يا</bdi>» 0.10, «<bdi>من</bdi>» 0.26</div></li>
+<li data-t="25.76"><span class="time">00:00:25</span> <b class="p2">قد تكون الكلمات خاطئة</b> السطر 2<div class="detail" dir="ltr">Whisper was unsure of: «<bdi>أيوه</bdi>» 0.49</div></li>
+<li data-t="39.08"><span class="time">00:00:39</span> <b class="p2">قد تكون الكلمات خاطئة</b> السطر 4<div class="detail" dir="ltr">Whisper was unsure of: «<bdi>معدبوهم</bdi>» 0.48</div></li></ol>
+</section>
+</main>
+<script>const CUES = [{"start": 20.14, "end": 25.76, "lines": ["يا أبو حمد من غادة الشروط"]}, {"start": 25.76, "end": 31.54, "lines": ["فقوة العلاق يا أبو حمد أيوه"]}, {"start": 33.56, "end": 39.08, "lines": ["خلنا نصلح شاهي العبود بهذا اللي مديوش"]}, {"start": 39.08, "end": 44.64, "lines": ["يسمونها بق معدبوهم منه هذا", "اللي يصبوه خلنا نصلح له العبود"]}, {"start": 44.64, "end": 50.0, "lines": ["شاهي بدون سكر علشان صحته ما أغطم مع"]}, {"start": 50.0, "end": 55.8, "lines": ["هالوزارة ما أشى الله عليه أول", "واحد يجي للدوام عبود بصراحة"]}, {"start": 55.8, "end": 60.1, "lines": ["يعجبن هالولد عنده إنشاء أكثر من اللاج"]}];
+const media = document.getElementById('media');
+const screen = document.getElementById('screen');
+const lines = document.querySelectorAll('#dialogue li');
+function show(t) {
+  const i = CUES.findIndex(c => c.start <= t && t < c.end);
+  screen.textContent = i >= 0 ? CUES[i].lines.join('\n') : '';
+  lines.forEach((li, k) => li.classList.toggle('now', k === i));
+}
+function jump(t) { media.currentTime = Math.max(0, t - 0.5); media.play(); }
+document.querySelectorAll('[data-t]').forEach(el => el.addEventListener('click', () => jump(+el.dataset.t)));
+media.addEventListener('timeupdate', () => show(media.currentTime));
+// page.html#t=26 opens at 26 seconds, so a link can point a colleague at one moment
+const start = parseFloat((location.hash.match(/t=([\d.]+)/) || [])[1]);
+if (!isNaN(start)) { show(start); media.currentTime = start; }
+</script>
+</body></html>

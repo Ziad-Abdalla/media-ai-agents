@@ -1,0 +1,756 @@
+{
+ "words": [
+  {
+   "start": 0.0,
+   "end": 0.48,
+   "text": "يا",
+   "probability": 0.50830078125
+  },
+  {
+   "start": 0.48,
+   "end": 0.76,
+   "text": "ابن",
+   "probability": 0.909912109375
+  },
+  {
+   "start": 0.76,
+   "end": 1.44,
+   "text": "الحلال،",
+   "probability": 0.80596923828125
+  },
+  {
+   "start": 1.44,
+   "end": 1.68,
+   "text": "أنا",
+   "probability": 0.822265625
+  },
+  {
+   "start": 1.68,
+   "end": 2.0,
+   "text": "أقوم",
+   "probability": 0.792724609375
+  },
+  {
+   "start": 2.0,
+   "end": 2.34,
+   "text": "بدري",
+   "probability": 0.4716796875
+  },
+  {
+   "start": 2.34,
+   "end": 2.72,
+   "text": "علشان",
+   "probability": 0.6444498697916666
+  },
+  {
+   "start": 2.72,
+   "end": 3.3,
+   "text": "الرياضة",
+   "probability": 0.9769287109375
+  },
+  {
+   "start": 3.3,
+   "end": 3.76,
+   "text": "أنت",
+   "probability": 0.554290771484375
+  },
+  {
+   "start": 3.76,
+   "end": 4.18,
+   "text": "تعرفني",
+   "probability": 0.841796875
+  },
+  {
+   "start": 4.18,
+   "end": 4.36,
+   "text": "أنا",
+   "probability": 0.5654296875
+  },
+  {
+   "start": 4.36,
+   "end": 5.86,
+   "text": "رياضي",
+   "probability": 0.8939208984375
+  },
+  {
+   "start": 5.86,
+   "end": 6.86,
+   "text": "وأحب",
+   "probability": 0.9391276041666666
+  },
+  {
+   "start": 6.86,
+   "end": 7.46,
+   "text": "الرياضة",
+   "probability": 0.9669189453125
+  },
+  {
+   "start": 7.46,
+   "end": 7.98,
+   "text": "من",
+   "probability": 0.97412109375
+  },
+  {
+   "start": 7.98,
+   "end": 8.94,
+   "text": "نعومة",
+   "probability": 0.886962890625
+  },
+  {
+   "start": 8.94,
+   "end": 9.46,
+   "text": "الظافير",
+   "probability": 0.7861328125
+  },
+  {
+   "start": 9.46,
+   "end": 10.48,
+   "text": "منذ",
+   "probability": 0.919677734375
+  },
+  {
+   "start": 10.48,
+   "end": 11.08,
+   "text": "فترة",
+   "probability": 0.99169921875
+  },
+  {
+   "start": 11.08,
+   "end": 12.36,
+   "text": "سابقة",
+   "probability": 0.951171875
+  },
+  {
+   "start": 12.36,
+   "end": 12.82,
+   "text": "يعني",
+   "probability": 0.774169921875
+  },
+  {
+   "start": 14.24,
+   "end": 15.16,
+   "text": "وتعرفني",
+   "probability": 0.68475341796875
+  },
+  {
+   "start": 15.16,
+   "end": 15.54,
+   "text": "يعني",
+   "probability": 0.7578125
+  },
+  {
+   "start": 15.54,
+   "end": 15.88,
+   "text": "لا",
+   "probability": 0.2098388671875
+  },
+  {
+   "start": 15.88,
+   "end": 16.12,
+   "text": "أسمى",
+   "probability": 0.4043375651041667
+  },
+  {
+   "start": 16.12,
+   "end": 16.6,
+   "text": "حظة",
+   "probability": 0.529541015625
+  },
+  {
+   "start": 16.6,
+   "end": 16.78,
+   "text": "على",
+   "probability": 0.65087890625
+  },
+  {
+   "start": 16.78,
+   "end": 17.86,
+   "text": "اليابت",
+   "probability": 0.5707194010416666
+  },
+  {
+   "start": 17.86,
+   "end": 19.5,
+   "text": "أحلى",
+   "probability": 0.6509602864583334
+  },
+  {
+   "start": 19.5,
+   "end": 20.28,
+   "text": "الصدقين",
+   "probability": 0.6822509765625
+  },
+  {
+   "start": 20.28,
+   "end": 21.38,
+   "text": "أقول",
+   "probability": 0.8662109375
+  },
+  {
+   "start": 21.38,
+   "end": 21.54,
+   "text": "لك",
+   "probability": 0.896728515625
+  },
+  {
+   "start": 21.54,
+   "end": 21.64,
+   "text": "يا",
+   "probability": 0.84814453125
+  },
+  {
+   "start": 21.64,
+   "end": 21.88,
+   "text": "عبود",
+   "probability": 0.6861165364583334
+  },
+  {
+   "start": 21.88,
+   "end": 22.04,
+   "text": "الله",
+   "probability": 0.9375
+  },
+  {
+   "start": 22.04,
+   "end": 22.3,
+   "text": "يطول",
+   "probability": 0.96044921875
+  },
+  {
+   "start": 22.3,
+   "end": 22.42,
+   "text": "في",
+   "probability": 0.98583984375
+  },
+  {
+   "start": 22.42,
+   "end": 22.74,
+   "text": "عمرك",
+   "probability": 0.9248046875
+  },
+  {
+   "start": 22.74,
+   "end": 23.0,
+   "text": "ودي",
+   "probability": 0.48095703125
+  },
+  {
+   "start": 23.0,
+   "end": 23.26,
+   "text": "أسألك",
+   "probability": 0.757080078125
+  },
+  {
+   "start": 23.26,
+   "end": 23.72,
+   "text": "سؤال",
+   "probability": 0.9814453125
+  },
+  {
+   "start": 23.72,
+   "end": 24.38,
+   "text": "أنت",
+   "probability": 0.64794921875
+  },
+  {
+   "start": 24.38,
+   "end": 24.52,
+   "text": "لم",
+   "probability": 0.92138671875
+  },
+  {
+   "start": 24.52,
+   "end": 24.86,
+   "text": "أتقدك",
+   "probability": 0.42706298828125
+  },
+  {
+   "start": 24.86,
+   "end": 25.36,
+   "text": "شعبك",
+   "probability": 0.92529296875
+  },
+  {
+   "start": 25.36,
+   "end": 26.48,
+   "text": "تدري",
+   "probability": 0.7539876302083334
+  },
+  {
+   "start": 26.48,
+   "end": 27.04,
+   "text": "ليش؟",
+   "probability": 0.8681640625
+  },
+  {
+   "start": 27.04,
+   "end": 27.74,
+   "text": "تعرف",
+   "probability": 0.877197265625
+  },
+  {
+   "start": 27.74,
+   "end": 29.0,
+   "text": "اللعب",
+   "probability": 0.9410807291666666
+  },
+  {
+   "start": 29.0,
+   "end": 29.8,
+   "text": "الأجنبي",
+   "probability": 0.93994140625
+  },
+  {
+   "start": 29.8,
+   "end": 31.2,
+   "text": "خليت؟",
+   "probability": 0.822265625
+  },
+  {
+   "start": 32.34,
+   "end": 33.24,
+   "text": "خليت",
+   "probability": 0.9733072916666666
+  },
+  {
+   "start": 34.38,
+   "end": 35.28,
+   "text": "كذا؟",
+   "probability": 0.3818155924479167
+  },
+  {
+   "start": 35.28,
+   "end": 36.28,
+   "text": "عبود،",
+   "probability": 0.7728271484375
+  },
+  {
+   "start": 36.28,
+   "end": 36.82,
+   "text": "تراك",
+   "probability": 0.8375651041666666
+  },
+  {
+   "start": 36.82,
+   "end": 37.14,
+   "text": "صدقت",
+   "probability": 0.9339192708333334
+  },
+  {
+   "start": 37.14,
+   "end": 37.56,
+   "text": "نفسك",
+   "probability": 0.9970703125
+  },
+  {
+   "start": 37.56,
+   "end": 37.96,
+   "text": "ومسوي",
+   "probability": 0.9251708984375
+  },
+  {
+   "start": 37.96,
+   "end": 38.24,
+   "text": "عمرك",
+   "probability": 0.9962565104166666
+  },
+  {
+   "start": 38.24,
+   "end": 38.64,
+   "text": "أجنبي",
+   "probability": 0.947265625
+  },
+  {
+   "start": 38.95,
+   "end": 39.4,
+   "text": "يا",
+   "probability": 0.833984375
+  },
+  {
+   "start": 39.4,
+   "end": 39.6,
+   "text": "ابن",
+   "probability": 0.9033203125
+  },
+  {
+   "start": 39.6,
+   "end": 40.04,
+   "text": "الحلال",
+   "probability": 0.9694010416666666
+  },
+  {
+   "start": 40.04,
+   "end": 40.3,
+   "text": "انتبه",
+   "probability": 0.73663330078125
+  },
+  {
+   "start": 40.3,
+   "end": 40.76,
+   "text": "النفسك",
+   "probability": 0.8103841145833334
+  },
+  {
+   "start": 40.76,
+   "end": 40.88,
+   "text": "لا",
+   "probability": 0.9267578125
+  },
+  {
+   "start": 40.88,
+   "end": 41.54,
+   "text": "تتمصع",
+   "probability": 0.906005859375
+  },
+  {
+   "start": 41.54,
+   "end": 42.14,
+   "text": "تراك",
+   "probability": 0.7600911458333334
+  },
+  {
+   "start": 42.14,
+   "end": 42.42,
+   "text": "كلك",
+   "probability": 0.7413330078125
+  },
+  {
+   "start": 42.42,
+   "end": 42.76,
+   "text": "عذب",
+   "probability": 0.739013671875
+  },
+  {
+   "start": 42.76,
+   "end": 42.88,
+   "text": "ما",
+   "probability": 0.708984375
+  },
+  {
+   "start": 42.88,
+   "end": 43.1,
+   "text": "فيك",
+   "probability": 0.6396484375
+  },
+  {
+   "start": 43.1,
+   "end": 43.26,
+   "text": "بولا",
+   "probability": 0.463134765625
+  },
+  {
+   "start": 43.26,
+   "end": 43.56,
+   "text": "لحم",
+   "probability": 0.70751953125
+  },
+  {
+   "start": 43.56,
+   "end": 45.04,
+   "text": "حلوة،",
+   "probability": 0.767578125
+  },
+  {
+   "start": 45.04,
+   "end": 45.26,
+   "text": "بس",
+   "probability": 0.950439453125
+  },
+  {
+   "start": 45.26,
+   "end": 45.38,
+   "text": "لا",
+   "probability": 0.8935546875
+  },
+  {
+   "start": 45.38,
+   "end": 45.66,
+   "text": "تعيدها",
+   "probability": 0.78466796875
+  },
+  {
+   "start": 45.66,
+   "end": 45.86,
+   "text": "مرة",
+   "probability": 0.98193359375
+  },
+  {
+   "start": 45.86,
+   "end": 46.26,
+   "text": "ثانية",
+   "probability": 0.92333984375
+  },
+  {
+   "start": 46.26,
+   "end": 47.46,
+   "text": "أدري",
+   "probability": 0.7566731770833334
+  },
+  {
+   "start": 47.46,
+   "end": 47.74,
+   "text": "فيك",
+   "probability": 0.989013671875
+  },
+  {
+   "start": 47.74,
+   "end": 48.02,
+   "text": "أنت",
+   "probability": 0.802001953125
+  },
+  {
+   "start": 48.02,
+   "end": 49.16,
+   "text": "غار",
+   "probability": 0.800537109375
+  },
+  {
+   "start": 49.16,
+   "end": 49.32,
+   "text": "من",
+   "probability": 0.98291015625
+  },
+  {
+   "start": 49.32,
+   "end": 49.94,
+   "text": "رشافتي",
+   "probability": 0.81781005859375
+  },
+  {
+   "start": 49.94,
+   "end": 50.86,
+   "text": "تصدق",
+   "probability": 0.9530029296875
+  },
+  {
+   "start": 50.86,
+   "end": 51.34,
+   "text": "عبد،",
+   "probability": 0.630859375
+  },
+  {
+   "start": 51.34,
+   "end": 51.84,
+   "text": "إنك",
+   "probability": 0.810546875
+  },
+  {
+   "start": 51.84,
+   "end": 52.38,
+   "text": "كرهتني",
+   "probability": 0.81923828125
+  },
+  {
+   "start": 52.38,
+   "end": 52.52,
+   "text": "في",
+   "probability": 0.9873046875
+  },
+  {
+   "start": 52.52,
+   "end": 53.06,
+   "text": "الرياضة",
+   "probability": 0.9949951171875
+  },
+  {
+   "start": 53.06,
+   "end": 54.0,
+   "text": "والرشافة",
+   "probability": 0.94443359375
+  },
+  {
+   "start": 54.0,
+   "end": 54.98,
+   "text": "مشكلة",
+   "probability": 0.86669921875
+  }
+ ],
+ "duration": 55.0,
+ "segments": [
+  {
+   "start": 0.0,
+   "end": 3.3,
+   "text": "يا ابن الحلال، أنا أقوم بدري علشان الرياضة",
+   "avg_logprob": -0.40264423053998216,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 1.943661971830986
+  },
+  {
+   "start": 3.3,
+   "end": 12.82,
+   "text": "أنت تعرفني أنا رياضي وأحب الرياضة من نعومة الظافير منذ فترة سابقة يعني",
+   "avg_logprob": -0.40264423053998216,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 1.943661971830986
+  },
+  {
+   "start": 14.24,
+   "end": 17.86,
+   "text": "وتعرفني يعني لا أسمى حظة على اليابت",
+   "avg_logprob": -0.40264423053998216,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 1.943661971830986
+  },
+  {
+   "start": 17.86,
+   "end": 20.28,
+   "text": "أحلى الصدقين",
+   "avg_logprob": -0.40264423053998216,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 1.943661971830986
+  },
+  {
+   "start": 20.28,
+   "end": 23.72,
+   "text": "أقول لك يا عبود الله يطول في عمرك ودي أسألك سؤال",
+   "avg_logprob": -0.40264423053998216,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 1.943661971830986
+  },
+  {
+   "start": 23.72,
+   "end": 25.36,
+   "text": "أنت لم أتقدك شعبك",
+   "avg_logprob": -0.40264423053998216,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 1.943661971830986
+  },
+  {
+   "start": 25.36,
+   "end": 27.04,
+   "text": "تدري ليش؟",
+   "avg_logprob": -0.2289701299097553,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 1.876595744680851
+  },
+  {
+   "start": 27.04,
+   "end": 31.2,
+   "text": "تعرف اللعب الأجنبي خليت؟",
+   "avg_logprob": -0.2289701299097553,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 1.876595744680851
+  },
+  {
+   "start": 32.34,
+   "end": 33.24,
+   "text": "خليت",
+   "avg_logprob": -0.2289701299097553,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 1.876595744680851
+  },
+  {
+   "start": 34.38,
+   "end": 35.28,
+   "text": "كذا؟",
+   "avg_logprob": -0.2289701299097553,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 1.876595744680851
+  },
+  {
+   "start": 35.28,
+   "end": 38.64,
+   "text": "عبود، تراك صدقت نفسك ومسوي عمرك أجنبي",
+   "avg_logprob": -0.2289701299097553,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 1.876595744680851
+  },
+  {
+   "start": 38.95,
+   "end": 41.54,
+   "text": "يا ابن الحلال انتبه النفسك لا تتمصع",
+   "avg_logprob": -0.2289701299097553,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 1.876595744680851
+  },
+  {
+   "start": 41.54,
+   "end": 43.56,
+   "text": "تراك كلك عذب ما فيك بولا لحم",
+   "avg_logprob": -0.2289701299097553,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 1.876595744680851
+  },
+  {
+   "start": 43.56,
+   "end": 46.26,
+   "text": "حلوة، بس لا تعيدها مرة ثانية",
+   "avg_logprob": -0.2289701299097553,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 1.876595744680851
+  },
+  {
+   "start": 46.26,
+   "end": 49.94,
+   "text": "أدري فيك أنت غار من رشافتي",
+   "avg_logprob": -0.2289701299097553,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 1.876595744680851
+  },
+  {
+   "start": 49.94,
+   "end": 54.0,
+   "text": "تصدق عبد، إنك كرهتني في الرياضة والرشافة",
+   "avg_logprob": -0.2289701299097553,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 1.876595744680851
+  },
+  {
+   "start": 54.0,
+   "end": 54.98,
+   "text": "مشكلة",
+   "avg_logprob": -0.5416666467984518,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 0.5263157894736842
+  }
+ ],
+ "source": "../../data/samples/sada_demo_scene.wav",
+ "hotwords": "عبود أبو حمد",
+ "hotwords_dropped": "",
+ "speech": [
+  [
+   0.18,
+   18.09
+  ],
+  [
+   18.97,
+   20.62
+  ],
+  [
+   20.95,
+   25.58
+  ],
+  [
+   26.04,
+   31.37
+  ],
+  [
+   32.5,
+   33.51
+  ],
+  [
+   34.14,
+   35.02
+  ],
+  [
+   35.38,
+   43.82
+  ],
+  [
+   44.28,
+   48.52
+  ],
+  [
+   48.66,
+   50.15
+  ],
+  [
+   50.39,
+   54.15
+  ],
+  [
+   54.46,
+   55.0
+  ]
+ ]
+}

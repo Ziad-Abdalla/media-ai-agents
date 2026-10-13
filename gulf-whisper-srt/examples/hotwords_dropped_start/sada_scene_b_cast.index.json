@@ -1,0 +1,55 @@
+{
+ "format": "gulf-srt-dialogue-index",
+ "version": 1,
+ "entries": [
+  {
+   "file": "sada_scene_b_cast.srt",
+   "cue": 1,
+   "start": 20.14,
+   "end": 25.76,
+   "text": "يا أبو حمد من غادة الشروط"
+  },
+  {
+   "file": "sada_scene_b_cast.srt",
+   "cue": 2,
+   "start": 25.76,
+   "end": 31.54,
+   "text": "فقوة العلاق يا أبو حمد أيوه"
+  },
+  {
+   "file": "sada_scene_b_cast.srt",
+   "cue": 3,
+   "start": 33.56,
+   "end": 39.08,
+   "text": "خلنا نصلح شاهي العبود بهذا اللي مديوش"
+  },
+  {
+   "file": "sada_scene_b_cast.srt",
+   "cue": 4,
+   "start": 39.08,
+   "end": 44.64,
+   "text": "يسمونها بق معدبوهم منه هذا اللي يصبوه خلنا نصلح له العبود"
+  },
+  {
+   "file": "sada_scene_b_cast.srt",
+   "cue": 5,
+   "start": 44.64,
+   "end": 50.0,
+   "text": "شاهي بدون سكر علشان صحته ما أغطم مع"
+  },
+  {
+   "file": "sada_scene_b_cast.srt",
+   "cue": 6,
+   "start": 50.0,
+   "end": 55.8,
+   "text": "هالوزارة ما أشى الله عليه أول واحد يجي للدوام عبود بصراحة"
+  },
+  {
+   "file": "sada_scene_b_cast.srt",
+   "cue": 7,
+   "start": 55.8,
+   "end": 60.1,
+   "text": "يعجبن هالولد عنده إنشاء أكثر من اللاج"
+  }
+ ]
+}

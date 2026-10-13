@@ -1,0 +1,109 @@
+# Suggested from what editors changed. Nothing here is used until a person approves it:
+# check each rule, delete the '# ' in front of the ones you want, and save this as the show's
+# replacements file (python -m gulf_srt ... --replacements this_file.txt).
+
+# 1 times, 1 episode(s)
+# على شأن => علشان
+
+# 1 times, 1 episode(s)
+# الظافيري => اظافري
+
+# 1 times, 1 episode(s)
+# وتعرف => هاهاها و تعرفني
+
+# 1 times, 1 episode(s)
+# ما أحظ => لازم احافظ
+
+# 1 times, 1 episode(s)
+# اليابت => لياقتي
+
+# 1 times, 1 episode(s)
+# لك يا => اخ
+
+# 1 times, 1 episode(s)
+# أسا لك => اسالك
+
+# 1 times, 1 episode(s)
+# تعرف اللعب => اتعرف اللاعب
+
+# 1 times, 1 episode(s)
+# خليت خليت => خولييت خولييت
+
+# 1 times, 1 episode(s)
+# ومسوي => مسوي
+
+# 1 times, 1 episode(s)
+# يجنبي => اجنبي
+
+# 1 times, 1 episode(s)
+# تراك => ترى
+
+# 1 times, 1 episode(s)
+# عدب ما => عظما
+
+# 1 times, 1 episode(s)
+# بولا => ولا
+
+# 1 times, 1 episode(s)
+# غار => تغار
+
+# 1 times, 1 episode(s)
+# عبد => عاد
+
+# 1 times, 1 episode(s)
+# والرشاق => و الرشاقة
+
+# 1 times, 1 episode(s)
+# هم => بس الله يهديهم
+
+# 1 times, 1 episode(s)
+# قيل => قايل
+
+# 1 times, 1 episode(s)
+# أن => لا
+
+# 1 times, 1 episode(s)
+# تاني ومتلقونها => ثاني يوم تلقونها
+
+# 1 times, 1 episode(s)
+# حياته لما => حياة لمن
+
+# 1 times, 1 episode(s)
+# لا => احلى
+
+# 1 times, 1 episode(s)
+# حامل فراشة => حمد فراش
+
+# 1 times, 1 episode(s)
+# أبو حامل => بو حامد
+
+# 1 times, 1 episode(s)
+# أبو يا أبو => بو
+
+# 1 times, 1 episode(s)
+# العبود بهذا => لابو عبود بهذه
+
+# 1 times, 1 episode(s)
+# مديوش => ما ادري وش
+
+# 1 times, 1 episode(s)
+# ما عدموهم منه => مقبوب
+
+# 1 times, 1 episode(s)
+# يصبوه => صبونه
+
+# 1 times, 1 episode(s)
+# له العبود => لابو عبود
+
+# 1 times, 1 episode(s)
+# أغطم مع هالوزارة => غط معها الوزارة
+
+# 1 times, 1 episode(s)
+# أشى => شاء
+
+# 1 times, 1 episode(s)
+# يعجبن => يعجبه
+
+# 1 times, 1 episode(s)
+# اللاجم => اللازم
+

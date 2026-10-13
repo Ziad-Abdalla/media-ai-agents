@@ -1,0 +1,18 @@
+# Common Gulf (Saudi/Khaliji) dialect words that Whisper tends to write in MSA spelling.
+# A generic hand-written list, not copied from the reference transcripts. Some of these
+# very common words do appear in the clips (علشان، عشان، ترى), so treat any gain as optimistic.
+علشان
+عشان
+الحين
+للحين
+وش
+ليش
+ترى
+زين
+أبغى
+يبغى
+وايد
+حيل
+مب
+شلون
+يالله

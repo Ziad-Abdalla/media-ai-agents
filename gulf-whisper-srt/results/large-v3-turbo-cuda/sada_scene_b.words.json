@@ -1,0 +1,814 @@
+{
+ "words": [
+  {
+   "start": 0.0,
+   "end": 1.22,
+   "text": "الله",
+   "probability": 0.04052734375
+  },
+  {
+   "start": 1.22,
+   "end": 1.7,
+   "text": "يهديهم",
+   "probability": 0.86669921875
+  },
+  {
+   "start": 1.7,
+   "end": 1.76,
+   "text": "هم",
+   "probability": 0.2481689453125
+  },
+  {
+   "start": 1.76,
+   "end": 2.12,
+   "text": "العيال",
+   "probability": 0.8068033854166666
+  },
+  {
+   "start": 2.12,
+   "end": 3.1,
+   "text": "قيل",
+   "probability": 0.28076171875
+  },
+  {
+   "start": 3.1,
+   "end": 3.52,
+   "text": "لهم",
+   "probability": 0.873779296875
+  },
+  {
+   "start": 3.52,
+   "end": 5.82,
+   "text": "رتبوا",
+   "probability": 0.6687164306640625
+  },
+  {
+   "start": 5.82,
+   "end": 6.44,
+   "text": "مكاتبكم",
+   "probability": 0.96669921875
+  },
+  {
+   "start": 6.44,
+   "end": 7.28,
+   "text": "رتبوها",
+   "probability": 0.8158203125
+  },
+  {
+   "start": 7.28,
+   "end": 7.8,
+   "text": "قبل",
+   "probability": 0.92626953125
+  },
+  {
+   "start": 7.8,
+   "end": 7.86,
+   "text": "أن",
+   "probability": 0.08013916015625
+  },
+  {
+   "start": 7.86,
+   "end": 8.3,
+   "text": "تطلعون",
+   "probability": 0.92099609375
+  },
+  {
+   "start": 8.3,
+   "end": 8.6,
+   "text": "عشان",
+   "probability": 0.754638671875
+  },
+  {
+   "start": 8.6,
+   "end": 8.96,
+   "text": "ترجعون",
+   "probability": 0.882568359375
+  },
+  {
+   "start": 8.96,
+   "end": 9.26,
+   "text": "تاني",
+   "probability": 0.6216634114583334
+  },
+  {
+   "start": 9.26,
+   "end": 9.82,
+   "text": "ومتلقونها",
+   "probability": 0.8127092633928571
+  },
+  {
+   "start": 9.82,
+   "end": 10.56,
+   "text": "بمنتهى",
+   "probability": 0.86669921875
+  },
+  {
+   "start": 10.56,
+   "end": 11.26,
+   "text": "القيافة",
+   "probability": 0.99169921875
+  },
+  {
+   "start": 11.26,
+   "end": 11.92,
+   "text": "لكن",
+   "probability": 0.86376953125
+  },
+  {
+   "start": 11.92,
+   "end": 12.88,
+   "text": "لا",
+   "probability": 0.77099609375
+  },
+  {
+   "start": 12.88,
+   "end": 13.24,
+   "text": "حياته",
+   "probability": 0.78485107421875
+  },
+  {
+   "start": 13.24,
+   "end": 13.38,
+   "text": "لما",
+   "probability": 0.71533203125
+  },
+  {
+   "start": 13.38,
+   "end": 13.78,
+   "text": "تنادي",
+   "probability": 0.8955078125
+  },
+  {
+   "start": 13.78,
+   "end": 15.46,
+   "text": "نبدأ",
+   "probability": 0.7718912760416666
+  },
+  {
+   "start": 15.46,
+   "end": 15.96,
+   "text": "شغلنا",
+   "probability": 0.9052734375
+  },
+  {
+   "start": 15.96,
+   "end": 17.0,
+   "text": "والمهام",
+   "probability": 0.8909912109375
+  },
+  {
+   "start": 17.0,
+   "end": 17.14,
+   "text": "من",
+   "probability": 0.865234375
+  },
+  {
+   "start": 17.14,
+   "end": 17.8,
+   "text": "الجسيمة",
+   "probability": 0.9874267578125
+  },
+  {
+   "start": 17.8,
+   "end": 18.7,
+   "text": "لا",
+   "probability": 0.272705078125
+  },
+  {
+   "start": 18.7,
+   "end": 18.88,
+   "text": "أبو",
+   "probability": 0.89306640625
+  },
+  {
+   "start": 18.88,
+   "end": 19.28,
+   "text": "حامل",
+   "probability": 0.71630859375
+  },
+  {
+   "start": 19.28,
+   "end": 20.02,
+   "text": "فراشة",
+   "probability": 0.86474609375
+  },
+  {
+   "start": 20.02,
+   "end": 20.52,
+   "text": "محترف",
+   "probability": 0.9539388020833334
+  },
+  {
+   "start": 20.52,
+   "end": 21.56,
+   "text": "يا",
+   "probability": 0.56787109375
+  },
+  {
+   "start": 21.56,
+   "end": 21.88,
+   "text": "أبو",
+   "probability": 0.9456380208333334
+  },
+  {
+   "start": 21.88,
+   "end": 22.84,
+   "text": "حامل",
+   "probability": 0.9951171875
+  },
+  {
+   "start": 22.84,
+   "end": 23.62,
+   "text": "من",
+   "probability": 0.95849609375
+  },
+  {
+   "start": 23.62,
+   "end": 24.46,
+   "text": "غاد",
+   "probability": 0.80908203125
+  },
+  {
+   "start": 24.46,
+   "end": 25.82,
+   "text": "الشروط",
+   "probability": 0.5704752604166666
+  },
+  {
+   "start": 25.82,
+   "end": 26.48,
+   "text": "فقوة",
+   "probability": 0.653228759765625
+  },
+  {
+   "start": 26.48,
+   "end": 27.52,
+   "text": "العلاق",
+   "probability": 0.6145833333333334
+  },
+  {
+   "start": 27.52,
+   "end": 28.22,
+   "text": "يا",
+   "probability": 0.548828125
+  },
+  {
+   "start": 28.22,
+   "end": 28.74,
+   "text": "أبو..",
+   "probability": 0.610015869140625
+  },
+  {
+   "start": 28.74,
+   "end": 29.42,
+   "text": "يا",
+   "probability": 0.94482421875
+  },
+  {
+   "start": 29.42,
+   "end": 29.68,
+   "text": "أبو",
+   "probability": 0.9763997395833334
+  },
+  {
+   "start": 29.68,
+   "end": 30.8,
+   "text": "حمد..",
+   "probability": 0.6611328125
+  },
+  {
+   "start": 30.8,
+   "end": 31.52,
+   "text": "أيوه",
+   "probability": 0.78369140625
+  },
+  {
+   "start": 33.9,
+   "end": 34.94,
+   "text": "خلنا..",
+   "probability": 0.404693603515625
+  },
+  {
+   "start": 34.94,
+   "end": 35.72,
+   "text": "نصلح",
+   "probability": 0.9357096354166666
+  },
+  {
+   "start": 35.72,
+   "end": 36.24,
+   "text": "شاهي",
+   "probability": 0.880859375
+  },
+  {
+   "start": 36.24,
+   "end": 36.76,
+   "text": "العبود",
+   "probability": 0.9435221354166666
+  },
+  {
+   "start": 37.52,
+   "end": 38.56,
+   "text": "بهذا",
+   "probability": 0.66552734375
+  },
+  {
+   "start": 38.56,
+   "end": 38.72,
+   "text": "اللي",
+   "probability": 0.95263671875
+  },
+  {
+   "start": 38.72,
+   "end": 39.08,
+   "text": "مديوش",
+   "probability": 0.71533203125
+  },
+  {
+   "start": 39.08,
+   "end": 39.72,
+   "text": "يسمونها",
+   "probability": 0.8267822265625
+  },
+  {
+   "start": 40.3,
+   "end": 40.82,
+   "text": "بق",
+   "probability": 0.5103759765625
+  },
+  {
+   "start": 40.82,
+   "end": 41.1,
+   "text": "ما",
+   "probability": 0.15185546875
+  },
+  {
+   "start": 41.1,
+   "end": 41.52,
+   "text": "عدموهم",
+   "probability": 0.713134765625
+  },
+  {
+   "start": 41.52,
+   "end": 41.76,
+   "text": "منه",
+   "probability": 0.629150390625
+  },
+  {
+   "start": 41.76,
+   "end": 42.02,
+   "text": "هذا",
+   "probability": 0.53076171875
+  },
+  {
+   "start": 42.02,
+   "end": 42.14,
+   "text": "اللي",
+   "probability": 0.961181640625
+  },
+  {
+   "start": 42.14,
+   "end": 42.78,
+   "text": "يصبوه",
+   "probability": 0.81708984375
+  },
+  {
+   "start": 43.12,
+   "end": 43.64,
+   "text": "خلنا",
+   "probability": 0.783203125
+  },
+  {
+   "start": 43.64,
+   "end": 44.1,
+   "text": "نصلح",
+   "probability": 0.9928385416666666
+  },
+  {
+   "start": 44.1,
+   "end": 44.22,
+   "text": "له",
+   "probability": 0.93408203125
+  },
+  {
+   "start": 44.22,
+   "end": 44.64,
+   "text": "العبود",
+   "probability": 0.9923502604166666
+  },
+  {
+   "start": 44.64,
+   "end": 45.18,
+   "text": "شاهي",
+   "probability": 0.9921875
+  },
+  {
+   "start": 45.18,
+   "end": 46.18,
+   "text": "بدون",
+   "probability": 0.97412109375
+  },
+  {
+   "start": 46.18,
+   "end": 46.66,
+   "text": "سكر",
+   "probability": 0.953857421875
+  },
+  {
+   "start": 46.66,
+   "end": 47.46,
+   "text": "علشان",
+   "probability": 0.9415690104166666
+  },
+  {
+   "start": 47.46,
+   "end": 48.64,
+   "text": "صحته",
+   "probability": 0.7845052083333334
+  },
+  {
+   "start": 48.64,
+   "end": 49.38,
+   "text": "ما",
+   "probability": 0.66455078125
+  },
+  {
+   "start": 49.38,
+   "end": 49.88,
+   "text": "أغطم",
+   "probability": 0.73956298828125
+  },
+  {
+   "start": 49.88,
+   "end": 50.0,
+   "text": "مع",
+   "probability": 0.78662109375
+  },
+  {
+   "start": 50.0,
+   "end": 50.68,
+   "text": "هالوزارة",
+   "probability": 0.9457194010416666
+  },
+  {
+   "start": 50.68,
+   "end": 51.2,
+   "text": "ما",
+   "probability": 0.80615234375
+  },
+  {
+   "start": 51.2,
+   "end": 51.48,
+   "text": "أشى",
+   "probability": 0.7568359375
+  },
+  {
+   "start": 51.48,
+   "end": 51.56,
+   "text": "الله",
+   "probability": 0.9931640625
+  },
+  {
+   "start": 51.56,
+   "end": 51.82,
+   "text": "عليه",
+   "probability": 0.97509765625
+  },
+  {
+   "start": 51.82,
+   "end": 52.58,
+   "text": "أول",
+   "probability": 0.88623046875
+  },
+  {
+   "start": 52.58,
+   "end": 53.1,
+   "text": "واحد",
+   "probability": 0.974853515625
+  },
+  {
+   "start": 53.1,
+   "end": 53.26,
+   "text": "إن",
+   "probability": 0.2261962890625
+  },
+  {
+   "start": 53.26,
+   "end": 53.5,
+   "text": "يجي",
+   "probability": 0.8829752604166666
+  },
+  {
+   "start": 53.5,
+   "end": 54.04,
+   "text": "للدوام",
+   "probability": 0.9879150390625
+  },
+  {
+   "start": 54.04,
+   "end": 54.78,
+   "text": "عبود",
+   "probability": 0.9431966145833334
+  },
+  {
+   "start": 54.78,
+   "end": 55.86,
+   "text": "بصراحة",
+   "probability": 0.96787109375
+  },
+  {
+   "start": 55.86,
+   "end": 56.86,
+   "text": "يعجبن",
+   "probability": 0.8426513671875
+  },
+  {
+   "start": 56.86,
+   "end": 57.34,
+   "text": "هالولد",
+   "probability": 0.96044921875
+  },
+  {
+   "start": 57.34,
+   "end": 58.08,
+   "text": "عنده",
+   "probability": 0.9912109375
+  },
+  {
+   "start": 58.08,
+   "end": 58.58,
+   "text": "نشاط",
+   "probability": 0.8277994791666666
+  },
+  {
+   "start": 58.58,
+   "end": 59.58,
+   "text": "أكثر",
+   "probability": 0.951171875
+  },
+  {
+   "start": 59.58,
+   "end": 59.76,
+   "text": "من",
+   "probability": 0.9990234375
+  },
+  {
+   "start": 59.76,
+   "end": 60.22,
+   "text": "اللاجم",
+   "probability": 0.73974609375
+  }
+ ],
+ "duration": 60.89,
+ "segments": [
+  {
+   "start": 0.0,
+   "end": 2.12,
+   "text": "الله يهديهم هم العيال",
+   "avg_logprob": -0.3254166535536448,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 1.90521327014218
+  },
+  {
+   "start": 2.12,
+   "end": 3.52,
+   "text": "قيل لهم",
+   "avg_logprob": -0.3254166535536448,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 1.90521327014218
+  },
+  {
+   "start": 3.52,
+   "end": 6.44,
+   "text": "رتبوا مكاتبكم",
+   "avg_logprob": -0.3254166535536448,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 1.90521327014218
+  },
+  {
+   "start": 6.44,
+   "end": 8.3,
+   "text": "رتبوها قبل أن تطلعون",
+   "avg_logprob": -0.3254166535536448,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 1.90521327014218
+  },
+  {
+   "start": 8.3,
+   "end": 9.82,
+   "text": "عشان ترجعون تاني ومتلقونها",
+   "avg_logprob": -0.3254166535536448,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 1.90521327014218
+  },
+  {
+   "start": 9.82,
+   "end": 11.26,
+   "text": "بمنتهى القيافة",
+   "avg_logprob": -0.3254166535536448,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 1.90521327014218
+  },
+  {
+   "start": 11.26,
+   "end": 13.78,
+   "text": "لكن لا حياته لما تنادي",
+   "avg_logprob": -0.3254166535536448,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 1.90521327014218
+  },
+  {
+   "start": 13.78,
+   "end": 15.96,
+   "text": "نبدأ شغلنا",
+   "avg_logprob": -0.3254166535536448,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 1.90521327014218
+  },
+  {
+   "start": 15.96,
+   "end": 17.8,
+   "text": "والمهام من الجسيمة",
+   "avg_logprob": -0.3254166535536448,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 1.90521327014218
+  },
+  {
+   "start": 17.8,
+   "end": 20.52,
+   "text": "لا أبو حامل فراشة محترف",
+   "avg_logprob": -0.3254166535536448,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 1.90521327014218
+  },
+  {
+   "start": 20.52,
+   "end": 22.84,
+   "text": "يا أبو حامل",
+   "avg_logprob": -0.3254166535536448,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 1.90521327014218
+  },
+  {
+   "start": 22.84,
+   "end": 25.82,
+   "text": "من غاد الشروط",
+   "avg_logprob": -0.3254166535536448,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 1.90521327014218
+  },
+  {
+   "start": 25.82,
+   "end": 27.52,
+   "text": "فقوة العلاق",
+   "avg_logprob": -0.3254166535536448,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 1.90521327014218
+  },
+  {
+   "start": 27.52,
+   "end": 31.52,
+   "text": "يا أبو.. يا أبو حمد.. أيوه",
+   "avg_logprob": -0.30800188129598444,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 1.915
+  },
+  {
+   "start": 33.9,
+   "end": 36.76,
+   "text": "خلنا.. نصلح شاهي العبود",
+   "avg_logprob": -0.30800188129598444,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 1.915
+  },
+  {
+   "start": 37.52,
+   "end": 39.72,
+   "text": "بهذا اللي مديوش يسمونها",
+   "avg_logprob": -0.30800188129598444,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 1.915
+  },
+  {
+   "start": 40.3,
+   "end": 42.78,
+   "text": "بق ما عدموهم منه هذا اللي يصبوه",
+   "avg_logprob": -0.30800188129598444,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 1.915
+  },
+  {
+   "start": 43.12,
+   "end": 46.66,
+   "text": "خلنا نصلح له العبود شاهي بدون سكر",
+   "avg_logprob": -0.30800188129598444,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 1.915
+  },
+  {
+   "start": 46.66,
+   "end": 48.64,
+   "text": "علشان صحته",
+   "avg_logprob": -0.30800188129598444,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 1.915
+  },
+  {
+   "start": 48.64,
+   "end": 50.68,
+   "text": "ما أغطم مع هالوزارة",
+   "avg_logprob": -0.30800188129598444,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 1.915
+  },
+  {
+   "start": 50.68,
+   "end": 54.78,
+   "text": "ما أشى الله عليه أول واحد إن يجي للدوام عبود",
+   "avg_logprob": -0.30800188129598444,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 1.915
+  },
+  {
+   "start": 54.78,
+   "end": 60.22,
+   "text": "بصراحة يعجبن هالولد عنده نشاط أكثر من اللاجم",
+   "avg_logprob": -0.19252231983201845,
+   "no_speech_prob": 0.0,
+   "compression_ratio": 1.08
+  }
+ ],
+ "source": "../../data/samples/sada_scene_b.wav",
+ "hotwords": "",
+ "hotwords_dropped": "",
+ "speech": [
+  [
+   0.0,
+   3.85
+  ],
+  [
+   4.06,
+   4.94
+  ],
+  [
+   5.21,
+   12.42
+  ],
+  [
+   12.79,
+   14.06
+  ],
+  [
+   15.0,
+   17.99
+  ],
+  [
+   18.49,
+   20.78
+  ],
+  [
+   21.94,
+   28.78
+  ],
+  [
+   29.27,
+   31.82
+  ],
+  [
+   32.22,
+   33.1
+  ],
+  [
+   34.42,
+   35.05
+  ],
+  [
+   35.22,
+   37.19
+  ],
+  [
+   38.14,
+   40.04
+  ],
+  [
+   40.89,
+   42.92
+  ],
+  [
+   43.26,
+   48.65
+  ],
+  [
+   49.14,
+   55.98
+  ],
+  [
+   56.22,
+   58.82
+  ],
+  [
+   59.06,
+   60.36
+  ]
+ ]
+}

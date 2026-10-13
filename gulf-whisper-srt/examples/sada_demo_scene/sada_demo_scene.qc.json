@@ -1,0 +1,51 @@
+{
+ "summary": {
+  "cues": 12,
+  "cues_flagged": 4,
+  "share_flagged": 0.333,
+  "gaps_to_check": 0,
+  "gap_seconds": 0,
+  "by_kind": {
+   "unsure-words": 4
+  }
+ },
+ "notes": [],
+ "issues": [
+  {
+   "priority": 2,
+   "kind": "unsure-words",
+   "start": 0.0,
+   "end": 5.86,
+   "cue": 1,
+   "detail": "Whisper was unsure of: «بدري» 0.47",
+   "speech_seconds": 0.0
+  },
+  {
+   "priority": 2,
+   "kind": "unsure-words",
+   "start": 14.26,
+   "end": 17.86,
+   "cue": 4,
+   "detail": "Whisper was unsure of: «لا» 0.29, «أسمع» 0.38",
+   "speech_seconds": 0.0
+  },
+  {
+   "priority": 2,
+   "kind": "unsure-words",
+   "start": 18.76,
+   "end": 24.52,
+   "cue": 5,
+   "detail": "Whisper was unsure of: «ودي» 0.49",
+   "speech_seconds": 0.0
+  },
+  {
+   "priority": 2,
+   "kind": "unsure-words",
+   "start": 24.52,
+   "end": 25.76,
+   "cue": 6,
+   "detail": "Whisper was unsure of: «أتقدك» 0.46",
+   "speech_seconds": 0.0
+  }
+ ]
+}
