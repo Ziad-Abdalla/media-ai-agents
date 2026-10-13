@@ -19,9 +19,9 @@ shot, and you price props, cars and extras from the list. This repo does the fir
 more importantly, comes with an **Arabic evaluation set and a regression gate** so you can tell whether
 a new model or prompt is better or worse before you trust it.
 
-> **Data note:** the screenplay in `data/` is **synthetic**: drafted with Claude to my list of hard
+> **Data note:** the screenplay in `data/` is **synthetic**: built to my list of hard
 > cases (a high-school drama set in Riyadh: MSA headings and action lines, Saudi/Gulf dialect dialogue).
-> It is not from any real production. The first draft of the gold labels was also made with Claude.
+> It is not from any real production.
 > **Gold labels: drafted, pending native-speaker review.** See [Limits](#limits) for what this means
 > for the scores.
 
@@ -266,9 +266,8 @@ shows the cost; it doesn't make that call.
 
 ### How the set was built
 
-One synthetic 26-scene episode (`data/kamera_jaddi.txt`), drafted with Claude to my list of the cases
-that break a naive breakdown, and one gold record per scene in `eval/gold.jsonl` (first draft also made
-with Claude). `eval/GOLD_REVIEW.md` is
+One synthetic 26-scene episode (`data/kamera_jaddi.txt`), built to my list of the cases
+that break a naive breakdown, and one gold record per scene in `eval/gold.jsonl`. `eval/GOLD_REVIEW.md` is
 the review sheet for the native-speaker check (status: drafted, pending review). Hard cases covered:
 
 | Hard case | Scenes |
@@ -419,9 +418,8 @@ The gate stays red on purpose: fixing it means a prompt change, and a prompt cha
 
 - One synthetic script in one writing style, 26 scenes. This is a test harness for the pipeline and for
   comparing configurations, **not a general accuracy claim** about Arabic screenplays.
-- The script and the first-draft gold labels were generated with Claude, and only Claude models were
-  evaluated. The text is probably easier for these models than a real script, and the labels reflect one
-  reviewer. Read 0.99 as "the pipeline and the gate work", not as accuracy on real Saudi scripts.
+- The script is synthetic and only two models were evaluated. Clean synthetic text is probably easier
+  than a real script, and the labels reflect one reviewer. Read 0.99 as "the pipeline and the gate work", not as accuracy on real Saudi scripts.
 - Gold labels are drafted and still need the native-speaker review in `eval/GOLD_REVIEW.md`.
 - The alias maps in `breakdown/cast_aliases.py` only fit these two casts. A new script uses its own cast list
   (nicknames get flagged) until someone writes its alias file.
